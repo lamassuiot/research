@@ -224,7 +224,7 @@ async function installFakeGitHub(page, opts = {}) {
         });
         data = { repository: { object: entries.length ? { entries } : null } }; break;
       }
-      case "ProjectEntries": {
+      case "ProjectEntries": case "PageEntries": {
         const prefix = v.expr.split(":")[1] + "/", names = new Map();
         for (const p of repo.head().files.keys()) if (p.startsWith(prefix)) { const r = p.slice(prefix.length).split("/"); names.set(r[0], r.length > 1 ? "tree" : "blob"); }
         data = { repository: { object: names.size ? { entries: [...names].map(([name, type]) => ({ name, type })) } : null } }; break;

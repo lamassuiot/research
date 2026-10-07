@@ -846,6 +846,10 @@ function treeRemove(items, type, id){
   const r = treeFind(items, type, id); if(!r) return false;
   r.list.splice(r.index, 1); if(r.parent && !r.parent.children.length) delete r.parent.children; return true;
 }
+function treeUnlink(items, type, id){    // removes an item; the sub-pages of a page take its place
+  const r = treeFind(items, type, id); if(!r) return false;
+  r.list.splice(r.index, 1, ...(r.item.children || [])); if(r.parent && !r.parent.children.length) delete r.parent.children; return true;
+}
 function treeMove(items, type, id, dir){
   const r = treeFind(items, type, id); if(!r) return false;
   const j = r.index + dir; if(j < 0 || j >= r.list.length) return false;
@@ -1250,6 +1254,31 @@ class GitHubStore{
     this.where.link.delete(id);
     return r;
   }
+  /* Deletes a page (not its sub-pages: they move up one level). The history stays in git. */
+  async deletePage(slug, title){
+    const dir = this.pageDir(slug), pid = this.where.page.get(slug), pp = this.projectPath(pid);
+    const d = await this.gql("PageEntries", `query PageEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:`${this.branch}:${dir}`});
+    const names = ((d.repository && d.repository.object && d.repository.object.entries) || []).filter(e => e.type === "blob").map(e => e.name);
+    if(!names.length) throw new Error("That page no longer exists");
+    const r = await this.commitChanges(`Remove page: ${cleanText(title, 200) || slug}`, `Know-how-Page: ${slug}\nKnow-how-Project: ${pid}`, async head => {
+      const pj = metaOf((await head.read([pp]))[pp]), additions = [];
+      if(pj && Array.isArray(pj.items) && treeUnlink(pj.items, "page", slug)){ pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id; additions.push({path:pp, contents:b64(projectText(pj))}); }
+      return {additions, deletions:names.map(n => ({path:`${dir}/${n}`}))};
+    });
+    this.where.page.delete(slug); this._art.delete(slug);
+    return r;
+  }
+  async deleteFile(name){
+    const path = this.filePath(name), pid = this.where.file.get(name), pp = this.projectPath(pid);
+    const r = await this.commitChanges(`Remove file: ${name}`, `Know-how-File: ${name}\nKnow-how-Project: ${pid}`, async head => {
+      const pj = metaOf((await head.read([pp]))[pp]), additions = [];
+      if(pj && Array.isArray(pj.items) && treeRemove(pj.items, "file", name)){ pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id; additions.push({path:pp, contents:b64(projectText(pj))}); }
+      return {additions, deletions:[{path}]};
+    });
+    this.where.file.delete(name);
+    return r;
+  }
   /* ---- projects */
   async readAtHead(headOid, paths){
     const vars = {owner:this.owner, name:this.repo};
@@ -1394,6 +1423,8 @@ class MemoryStore{
       d.image ? {image:d.image} : {}, d.icon ? {icon:d.icon} : {}, d.siteName ? {siteName:d.siteName} : {});
     return {rev:id};
   }
+  async deletePage(slug){ const pg = this.pages[slug]; if(pg && this.projects[pg.project]) treeUnlink(this.projects[pg.project].items, "page", slug); delete this.pages[slug]; for(const k of Object.keys(this.revs)) if(this.revs[k].slug === slug) delete this.revs[k]; return {rev:slug}; }
+  async deleteFile(name){ const f = this.files[name]; if(f && this.projects[f.project]) treeRemove(this.projects[f.project].items, "file", name); delete this.files[name]; return {rev:name}; }
   async deleteLink(id){ const l = this.links[id]; if(l && this.projects[l.project]) treeRemove(this.projects[l.project].items, "link", id); delete this.links[id]; return {rev:id}; }
   async fileRevs(name){ return (this.files[name] || []).map(v => ({id:v.id, at:v.at, by:"you", summary:v.summary, size:v.data.byteLength})); }
   async getFile(name, rev){ const v = (this.files[name] || []).find(x => !rev || x.id === rev); return v ? v.data.slice(0) : null; }
@@ -1800,6 +1831,7 @@ function tabs(slug, on, exists=true, page=null){
           <p class="eyebrow">Export</p>
           <button type="button" data-act="source" role="menuitem"><span class="ms" aria-hidden="true">download</span>Download source</button>
           <button type="button" data-act="print" role="menuitem"><span class="ms" aria-hidden="true">print</span>Printable version</button>
+          ${canEditPage(page) ? `<p class="eyebrow">Manage</p><button type="button" data-act="delete" role="menuitem"><span class="ms" aria-hidden="true">delete</span>Delete page</button>` : ""}
         </div></details>`
     : (S.me.canWrite ? L("edit","Create","#/new?title="+enc(slug.replace(/-/g," "))) : "");
   return `<div class="tabs"><nav aria-label="Namespaces">${L(["read","edit","history","diff","info","access"].includes(on)?"x":"article","Article","#/wiki/"+slug)}${on==="access"?L("access",'<span class="ms" aria-hidden="true">shield_lock</span>Permissions',"#/access/"+slug):""}</nav><nav aria-label="Views">${right}</nav></div>`;
@@ -1810,6 +1842,12 @@ function bindTools(ctx){
   t.addEventListener("click", async e => {
     const el = e.target.closest("[data-act]"); if(!el) return;
     const act = el.dataset.act; t.open = false;
+    if(act === "delete"){
+      const title = (ctx.page && ctx.page.title) || ctx.slug;
+      if(!confirm(`Delete “${title}”? Its sub-pages move up one level. The history stays in the repository.`)) return;
+      try{ await S.store.deletePage(ctx.slug, title); invalidatePages(); toast("Page deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
+      return;
+    }
     const rev = ctx.rev || (ctx.page && await S.store.getRev(ctx.slug, ctx.page.rev));
     if(act === "permalink"){
       e.preventDefault();
@@ -2657,7 +2695,8 @@ async function viewFile(name, params){
     <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · PDF${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
       <span class="sp"></span>
       <button class="btn small" type="button" id="f-copy"><span class="ms" aria-hidden="true">link</span>Copy link syntax</button>
-      <button class="btn small" type="button" id="f-dl"><span class="ms" aria-hidden="true">download</span>Download</button></div>
+      <button class="btn small" type="button" id="f-dl"><span class="ms" aria-hidden="true">download</span>Download</button>
+      ${S.me.canWrite && !isOld ? `<button class="btn small" type="button" id="f-del"><span class="ms" aria-hidden="true">delete</span>Delete</button>` : ""}</div>
     <div id="pdfbox"></div>
     <h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">File history</h2>
     <ul class="special">${revs.map((r, i) => `<li><a href="#/file/${enc(name)}${i ? "?rev=" + enc(r.id) : ""}">${fmtMW(r.at)}</a> ${personSpan(r.by)} <span class="sep">. .</span> <span class="muted">(${r.size != null ? fmtBytes(r.size) : "?"})</span> ${r.summary ? `<span class="summary-text">(${esc(r.summary)})</span>` : ""} ${i === 0 ? '<span class="muted">(current)</span>' : ""}</li>`).join("")}</ul>
@@ -2665,6 +2704,11 @@ async function viewFile(name, params){
     ${footer()}`);
   $("#f-dl").onclick = () => downloadBytes(name, data);
   $("#f-copy").onclick = async () => { const t = `[[File:${name}]]`; try{ await navigator.clipboard.writeText(t); toast("Copied " + t); }catch{ toast(t, 8000); } };
+  const fd = $("#f-del"); if(fd) fd.onclick = async () => {
+    if(!confirm(`Delete “${name}”? Pages that link to it will show a broken link. It stays in the repository history.`)) return;
+    fd.disabled = true;
+    try{ await S.store.deleteFile(name); invalidatePages(); toast("File deleted."); location.hash = "#/projects"; }catch(err){ fd.disabled = false; toast(err.message || String(err), 7000); }
+  };
   bindUploadForm(name, () => { S.nav++; route(); });
   await mountPdf($("#pdfbox"), data, {page});
 }

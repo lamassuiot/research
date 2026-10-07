@@ -460,3 +460,21 @@ test.describe("structure bar", () => {
     expect(await page.locator("#side").evaluate(e => e.scrollTop)).toBe(0);        // the sidebar as a whole does not scroll
   });
 });
+
+// Last: it deletes welcome and ca-spec.pdf from the shared serial repository.
+test("delete a page (its sub-pages move up) and a PDF", async ({ page }) => {
+  await open(page, "#/wiki/welcome");
+  page.once("dialog", d => d.accept());
+  await page.locator("#tools summary").click();
+  await page.locator('[data-act="delete"]').click();
+  await expect(page).toHaveURL(/#\/projects$/);
+  expect(repo.head().message.split("\n")[0]).toMatch(/^Remove page: /);
+  expect([...repo.head().files.keys()].some(p => p.includes("/pages/welcome/"))).toBe(false);
+  expect(JSON.stringify(items("general"))).not.toContain('"welcome"');
+  await page.goto("/research/#/file/ca-spec.pdf");
+  page.once("dialog", d => d.accept());
+  await page.locator("#f-del").click();
+  await expect(page).toHaveURL(/#\/projects$/);
+  expect(repo.head().message.split("\n")[0]).toBe("Remove file: ca-spec.pdf");
+  expect(repo.head().files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(false);
+});
