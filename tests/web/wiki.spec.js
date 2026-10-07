@@ -112,6 +112,40 @@ test.describe("editor", () => {
     await expect(bar.locator("select")).toBeVisible();
   });
 
+  test("an edited paragraph is diffed inline, word by word, in green and red", async ({ page }) => {
+    await open(page, "#/edit/my-rfc-notes", { repo });
+    const body = await page.inputValue("#f-body");
+    await page.fill("#f-body", body.replace("bigger than ECDSA ones", "much larger than ECDSA keys"));
+    await page.fill("#f-sum", "Reword");
+    await page.locator("#saveBtn").click();
+    await expect(page).toHaveURL(/#\/wiki\/general\/my-rfc-notes$/);
+    const p = page.locator("#prose p.chg-mod");
+    await expect(p).toHaveCount(1);
+    expect((await p.locator("ins.chg-ins").allTextContents()).join("")).toContain("larger");
+    expect((await p.locator("ins.chg-ins").allTextContents()).join("")).toContain("much");
+    await expect(p.locator("del.chg-del").first()).toContainText("bigger");
+    await expect(p).toContainText("ML-DSA signatures are");                         // the unchanged words stay as they are
+  });
+
+  test("selectors are shadcn-style listboxes: mouse and keyboard, and the native value follows", async ({ page }) => {
+    await open(page, "#/wiki/general/my-rfc-notes", { repo });
+    const btn = page.locator(".chgbar .ui-select-btn");
+    await btn.click();
+    const opts = page.locator(".ui-select-pop [role=option]");
+    expect(await opts.count()).toBeGreaterThan(1);
+    await expect(opts.first()).toHaveAttribute("aria-selected", "true");
+    await opts.nth(1).click();
+    await expect(page.locator(".ui-select-pop")).toHaveCount(0);
+    expect(await page.locator(".chgbar select").evaluate(s => s.selectedIndex)).toBe(1);
+    await expect(btn).toContainText(/rev \d/);
+    await btn.focus(); await page.keyboard.press("ArrowDown");                    // opens
+    await expect(page.locator(".ui-select-pop")).toBeVisible();
+    await page.keyboard.press("Home"); await page.keyboard.press("Enter");
+    expect(await page.locator(".chgbar select").evaluate(s => s.selectedIndex)).toBe(0);
+    await btn.click(); await page.keyboard.press("Escape");
+    await expect(page.locator(".ui-select-pop")).toHaveCount(0);
+  });
+
   test("a large HTML report is saved and shown in a sandboxed iframe", async ({ page }) => {
     await open(page, "#/new", { repo });
     await page.fill("#f-title", "Big report");
