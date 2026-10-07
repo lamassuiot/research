@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lamassu Research</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https://avatars.githubusercontent.com; connect-src https://api.github.com https://research-auth.REPLACE_ME.workers.dev; frame-src 'self' about:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://avatars.githubusercontent.com; connect-src https://api.github.com https://research-auth.REPLACE_ME.workers.dev 'self'; worker-src 'self'; frame-src 'self' about:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230100f8'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23fff'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&display=block" rel="stylesheet">
@@ -473,6 +473,23 @@ body.gated .gate{display:flex}
 .tagchip input:checked + span{background:var(--link);border-color:var(--link);color:#fff}
 .tagchip input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
 .hint.err{color:var(--err)}
+/* ---------- PDF files ---------- */
+.file-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
+.file-bar .sp,.pdfv-bar .sp{flex:1}
+.pdfv{display:block;border:1px solid var(--rule);border-radius:14px;background:var(--surface);overflow:hidden}
+.pdfv-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--rule);background:var(--paper);position:sticky;top:0;z-index:1}
+.pdfv-page{display:inline-flex;align-items:center;gap:6px;font-size:15px}
+.pdfv-page input{width:4.2em;padding:3px 6px;border:1px solid var(--rule-2);border-radius:8px;background:var(--paper);text-align:right}
+.pdfv-zoom{min-width:3.5em;text-align:center;font-size:14px;color:var(--ink-3)}
+.pdfv-pages{position:relative;height:min(78vh,1100px);overflow:auto;padding:16px;display:flex;flex-direction:column;align-items:center;gap:14px;overscroll-behavior:contain}
+.pdfv-slot{flex:none;background:#fff;box-shadow:0 1px 4px var(--shadow);max-width:none}
+.pdfv-slot canvas{display:block}
+.pdf-embed{display:block;margin:12px 0}
+.pdf-card{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--surface)}
+.pdf-inline{display:block;margin-top:8px}
+.pdf-inline .pdfv-pages{height:min(70vh,900px)}
+a.file-link .ms{font-size:18px;vertical-align:-3px;margin-right:2px}
+table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
 </style>
 </head>
 <body class="gated">
@@ -506,6 +523,7 @@ body.gated .gate{display:flex}
         <li><a href="#/" data-nav="home"><span class="ms" aria-hidden="true">home</span>Main page</a></li>
         <li><a href="#/all" data-nav="all"><span class="ms" aria-hidden="true">list</span>All articles</a></li>
         <li><a href="#/tags" data-nav="tags"><span class="ms" aria-hidden="true">sell</span>All tags</a></li>
+        <li><a href="#/files" data-nav="files"><span class="ms" aria-hidden="true">picture_as_pdf</span>Files</a></li>
         <li><a href="#/recent" data-nav="recent"><span class="ms" aria-hidden="true">history</span>Recent changes</a></li>
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
         <li><a href="#/help" data-nav="help"><span class="ms" aria-hidden="true">help</span>Help</a></li>
@@ -593,6 +611,7 @@ async function sha256(s){
 /* ---------------------------------------------------------------- stores */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SHA_RE = /^[0-9a-f]{7,40}$/;
+const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
 const cleanText = (s, max) => String(s == null ? "" : s).replace(/[\r\n\0<>]/g, " ").trim().slice(0, max);
 const hex = buf => Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
 function b64(str){
@@ -761,11 +780,56 @@ class GitHubStore{
       }
     }
   }
+  /* ---- PDF files: files/<name>.pdf in the content repository */
+  async listFiles(){
+    const d = await this.gql("ListFiles", `query ListFiles($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } }`,
+      {owner:this.owner, name:this.repo, expr:this.branch + ":files"});
+    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
+    return entries.filter(e => e.type === "blob" && FILE_RE.test(e.name)).map(e => ({name:e.name, size:(e.object && e.object.byteSize) || 0}));
+  }
+  async fileRevs(name){
+    if(!FILE_RE.test(name)) return [];
+    const d = await this.gql("FileRevs", `query FileRevs($owner:String!,$name:String!,$ref:String!,$path:String!){ repository(owner:$owner,name:$name){
+        ref(qualifiedName:$ref){ target { ... on Commit { history(first:50, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
+          file(path:$path){ object { ... on Blob { byteSize } } } } } } } } } }`,
+      this.v({path:"files/" + name}));
+    const nodes = (d.repository && d.repository.ref && d.repository.ref.target && d.repository.ref.target.history && d.repository.ref.target.history.nodes) || [];
+    return nodes.map(c => ({id:c.oid, at:c.authoredDate, summary:c.messageHeadline, by:(c.author && c.author.user && c.author.user.login) || (c.author && c.author.name) || null,
+      size:c.file && c.file.object ? c.file.object.byteSize : null}));
+  }
+  async getFile(name, rev){
+    if(!FILE_RE.test(name)) return null;
+    if(rev && !SHA_RE.test(rev)) return null;
+    try{
+      const r = await this.gh(`/repos/${this.full}/contents/files/${name}?ref=${rev || this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
+      return await r.arrayBuffer();
+    }catch(e){ if(e.status === 404) return null; throw e; }
+  }
+  /* Git Data API (blob → tree → commit → move main without forcing): handles files of tens of MB, unlike one GraphQL request. */
+  async uploadFile(name, base64, sha256hex, summary){
+    if(!FILE_RE.test(name)) throw new Error("Invalid file name");
+    const post = async (path, body, method) => (await this.gh(`/repos/${this.full}/git/${path}`, {method:method || "POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})).json();
+    const blob = await post("blobs", {content:base64, encoding:"base64"});
+    const message = `${cleanText(summary, 300) || "Upload " + name}\n\nKnow-how-File: ${name}\nContent-SHA256: ${sha256hex}`;
+    for(let attempt = 1; ; attempt++){
+      const head = (await (await this.gh(`/repos/${this.full}/git/ref/heads/${this.branch}`)).json()).object.sha;
+      const base = (await (await this.gh(`/repos/${this.full}/git/commits/${head}`)).json()).tree.sha;
+      const tree = await post("trees", {base_tree:base, tree:[{path:"files/" + name, mode:"100644", type:"blob", sha:blob.sha}]});
+      const commit = await post("commits", {message, tree:tree.sha, parents:[head]});
+      try{
+        await post(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
+        return {rev:commit.sha};
+      }catch(e){
+        if(e.status !== 422 && e.status !== 409) throw e;   // 422 "Update is not a fast forward": main moved meanwhile
+        if(attempt >= 3) throw new Error("Someone else saved at the same time; please retry");
+      }
+    }
+  }
 }
 
 class MemoryStore{
   constructor(){
-    this.kind = "memory"; this.pages = {}; this.revs = {};
+    this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {};
     const at = new Date().toISOString();
     const seed = (slug, title, tags, abstract, content) => {
       const rid = slug + "~1";
@@ -777,6 +841,15 @@ class MemoryStore{
   }
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
+  async listFiles(){ return Object.keys(this.files).map(name => ({name, size:this.files[name][0].data.byteLength})); }
+  async fileRevs(name){ return (this.files[name] || []).map(v => ({id:v.id, at:v.at, by:"you", summary:v.summary, size:v.data.byteLength})); }
+  async getFile(name, rev){ const v = (this.files[name] || []).find(x => !rev || x.id === rev); return v ? v.data.slice(0) : null; }
+  async uploadFile(name, base64, sha256hex, summary){
+    const bin = atob(base64), data = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+    const id = name + "~" + ((this.files[name] || []).length + 1);
+    (this.files[name] ||= []).unshift({id, at:new Date().toISOString(), summary:summary || "Upload " + name, data:data.buffer});
+    return {rev:id};
+  }
   async names(ids){ const o = {}; for(const id of ids) o[id] = id === "you" ? "You (this browser tab)" : id; return o; }
   async listPages(){ return Object.values(this.pages); }
   async getPage(slug){ return this.pages[slug] || null; }
@@ -886,12 +959,12 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { editing:null, tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { editing:null, files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
 const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
   if(!force && Date.now() - S.pagesAt < 4000) return S.pages;
-  try{ S.pages = await S.store.listPages(); S.pagesAt = Date.now(); }catch(e){ console.error(e); }
+  try{ const [pages, files] = await Promise.all([S.store.listPages(), S.store.listFiles().catch(e => { console.warn(e); return S.files; })]); S.pages = pages; S.files = files; S.pagesAt = Date.now(); }catch(e){ console.error(e); }
   renderSide();
   return S.pages;
 }
@@ -973,7 +1046,11 @@ function renderMarkdown(src){
   // internal wiki links: [[slug]] or [[slug|label]]
   wrap.querySelectorAll("p,li,td,th").forEach(el => {
     if(!el.innerHTML.includes("[[")) return;
-    el.innerHTML = el.innerHTML.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, target, label) => {
+    el.innerHTML = el.innerHTML.replace(/(!?)\[\[File:\s*([^\]|#]+?)\s*(?:#page=(\d+))?(?:\|([^\]]+))?\]\]/gi, (m, bang, target, page, label) => {
+      const name = fileNameFrom(target), f = S.files.find(x => x.name === name);
+      if(bang) return `<span class="pdf-embed" data-file="${esc(name)}"${page ? ` data-page="${+page}"` : ""}></span>`;
+      return `<a href="#/file/${enc(name)}${page ? "?page=" + (+page) : ""}" class="file-link ${f ? "" : "new"}" title="${esc(name)}${f ? "" : " (file does not exist)"}"><span class="ms" aria-hidden="true">picture_as_pdf</span>${esc(label || (target + (page ? ", page " + page : "")))}</a>`;
+    }).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, target, label) => {
       const slug = slugify(target); const exists = S.pages.some(p => p.slug === slug);
       return `<a href="#/wiki/${slug}" class="${exists?"":"new"}" title="${exists?esc(target):esc(target)+" (page does not exist)"}">${esc(label||target)}</a>`;
     });
@@ -1093,7 +1170,7 @@ function route(){
   const path = qi >= 0 ? raw.slice(0, qi) : raw;
   const params = new URLSearchParams(qi >= 0 ? raw.slice(qi+1) : "");
   const seg = path.split("/").filter(Boolean).map(s => { try{ return decodeURIComponent(s); }catch{ return s; } });
-  S.nav++; S.editing = null;
+  S.nav++; S.editing = null; closePdfs();
   closeDrawer(); setSideToc(null); markNav();
   activeFrame = null; document.body.classList.remove("wide");
   const m = $("#main");
@@ -1108,6 +1185,8 @@ function route(){
     case "info":       return go(viewInfo(seg[1]));
     case "access":     return go(viewAccess());
     case "automation": return go(viewAutomation());
+    case "files":      return go(viewFiles());
+    case "file":       return go(viewFile(seg[1], params));
     case "recent":     return go(viewRecent());
     case "search":     return go(viewSearch(params.get("q")||""));
     case "help":       return go(viewHelp(params.get("s")));
@@ -1303,6 +1382,7 @@ async function viewArticle(slug, revId){
     const body = renderMarkdown(rev.content);
     const items = tocItems(body);
     setMainFor(nav, `${head}${info}<div class="prose" id="prose">${body.innerHTML}</div>${cats}${foot}`);
+    hydrateEmbeds($("#prose"));
     setSideToc(items, id => document.getElementById(id)?.scrollIntoView({behavior:"smooth"}));
     if(items.length){
       const hs = items.map(it => document.getElementById(it.id)).filter(Boolean);
@@ -1554,6 +1634,9 @@ Articles are written in **Markdown** (GitHub flavour: tables, fenced code blocks
 
 Always fill in the **edit summary**: it is the commit message other engineers will read in the history.
 
+## PDF files
+Manuals, specifications and papers live on the **Files** page (PDF only, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; uploading a file with the same name adds a new version and keeps the old ones.
+
 ## HTML reports
 An article can also be a complete, self-contained **HTML report** (charts, scripts, styles), such as a state-of-the-art benchmark. It is shown in a sandboxed frame: its scripts cannot reach the wiki or your session. Give its headings an \`id\` and they appear in the *Contents* sidebar.
 
@@ -1748,6 +1831,192 @@ async function viewEdit(slug, params){
     }
   };
   if(slug && !isNew) bindTools({slug, page, rev:cur});
+}
+
+/* ---------------------------------------------------------------- PDF files and in-app viewer (pdf.js, vendored in vendor/pdfjs/) */
+const MAX_FILE = 50 * 1024 * 1024;
+const fileNameFrom = n => String(n || "").toLowerCase().replace(/\.pdf$/i, "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+/g, "-").slice(0, 96).replace(/[-.]+$/, "") + ".pdf";
+let PDFJS = null;
+async function pdfLib(){
+  if(!PDFJS){
+    const base = new URL("vendor/pdfjs/", location.href.split("#")[0].split("?")[0]).href;
+    const lib = await import(base + "pdf.min.mjs");
+    lib.GlobalWorkerOptions.workerSrc = base + "pdf.worker.min.mjs";
+    PDFJS = {lib, base};
+  }
+  return PDFJS;
+}
+const OPEN_PDFS = new Set();
+function closePdfs(){ for(const v of OPEN_PDFS) v.destroy(); OPEN_PDFS.clear(); }
+
+/* Renders a PDF (ArrayBuffer) into box: toolbar + pages drawn lazily on canvases. No scripts, no forms. */
+async function mountPdf(box, data, opts){
+  opts = opts || {};
+  box.classList.add("pdfv");
+  box.innerHTML = `<div class="pdfv-bar" role="toolbar" aria-label="PDF viewer">
+      <button type="button" class="icon-btn" data-v="prev" title="Previous page" aria-label="Previous page"><span class="ms" aria-hidden="true">chevron_left</span><span class="noicon">‹</span></button>
+      <label class="pdfv-page"><input type="number" min="1" value="1" aria-label="Page"> / <span class="pdfv-n">…</span></label>
+      <button type="button" class="icon-btn" data-v="next" title="Next page" aria-label="Next page"><span class="ms" aria-hidden="true">chevron_right</span><span class="noicon">›</span></button>
+      <span class="sp"></span>
+      <button type="button" class="icon-btn" data-v="out" title="Zoom out" aria-label="Zoom out"><span class="ms" aria-hidden="true">zoom_out</span><span class="noicon">−</span></button>
+      <span class="pdfv-zoom">100%</span>
+      <button type="button" class="icon-btn" data-v="in" title="Zoom in" aria-label="Zoom in"><span class="ms" aria-hidden="true">zoom_in</span><span class="noicon">+</span></button>
+      <button type="button" class="btn small" data-v="fit">Fit width</button>
+    </div><div class="pdfv-pages" tabindex="0"><div class="loading">Loading PDF…</div></div>`;
+  const pagesEl = box.querySelector(".pdfv-pages"), input = box.querySelector("input"), zoomEl = box.querySelector(".pdfv-zoom");
+  const {lib, base} = await pdfLib();
+  const task = lib.getDocument({data:new Uint8Array(data.slice(0)), enableScripting:false, isEvalSupported:false,
+    standardFontDataUrl:base + "standard_fonts/", cMapUrl:base + "cmaps/", cMapPacked:true, wasmUrl:base + "wasm/", iccUrl:base + "iccs/"});
+  let doc;
+  try{ doc = await task.promise; }
+  catch(e){ pagesEl.innerHTML = ambox("err","error",`<p>This PDF could not be displayed (${esc(e.message || e)}). You can still download it.</p>`); throw e; }
+  const view = {destroy(){ io.disconnect(); task.destroy(); }};
+  OPEN_PDFS.add(view);
+  box.querySelector(".pdfv-n").textContent = doc.numPages; input.max = doc.numPages;
+  const first = await doc.getPage(1), unit = first.getViewport({scale:1});
+  let scale = 1, fitScale = 1;
+  const slots = [];
+  pagesEl.innerHTML = "";
+  for(let i = 1; i <= doc.numPages; i++){
+    const s = document.createElement("div"); s.className = "pdfv-slot"; s.dataset.n = i; s.setAttribute("aria-label", "Page " + i);
+    pagesEl.appendChild(s); slots.push(s);
+  }
+  const rendered = new Map();
+  const size = () => { for(const s of slots){ s.style.width = Math.floor(unit.width * scale) + "px"; s.style.height = Math.floor(unit.height * scale) + "px"; } };
+  async function draw(s){
+    const n = +s.dataset.n, key = n + "@" + scale;
+    if(rendered.get(n) === key) return; rendered.set(n, key);
+    const page = await doc.getPage(n), vp = page.getViewport({scale}), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement("canvas"); c.width = Math.floor(vp.width * dpr); c.height = Math.floor(vp.height * dpr);
+    c.style.width = Math.floor(vp.width) + "px"; c.style.height = Math.floor(vp.height) + "px";
+    s.style.width = c.style.width; s.style.height = c.style.height;
+    await page.render({canvas:c, canvasContext:c.getContext("2d"), viewport:vp, transform:dpr !== 1 ? [dpr,0,0,dpr,0,0] : null}).promise;
+    if(rendered.get(n) === key){ s.replaceChildren(c); s.classList.add("done"); }
+  }
+  const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting) draw(e.target).catch(err => console.warn(err)); }), {root:pagesEl, rootMargin:"600px 0px"});
+  slots.forEach(s => io.observe(s));
+  // offsets are relative to .pdfv-pages (position:relative); never scroll the page itself
+  const current = () => { const top = pagesEl.scrollTop + 40; let n = 1; for(const s of slots){ if(s.offsetTop <= top) n = +s.dataset.n; } return n; };
+  const go = n => { n = Math.max(1, Math.min(doc.numPages, n)); pagesEl.scrollTop = slots[n-1].offsetTop - 16; input.value = n; };
+  const setScale = (v, keep) => { const n = keep || current(); scale = Math.max(0.25, Math.min(4, v)); zoomEl.textContent = Math.round(scale * 100) + "%"; size(); slots.forEach(s => { s.classList.remove("done"); }); rendered.clear(); io.disconnect(); slots.forEach(s => io.observe(s)); go(n); };
+  fitScale = Math.max(0.25, (pagesEl.clientWidth - 32) / unit.width);
+  setScale(Math.min(fitScale, opts.maxScale || 1.5), opts.page || 1);
+  pagesEl.addEventListener("scroll", () => { input.value = current(); }, {passive:true});
+  input.onchange = () => go(+input.value || 1);
+  box.querySelector(".pdfv-bar").onclick = e => {
+    const b = e.target.closest("button"); if(!b) return;
+    const v = b.dataset.v;
+    if(v === "prev") go(current() - 1); else if(v === "next") go(current() + 1);
+    else if(v === "in") setScale(scale * 1.2); else if(v === "out") setScale(scale / 1.2);
+    else if(v === "fit") setScale((pagesEl.clientWidth - 32) / unit.width);
+  };
+  return {doc, view};
+}
+function downloadBytes(name, data){
+  const url = URL.createObjectURL(new Blob([data], {type:"application/pdf"}));
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+const readAsBase64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+async function refreshFiles(){ try{ S.files = await S.store.listFiles(); }catch(e){ console.warn(e); } return S.files; }
+
+/* Upload form: used on the Files page (new file) and on a file page (new version of that file). */
+function uploadForm(fixedName){
+  return `<form class="form upload" id="upf" novalidate>
+    <div class="row">
+      <div><label for="up-file">PDF file <small class="muted">(up to ${fmtBytes(MAX_FILE)})</small></label><input type="file" id="up-file" accept="application/pdf,.pdf" required></div>
+      ${fixedName ? `<input type="hidden" id="up-name" value="${esc(fixedName)}">` : `<div><label for="up-name">Name in the wiki</label><input type="text" id="up-name" placeholder="vendor-manual.pdf" spellcheck="false"><div class="hint">Link it from an article with <span class="mono" id="up-syntax">[[File:…]]</span></div></div>`}
+    </div>
+    <div class="row"><div style="grid-column:1/-1"><label for="up-sum">Summary</label><input type="text" id="up-sum" maxlength="300" placeholder="${fixedName ? "What changed in this version?" : "What is this document?"}"></div></div>
+    <div class="actions"><button class="btn primary" id="up-btn" type="submit"><span class="ms" aria-hidden="true">upload</span><span>${fixedName ? "Upload new version" : "Upload"}</span></button><span class="hint" id="up-status" role="status"></span></div>
+  </form>`;
+}
+function bindUploadForm(fixedName, done){
+  const f = $("#upf"); if(!f) return;
+  const nameEl = $("#up-name"), fileEl = $("#up-file"), st = $("#up-status");
+  const syncSyntax = () => { if($("#up-syntax")) $("#up-syntax").textContent = `[[File:${nameEl.value || "…"}]]`; };
+  fileEl.onchange = () => { if(!fixedName && fileEl.files[0] && !nameEl.dataset.touched) nameEl.value = fileNameFrom(fileEl.files[0].name); syncSyntax(); };
+  if(!fixedName) nameEl.oninput = () => { nameEl.dataset.touched = "1"; syncSyntax(); };
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const file = fileEl.files[0];
+    if(!file){ toast("Choose a PDF file."); return; }
+    if(file.size > MAX_FILE){ toast(`The file is ${fmtBytes(file.size)}; the limit is ${fmtBytes(MAX_FILE)}.`, 6000); return; }
+    const data = await file.arrayBuffer();
+    if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-"){ toast("That file is not a PDF.", 6000); return; }
+    const name = fixedName || fileNameFrom(nameEl.value || file.name);
+    if(!FILE_RE.test(name)){ toast("Use a name with letters, digits, dots and hyphens, ending in .pdf."); return; }
+    if(!fixedName && S.files.some(x => x.name === name) && !confirm(`${name} already exists. Upload this as a new version of it?`)) return;
+    const btn = $("#up-btn"); btn.disabled = true; st.textContent = "Uploading…";
+    try{
+      const sha = hex(await crypto.subtle.digest("SHA-256", data));
+      await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim());
+      st.textContent = ""; toast(`Uploaded ${name}.`);
+      await refreshFiles(); done(name);
+    }catch(err){ console.error(err); btn.disabled = false; st.textContent = ""; toast(err.message || String(err), 7000); }
+  };
+}
+
+async function viewFiles(){
+  const nav = S.nav;
+  setMainFor(nav, '<div class="loading">Loading files…</div>');
+  await refreshPages(true);
+  const files = S.files.slice().sort((a,b) => a.name.localeCompare(b.name));
+  setMainFor(nav, `<h1 class="title">Files</h1><div class="tabs"><nav><a class="on">Files</a></nav><nav></nav></div><div class="maturity"></div>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">PDF manuals, specifications and papers kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
+    ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">picture_as_pdf</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty">No files yet.</div>`}
+    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>${uploadForm(null)}` : ""}
+    ${footer()}`);
+  bindUploadForm(null, name => { location.hash = "#/file/" + enc(name); });
+}
+
+async function viewFile(name, params){
+  const nav = S.nav;
+  setMainFor(nav, '<div class="loading">Loading file…</div>');
+  const rev = params.get("rev"), page = parseInt(params.get("page") || "", 10) || null;
+  await refreshPages();
+  const [revs, data] = await Promise.all([S.store.fileRevs(name), S.store.getFile(name, rev)]);
+  if(!data){
+    setMainFor(nav, `<h1 class="title"><span class="ns">File:</span>${esc(name)}</h1>${ambox("slate","info",`<p><b>There is no file with this name.</b> ${S.me.canWrite ? `Upload it on the <a href="#/files">Files</a> page.` : ""}</p>`)}${footer()}`);
+    return;
+  }
+  await resolveNames(revs.map(r => r.by));
+  const cur = revs[0], shown = rev ? revs.find(r => r.id === rev || String(r.id).startsWith(rev)) : cur;
+  const isOld = rev && cur && shown && shown.id !== cur.id;
+  setMainFor(nav, `<div class="title-row"><h1 class="title"><span class="ns">File:</span>${esc(name)}</h1></div>
+    <div class="tabs"><nav><a class="on">File</a></nav><nav></nav></div><div class="maturity"></div>
+    ${isOld ? ambox("warn","history",`<p>This is an old version of this file, uploaded by ${personSpan(shown.by)} at ${fmtMW(shown.at)}. <a href="#/file/${enc(name)}">See the current version</a>.</p>`) : ""}
+    <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · PDF${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
+      <span class="sp"></span>
+      <button class="btn small" type="button" id="f-copy"><span class="ms" aria-hidden="true">link</span>Copy link syntax</button>
+      <button class="btn small" type="button" id="f-dl"><span class="ms" aria-hidden="true">download</span>Download</button></div>
+    <div id="pdfbox"></div>
+    <h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">File history</h2>
+    <ul class="special">${revs.map((r, i) => `<li><a href="#/file/${enc(name)}${i ? "?rev=" + enc(r.id) : ""}">${fmtMW(r.at)}</a> ${personSpan(r.by)} <span class="sep">. .</span> <span class="muted">(${r.size != null ? fmtBytes(r.size) : "?"})</span> ${r.summary ? `<span class="summary-text">(${esc(r.summary)})</span>` : ""} ${i === 0 ? '<span class="muted">(current)</span>' : ""}</li>`).join("")}</ul>
+    ${S.me.canWrite && !isOld ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a new version</h2>${uploadForm(name)}` : ""}
+    ${footer()}`);
+  $("#f-dl").onclick = () => downloadBytes(name, data);
+  $("#f-copy").onclick = async () => { const t = `[[File:${name}]]`; try{ await navigator.clipboard.writeText(t); toast("Copied " + t); }catch{ toast(t, 8000); } };
+  bindUploadForm(name, () => { S.nav++; route(); });
+  await mountPdf($("#pdfbox"), data, {page});
+}
+
+/* ![[File:x.pdf]] placeholders in an article: a card that opens an inline preview on demand. */
+function hydrateEmbeds(root){
+  $$(".pdf-embed", root).forEach(el => {
+    const name = el.dataset.file, page = parseInt(el.dataset.page || "", 10) || null, f = S.files.find(x => x.name === name);
+    el.innerHTML = `<span class="pdf-card"><span class="ms" aria-hidden="true">picture_as_pdf</span>
+      <a href="#/file/${enc(name)}${page ? "?page=" + page : ""}" class="${f ? "" : "new"}">${esc(name)}</a>${f ? ` <span class="muted">${fmtBytes(f.size)}</span>` : ' <span class="muted">(file does not exist)</span>'}
+      ${f ? `<button class="btn small" type="button" data-preview>Preview here</button>` : ""}</span><span class="pdf-inline" hidden></span>`;
+    const b = el.querySelector("[data-preview]");
+    if(b) b.onclick = async () => {
+      b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading PDF…</span>';
+      try{ const data = await S.store.getFile(name); if(!data) throw new Error("not found"); await mountPdf(box, data, {page}); b.remove(); }
+      catch(e){ box.innerHTML = ambox("err","error",`<p>Could not load ${esc(name)}: ${esc(e.message || e)}</p>`); b.disabled = false; }
+    };
+  });
 }
 
 /* ---------------------------------------------------------------- access and automation */

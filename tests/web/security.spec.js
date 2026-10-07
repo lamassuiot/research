@@ -12,7 +12,9 @@ test("the CSP meta only lets the page talk to GitHub and the auth Worker", async
   await expect(page.locator("h1").first()).toBeVisible();
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content");
   const connect = csp.split(";").map(s => s.trim()).find(s => s.startsWith("connect-src"));
-  expect(connect).toBe("connect-src https://api.github.com https://auth.test");
+  expect(connect).toBe("connect-src https://api.github.com https://auth.test 'self'");
+  expect(csp).toContain("worker-src 'self'");
+  expect(csp).toContain("frame-src 'self' about:");
   expect(csp).toContain("default-src 'none'");
   expect(csp).not.toMatch(/img-src[^;]*https:(?!\/\/avatars)/);
 });

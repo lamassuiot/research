@@ -7,8 +7,9 @@ Wiki versionada de investigación de Lamassu, copiada del frontend de `ik-librar
 - `AUTH` (en la plantilla): login con GitHub (code + PKCE); el código se canjea en el Worker. **El token solo vive en `AUTH.token`: nunca en `localStorage`, `sessionStorage`, cookies ni URL.** `sessionStorage` solo guarda `lr.auth` (state/verifier, se borra al volver) y `lr.auth.fail` (anti-bucle).
 - `GitHubStore`: lee con GraphQL (cada consulta con `operationName` fijo) y el contenido de cada revisión por REST (`Accept: application/vnd.github.raw+json`); escribe con `createCommitOnBranch` + `expectedHeadOid` (3 reintentos). El rol sale del permiso sobre el repo de contenido.
 - `worker/src/index.js`: Cloudflare Worker sin estado (`/token`, `/revoke`), solo responde a `ALLOWED_ORIGIN`.
+- PDFs: `files/<nombre>.pdf` en el repo de contenido (`FILE_RE`, máx. 50 MB, deben empezar por `%PDF-`). Se suben con la API de Git Data (blob → tree → commit → `PATCH` de la ref sin forzar, 3 reintentos) y se ven con pdf.js (`public/vendor/pdfjs/`, cargado con `import()` solo al abrir uno; sin scripts ni eval). Sintaxis Markdown: `[[File:x.pdf]]`, `[[File:x.pdf#page=3|texto]]`, `![[File:x.pdf]]` (incrustado bajo demanda).
 - No hay categorías: solo etiquetas, de la lista cerrada `tags.json` del repo de contenido.
-- CSP por `<meta>` (Pages no permite cabeceras). Los informes HTML van en un iframe `sandbox` sin `allow-same-origin`.
+- CSP por `<meta>` (Pages no permite cabeceras). `'self'` en `connect-src`, `font-src` y `worker-src` es para pdf.js (fuentes estándar, cmaps, wasm y su worker). Los informes HTML van en un iframe `sandbox` sin `allow-same-origin`.
 
 ## Contrato de datos del repo de contenido
 Ver la sección 4 de `TASK.md` y `content-template/README.md`: `tags.json`, `pages/<slug>/meta.json` + `content.md|html`, y trailers `Know-how-*` en cada commit. `content-template/scripts/validate.mjs` lo comprueba.

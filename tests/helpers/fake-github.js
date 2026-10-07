@@ -66,7 +66,7 @@ async function installFakeGitHub(page, opts = {}) {
   const perms = { admin: { admin: true, maintain: true, push: true, triage: true, pull: true }, write: { admin: false, maintain: false, push: true, triage: true, pull: true },
     read: { admin: false, maintain: false, push: false, triage: false, pull: true } };
 
-  const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS",
+  const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
     "access-control-allow-headers": "authorization, content-type, x-github-api-version, accept", "access-control-expose-headers": "x-ratelimit-remaining, x-ratelimit-reset" };
   const json = (route, status, body, headers) => route.fulfill({ status, headers: { ...CORS, "content-type": "application/json", ...(headers || {}) }, body: JSON.stringify(body) });
   const text = (route, status, body) => route.fulfill({ status, headers: { ...CORS, "content-type": "text/plain; charset=utf-8" }, body });
@@ -120,9 +120,12 @@ async function installFakeGitHub(page, opts = {}) {
       const m = url.pathname.match(new RegExp(`^/repos/${OWNER}/${REPO}/contents/(.+)$`));
       if (m && method === "GET") {
         const content = repo.read(`${url.searchParams.get("ref")}:${decodeURIComponent(m[1])}`);
-        return content == null ? json(route, 404, { message: "Not Found" }) : text(route, 200, content);
+        if (content == null) return json(route, 404, { message: "Not Found" });
+        return Buffer.isBuffer(content) ? route.fulfill({ status: 200, headers: { ...CORS, "content-type": "application/octet-stream" }, body: content }) : text(route, 200, content);
       }
       if (url.pathname === "/graphql" && method === "POST") return graphql(route, req.postDataJSON() || {});
+      const g = url.pathname.match(new RegExp(`^/repos/${OWNER}/${REPO}/git/(.+)$`));
+      if (g) return gitData(route, method, g[1], req.postDataJSON() || {});
     }
     state.unexpected.push(`${method} ${url.href}`);
     return json(route, 500, { message: "unexpected request in the test" });
@@ -133,6 +136,41 @@ async function installFakeGitHub(page, opts = {}) {
   const blob = text => text == null ? null : { text };
   const metas = vars => Object.fromEntries(Object.keys(vars).filter(k => /^e\d+$/.test(k)).map(k => ["m" + k.slice(1), blob(repo.read(vars[k]))]));
 
+  /* Git Data API: blobs, trees and commits are staged here until a ref update makes them a commit of the repo */
+  const staged = { blobs: new Map(), trees: new Map(), commits: new Map() };
+  async function gitData(route, method, rest, body) {
+    let m;
+    if (method === "GET" && (m = rest.match(/^ref\/heads\/(.+)$/))) return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: repo.head().oid, type: "commit" } });
+    if (method === "GET" && (m = rest.match(/^commits\/([0-9a-f]{40})$/))) {
+      const c = repo.find(m[1]); return c ? json(route, 200, { sha: c.oid, tree: { sha: "tree-of-" + c.oid } }) : json(route, 404, { message: "Not Found" });
+    }
+    if (method === "POST" && rest === "blobs") {
+      const buf = Buffer.from(body.content, body.encoding === "base64" ? "base64" : "utf8");
+      const sha = sha1("blob:" + buf.toString("base64")); staged.blobs.set(sha, buf); state.blobUploads = (state.blobUploads || 0) + 1;
+      return json(route, 201, { sha });
+    }
+    if (method === "POST" && rest === "trees") {
+      const sha = sha1("tree:" + JSON.stringify(body)); staged.trees.set(sha, body); return json(route, 201, { sha });
+    }
+    if (method === "POST" && rest === "commits") {
+      const sha = sha1("commit:" + JSON.stringify(body) + Math.random()); staged.commits.set(sha, body); return json(route, 201, { sha });
+    }
+    if (method === "PATCH" && (m = rest.match(/^refs\/heads\/(.+)$/))) {
+      const c = staged.commits.get(body.sha);
+      if (!c || body.force) return json(route, 422, { message: "Invalid request" });
+      if (opts.raceUploadOnce && !state.uploadRaced) { state.uploadRaced = true; repo.add("Someone else committed", { "NOTES.md": "y" }, { name: "Grace", login: "grace" }); }
+      if (c.parents[0] !== repo.head().oid) return json(route, 422, { message: "Update is not a fast forward" });
+      const t = staged.trees.get(c.tree);
+      if (t.base_tree !== "tree-of-" + c.parents[0]) return json(route, 422, { message: "tree does not belong to the parent" });
+      const changes = {};
+      for (const e of t.tree) changes[e.path] = staged.blobs.get(e.sha);
+      const nc = repo.add(c.message, changes, { name: user.name, login: user.login });
+      return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: nc.oid } });
+    }
+    state.unexpected.push(`${method} git/${rest}`);
+    return json(route, 500, { message: "unexpected git data request" });
+  }
+
   async function graphql(route, body) {
     const op = body.operationName, v = body.variables || {};
     state.requests[state.requests.length - 1].op = op;
@@ -140,6 +178,11 @@ async function installFakeGitHub(page, opts = {}) {
     const ref = history => ({ ref: { target: { history: { nodes: history } } } });
     let data;
     switch (op) {
+      case "ListFiles": {
+        const files = [...repo.head().files.entries()].filter(([f]) => /^files\/[^/]+$/.test(f));
+        data = { repository: { object: files.length ? { entries: files.map(([f, v]) => ({ name: f.slice(6), type: "blob", object: { byteSize: Buffer.byteLength(v) } })) } : null } }; break;
+      }
+      case "FileRevs": data = { repository: ref(repo.history(v.path, 50).map(c => ({ ...node(c), file: c.files.has(v.path) ? { object: { byteSize: Buffer.byteLength(c.files.get(v.path)) } } : null }))) }; break;
       case "Tags": data = { repository: { object: blob(repo.read(v.expr)) } }; break;
       case "ListPages": {
         const names = [...new Set([...repo.head().files.keys()].filter(f => f.startsWith("pages/")).map(f => f.split("/")[1]))];

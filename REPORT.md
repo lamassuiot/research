@@ -63,3 +63,17 @@ Todo lo de `docs/SETUP.md` §7:
 - Artículos restringidos por persona o grupo: requeriría otro repositorio de contenido con otro team.
 - Quitar el comentario "self-hosted server" y la rama `S.store.search` heredados en `viewSearch`.
 - Un test de `fake-github` que valide las consultas GraphQL contra el esquema (descargado) evitaría regresiones de nombres de campo.
+
+## 7. Ampliación: PDFs (después del informe inicial)
+
+- **Dónde:** `files/<nombre>.pdf` en `research-content`, una carpeta común para reutilizar el mismo manual en varios artículos. Máximo 50 MB, deben empezar por `%PDF-`, y los nombres se normalizan (`TPM 2.0 Spec.pdf` → `tpm-2.0-spec.pdf`).
+- **Subida:** API de Git Data (blob → tree → commit → `PATCH refs/heads/main` con `force:false`). Si `main` se movió entretanto (422), se reintenta hasta 3 veces reutilizando el blob. Subir con el mismo nombre crea una versión nueva.
+- **Markdown:** `[[File:x.pdf]]`, `[[File:x.pdf#page=3|texto]]` y `![[File:x.pdf]]`. Este último muestra una tarjeta con "Preview here", que carga el visor dentro del artículo solo bajo demanda. Los enlaces a archivos que no existen salen en rojo.
+- **Visor propio:** pdf.js 6.4.299 (build legacy) en `public/vendor/pdfjs/`, cargado con `import()` solo al abrir un PDF. Las páginas se dibujan en canvas de forma diferida, con navegación, zoom, ajuste al ancho, `?page=N` y descarga. Se usa `enableScripting:false`; el visor nativo del navegador no se usa.
+- **CSP:** se añade `'self'` a `connect-src`, `font-src` y `worker-src`, solo para que pdf.js cargue sus fuentes, cmaps, wasm y su worker desde el mismo origen.
+- **Pages:** el workflow publica también `public/vendor/` (4,8 MB, que solo se descargan al abrir un PDF).
+- **Validador:** comprueba `files/` (nombre, tamaño y cabecera `%PDF-`), con 3 tests nuevos.
+- **Tests:** 6 tests Playwright nuevos con un PDF generado: subida, rechazo de no-PDF, versión nueva con carrera en `main`, enlaces, incrustado, visor con página, zoom y descarga, y lector sin subida. El GitHub simulado implementa la API de Git Data.
+- **Verificado contra GitHub real (solo lectura):** las consultas `ListFiles` y `FileRevs` se aceptan sin errores de esquema.
+- **Sin verificar:** el tamaño máximo real que acepta `POST /git/blobs` (se asume que hasta el límite de 100 MB por archivo); que el `PATCH` de la ref funcione con el ruleset (sin force-push); el visor en Safari e iOS; y PDFs reales grandes o con JPEG 2000 / JBIG2 (wasm incluido).
+- **Sin hacer:** búsqueda dentro de los PDFs, borrado de archivos y lista de "artículos que enlazan este archivo".

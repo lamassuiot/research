@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const STATUSES = ["draft", "reviewed", "validated", "deprecated"];
 const FORMATS = ["md", "html"];
+const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
+const MAX_FILE = 50 * 1024 * 1024;
 const REQUIRED_STR = ["title", "abstract", "updatedAt", "updatedBy", "createdAt", "createdBy", "sha256"];
 
 export function validate(root) {
@@ -64,6 +66,16 @@ export function validate(root) {
       const sha = crypto.createHash("sha256").update(buf).digest("hex");
       if (m.sha256 !== sha) err(mp, "sha256 does not match the content");
     }
+  }
+  const filesDir = path.join(root, "files");
+  for (const name of fs.existsSync(filesDir) ? fs.readdirSync(filesDir) : []) {
+    const rel = `files/${name}`, full = path.join(filesDir, name);
+    if (!fs.statSync(full).isFile()) { err(rel, "only PDF files are allowed in files/ (no folders)"); continue; }
+    if (!FILE_RE.test(name)) { err(rel, "invalid file name (lowercase letters, digits, dots, hyphens and underscores, ending in .pdf)"); continue; }
+    const size = fs.statSync(full).size;
+    if (size > MAX_FILE) err(rel, `is ${size} bytes; the limit is ${MAX_FILE}`);
+    const fd = fs.openSync(full, "r"), head = Buffer.alloc(5); fs.readSync(fd, head, 0, 5, 0); fs.closeSync(fd);
+    if (head.toString("latin1") !== "%PDF-") err(rel, "is not a PDF");
   }
   return errors;
 }

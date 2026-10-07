@@ -6,6 +6,7 @@ Wiki versionada de investigación de Lamassu (PKI, X.509, PQC, RFCs…), publica
 - Los artículos viven en **`lamassuiot/research-content`** (privado). El navegador los lee y escribe con la API de GitHub y el token del propio usuario; cada guardado es un commit suyo.
 - Una función de **Cloudflare Workers** (plan gratuito) canjea el código OAuth por el token, porque eso exige el *client secret*.
 - Los artículos se clasifican con **etiquetas** (lista cerrada en `tags.json`). No hay categorías.
+- **PDFs** (manuales, especificaciones) en `files/` del mismo repo privado, hasta 50 MB. Se enlazan con `[[File:nombre.pdf]]` (o `#page=12`), se incrustan con `![[File:nombre.pdf]]` y se ven en un visor propio (pdf.js, en `public/vendor/pdfjs/`).
 
 ```
 Navegador ──▶ www.lamassu.io/research (GitHub Pages: solo la app, sin contenido)
@@ -29,6 +30,7 @@ npm test                             # worker + validador (node:test) y Playwrig
 `public/index.html` es una salida del build pero se commitea. Tras editar `frontend/index.template.html`, ejecuta `npm run build` y commitea la plantilla junto con `public/`.
 
 ## Estructura
+- `public/vendor/pdfjs/`: pdf.js 6.4.299 (build *legacy*, Apache-2.0), copiado sin cambios del paquete npm; se carga solo al abrir un PDF.
 - `frontend/`: plantilla de la UI (`index.template.html`), `build.py`, `config.json`, logos y librerías (`vendor/`: marked, DOMPurify, jsdiff).
 - `worker/`: Cloudflare Worker (`src/index.js`) y sus tests.
 - `content-template/`: contenido inicial de `research-content`, con su validador y workflow.

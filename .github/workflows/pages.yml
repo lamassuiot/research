@@ -38,10 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Publish only index.html and 404.html (not the dev or test builds)
+      - name: Publish index.html, 404.html and the PDF viewer (not the dev or test builds)
         run: |
           mkdir site
           cp public/index.html public/404.html site/
+          cp -r public/vendor site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

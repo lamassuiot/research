@@ -10,10 +10,12 @@ La wiki lee y escribe aquí directamente desde el navegador, con el token de Git
 tags.json                    {"tags": ["Lamassu", "PKI", ...]}   lista cerrada de etiquetas, en el orden en que se muestran
 pages/<slug>/meta.json       metadatos del artículo
 pages/<slug>/content.md      el contenido (o content.html, según meta.format; exactamente uno)
+files/<nombre>.pdf           PDFs (manuales, especificaciones), hasta 50 MB
 ```
 
 - **slug:** `^[a-z0-9][a-z0-9-]{0,79}$`.
 - **meta.json:** `title`, `tags` (de 1 a 20, todas en `tags.json`), `status` (`draft`, `reviewed`, `validated` o `deprecated`), `format` (`md` o `html`), `abstract` (hasta 240 caracteres), `revN` (empieza en 1 y sube de uno en uno en cada guardado), `size` (bytes UTF-8 del contenido), `sha256` (hex del contenido), `updatedAt`, `updatedBy`, `createdAt`, `createdBy`. No hay `category`: solo etiquetas.
+- **files/**: solo PDFs, sin subcarpetas, nombre `^[a-z0-9][a-z0-9._-]{0,95}\.pdf$`. Subir un archivo con el mismo nombre crea una versión nueva; las anteriores quedan en el historial (y ocupan espacio en el repo para siempre: evita subir versiones innecesarias de PDFs grandes). Mensaje de commit con el trailer `Know-how-File: <nombre>`.
 - Para añadir, renombrar o quitar etiquetas se edita `tags.json`. Renombrar o quitar una etiqueta obliga a actualizar los `meta.json` que la usan, en un solo commit.
 
 ## Editar con git

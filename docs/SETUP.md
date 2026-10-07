@@ -53,6 +53,8 @@ Los tests usan un GitHub simulado, así que esto solo se puede comprobar aquí. 
 - [ ] **Informes HTML grandes:** guardar un informe de más de 400 KB (`createCommitOnBranch`).
 - [ ] **Guardado concurrente:** dos pestañas guardando a la vez. Si el mensaje de error real no contiene `point to` ni `expectedHeadOid`, ajustar la detección en `GitHubStore.save` (`frontend/index.template.html`).
 - [ ] **Historial por revisión:** *View history* muestra el número de revisión, el tamaño y el estado de cada commit (`file(path:)` en `ListRevs`).
+- [ ] **PDFs:** subir un PDF de 20–50 MB (API de Git Data: `POST /git/blobs`) y verlo en el visor. Comprobar también un PDF con imágenes JPEG 2000 y uno con fuentes no incrustadas.
+- [ ] **Subida concurrente:** si `main` se movió, el `PATCH` de la ref devuelve 422 y la app reintenta.
 - [ ] **Avatares:** se ve la foto de perfil en el menú de usuario (CSP: `img-src https://avatars.githubusercontent.com`).
 - [ ] **Renovación del token:** a las 8 h (o con `expires_in` corto) la app vuelve a GitHub sin preguntar y regresa a la misma página.
 

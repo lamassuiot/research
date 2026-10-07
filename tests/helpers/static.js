@@ -17,6 +17,8 @@ http.createServer((req, res) => {
   if (rel === "index.html") rel = "index.test.html";
   const file = path.join(PUB, rel);
   if (!file.startsWith(PUB + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end("not found"); }
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+  const TYPES = { ".html": "text/html; charset=utf-8", ".mjs": "text/javascript", ".js": "text/javascript", ".wasm": "application/wasm",
+    ".ttf": "font/ttf", ".pfb": "application/octet-stream", ".bcmap": "application/octet-stream", ".icc": "application/octet-stream" };
+  res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream", "Cache-Control": "no-store" });
   fs.createReadStream(file).pipe(res);
 }).listen(port, "127.0.0.1", () => console.log(`static on http://127.0.0.1:${port}${BASE}`));

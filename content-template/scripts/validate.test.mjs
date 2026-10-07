@@ -78,3 +78,16 @@ test("an article whose content matches a recomputed hash passes", () => {
   });
   assert.deepEqual(validate(d), []);
 });
+
+test("a valid PDF in files/ passes", () => {
+  assert.deepEqual(validate(fixture((d) => { fs.mkdirSync(path.join(d, "files")); fs.writeFileSync(path.join(d, "files", "tpm-2.0-spec.pdf"), "%PDF-1.4\n%%EOF\n"); })), []);
+});
+test("a file that is not a PDF fails", () => {
+  const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "files")); fs.writeFileSync(path.join(d, "files", "fake.pdf"), "<html>"); }));
+  assert.ok(errs.some((e) => e === "files/fake.pdf: is not a PDF"), errs.join("\n"));
+});
+test("a bad file name or a folder in files/ fails", () => {
+  const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "files", "sub"), { recursive: true }); fs.writeFileSync(path.join(d, "files", "Bad Name.pdf"), "%PDF-1.4"); }));
+  assert.ok(errs.some((e) => e.startsWith("files/Bad Name.pdf: invalid file name")), errs.join("\n"));
+  assert.ok(errs.some((e) => e.startsWith("files/sub: only PDF files")), errs.join("\n"));
+});
