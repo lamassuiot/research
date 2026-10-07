@@ -34,6 +34,9 @@ test("nothing is requested or painted before sign-in completes", async ({ page }
   await page.goto("/research/#/wiki/welcome");
   await expect(page.locator("#gate")).toBeVisible();
   await expect(page.locator("#gateT")).toHaveText("Signing in with GitHub");
+  await expect(page.locator("#gateBar")).toBeVisible();                 // indeterminate progress bar...
+  await expect(page.locator("#gateA")).toBeHidden();                    // ...and nothing to click
+  await expect(page.locator("#gateP")).toBeHidden();
   const main = await page.locator("#main").textContent();
   expect(main).not.toContain("Welcome");
   expect(await page.locator(".top").isVisible()).toBe(false);
@@ -105,8 +108,21 @@ test("sign out revokes the token and shows the signed-out page without redirecti
   await page.locator(".user-dd summary").click();
   await page.locator('[data-act="signout"]').click();
   await expect(page.locator("#gateT")).toHaveText("You have signed out");
+  await expect(page.locator("#gateBar")).toBeHidden();
   expect(gh.revokes).toHaveLength(1);
   expect(gh.revokes[0]).toMatch(/^tok-ada-/);
   await page.waitForTimeout(400);
   expect(gh.authorizes).toHaveLength(1);
+});
+
+test("after signing out, Sign in swaps itself for the progress bar and signs in again", async ({ page }) => {
+  const gh = await open(page);
+  await expect(page.locator("h1.title")).toContainText("Welcome");
+  await page.locator(".user-dd summary").click();
+  await page.locator('[data-act="signout"]').click();
+  await expect(page.locator("#gateA")).toHaveText("Sign in");
+  await page.locator("#gateA").click();
+  await expect(page.locator("#gateA")).toBeHidden();                    // cannot be pressed twice
+  await expect(page.locator(".mp-hero h1")).toContainText("Welcome to Lamassu Research");   // back on the main page
+  expect(gh.authorizes).toHaveLength(2);
 });

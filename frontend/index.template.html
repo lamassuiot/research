@@ -71,6 +71,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 html:not(.icons) .ms{visibility:hidden;width:0;margin:0}
 html.icons .noicon{display:none}
 main:focus{outline:none}
+[hidden]{display:none!important}
 .visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mono,code,pre,kbd{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
 .mono{font-size:14px}
@@ -415,6 +416,12 @@ body.gated .gate{display:flex}
 .gate h1{font-size:30px;font-weight:700;letter-spacing:-.03em;margin:18px 0 6px}
 .gate p{color:var(--ink-3);margin:0 0 20px}
 .gate .eyebrow{letter-spacing:.3em}
+/* indeterminate progress: a segment sweeping from right to left, forever */
+.gate-bar{position:relative;height:4px;width:min(260px,70%);margin:26px auto 6px;border-radius:999px;background:var(--lamassu-brand-soft-strong);overflow:hidden}
+.gate-bar[hidden]{display:none}
+.gate-bar span{position:absolute;inset:0 auto 0 0;width:40%;border-radius:inherit;background:var(--lamassu-brand);animation:gate-sweep 1.15s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes gate-sweep{from{transform:translateX(260%)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.gate-bar span{animation:none;width:100%;opacity:.6}}
 .radio-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .radio-cards label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--rule-2);border-radius:14px;padding:12px 14px;cursor:pointer;font-weight:400;color:var(--ink);margin:0}
 .radio-cards label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--surface)}
@@ -582,7 +589,8 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
 <div class="backdrop" id="backdrop"></div>
 <div class="gate" id="gate" aria-live="polite"><section>
   <img class="l-light" src="__LOGO_DARK_INK__" alt="Lamassu"><img class="l-dark" src="__LOGO_WHITE_INK__" alt="Lamassu">
-  <p class="eyebrow">__SITE_NAME__</p><h1 id="gateT">Signing in with GitHub</h1><p id="gateP">Redirecting you to GitHub.</p>
+  <p class="eyebrow">__SITE_NAME__</p><h1 id="gateT">Signing in with GitHub</h1><p id="gateP" hidden></p>
+  <div class="gate-bar" id="gateBar" role="progressbar" aria-label="Signing in"><span></span></div>
   <a class="btn primary" id="gateA" href="#" hidden>Continue</a><p id="gateX" class="muted" hidden></p>
 </section></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1053,17 +1061,18 @@ async function authBoot(){
   return false;
 }
 function showGate(kind, detail){
-  const T = $("#gateT"), P = $("#gateP"), A = $("#gateA"), X = $("#gateX");
+  const T = $("#gateT"), P = $("#gateP"), A = $("#gateA"), X = $("#gateX"), bar = $("#gateBar");
   const button = (label, fn) => { A.textContent = label; A.hidden = false; A.href = "#"; A.onclick = e => { e.preventDefault(); fn(); }; };
   A.hidden = true; A.onclick = null; X.hidden = true; X.innerHTML = "";
-  if(kind === "signing-in"){ T.textContent = "Signing in with GitHub"; P.textContent = "Redirecting you to GitHub."; }
-  else if(kind === "signed-out"){ T.textContent = "You have signed out"; P.textContent = "Sign in again with GitHub to keep using " + SITE + "."; button("Sign in", () => startLogin("")); }
+  bar.hidden = kind !== "signing-in"; P.hidden = kind === "signing-in";
+  if(kind === "signing-in"){ T.textContent = "Signing in with GitHub"; }   // no text, no button: just the progress bar, then GitHub
+  else if(kind === "signed-out"){ T.textContent = "You have signed out"; P.textContent = "Sign in again with GitHub to keep using " + SITE + "."; button("Sign in", () => { showGate("signing-in"); startLogin(""); }); }
   else if(kind === "no-access"){
     T.textContent = "No access"; P.textContent = "Your GitHub account" + (detail ? " (@" + detail + ")" : "") + " cannot read the research content.";
     X.hidden = false; X.innerHTML = `Ask a maintainer to add you to <a href="${esc(CONFIG.accessTeamUrl)}" target="_blank" rel="noopener noreferrer">the research team</a>, then sign in again. If you used the wrong GitHub account, sign out and choose another.`;
     button("Sign out", signOut);
   }
-  else if(kind === "error"){ T.textContent = "Sign-in failed"; P.textContent = detail || "Something went wrong while signing in."; button("Try again", () => startLogin("")); }
+  else if(kind === "error"){ T.textContent = "Sign-in failed"; P.textContent = detail || "Something went wrong while signing in."; button("Try again", () => { showGate("signing-in"); startLogin(""); }); }
   else if(kind === "config"){ T.textContent = "Not configured"; P.textContent = "This build has no GitHub client ID yet. See docs/SETUP.md."; }
   document.body.classList.add("gated");
   document.title = "Sign in · " + SITE;
@@ -2063,8 +2072,8 @@ async function refreshFiles(){ try{ S.files = await S.store.listFiles(); }catch(
 function uploadForm(fixedName){
   return `<form class="form upload" id="upf" novalidate>
     <div class="row">
-      <div><label for="up-file">PDF file <small class="muted">(up to ${fmtBytes(MAX_FILE)})</small></label><input type="file" id="up-file" accept="application/pdf,.pdf" required></div>
-      ${fixedName ? `<input type="hidden" id="up-name" value="${esc(fixedName)}">` : `<div><label for="up-name">Name in the wiki</label><input type="text" id="up-name" placeholder="vendor-manual.pdf" spellcheck="false"><div class="hint">Link it from an article with <span class="mono" id="up-syntax">[[File:…]]</span></div></div>`}
+      <div><label for="up-file">PDF file${fixedName ? "" : "s"} <small class="muted">(up to ${fmtBytes(MAX_FILE)} each)</small></label><input type="file" id="up-file" accept="application/pdf,.pdf" required${fixedName ? "" : " multiple"}></div>
+      ${fixedName ? `<input type="hidden" id="up-name" value="${esc(fixedName)}">` : `<div><label for="up-name">Name in the wiki</label><input type="text" id="up-name" placeholder="vendor-manual.pdf" spellcheck="false"><div class="hint" id="up-multi" hidden></div><div class="hint">Link it from an article with <span class="mono" id="up-syntax">[[File:…]]</span></div></div>`}
     </div>
     <div class="row"><div style="grid-column:1/-1"><label for="up-sum">Summary</label><input type="text" id="up-sum" maxlength="300" placeholder="${fixedName ? "What changed in this version?" : "What is this document?"}"></div></div>
     <div class="actions"><button class="btn primary" id="up-btn" type="submit"><span class="ms" aria-hidden="true">upload</span><span>${fixedName ? "Upload new version" : "Upload"}</span></button><span class="hint" id="up-status" role="status"></span></div>
@@ -2074,7 +2083,13 @@ function bindUploadForm(fixedName, done){
   const f = $("#upf"); if(!f) return;
   const nameEl = $("#up-name"), fileEl = $("#up-file"), st = $("#up-status");
   const syncSyntax = () => { if($("#up-syntax")) $("#up-syntax").textContent = `[[File:${nameEl.value || "…"}]]`; };
-  fileEl.onchange = () => { if(!fixedName && fileEl.files[0] && !nameEl.dataset.touched) nameEl.value = fileNameFrom(fileEl.files[0].name); syncSyntax(); };
+  fileEl.onchange = () => {
+    const n = fileEl.files.length, many = !fixedName && n > 1;
+    if(!fixedName){ nameEl.disabled = many; $("#up-multi").hidden = !many; $("#up-multi").textContent = many ? `${n} files selected; each keeps its own file name.` : ""; }
+    if(many) nameEl.value = "";
+    else if(!fixedName && fileEl.files[0] && !nameEl.dataset.touched) nameEl.value = fileNameFrom(fileEl.files[0].name);
+    syncSyntax();
+  };
   if(!fixedName) nameEl.oninput = () => { nameEl.dataset.touched = "1"; syncSyntax(); };
   /* Drag and drop: dropping a PDF anywhere on the page fills the form (it does not upload by itself). */
   const main = $("#main"), hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
@@ -2083,28 +2098,43 @@ function bindUploadForm(fixedName, done){
   main.ondrop = e => {
     if(!hasFiles(e)) return;
     e.preventDefault(); main.classList.remove("dropping");
-    const file = Array.from(e.dataTransfer.files).find(x => x.type === "application/pdf" || /\.pdf$/i.test(x.name));
-    if(!file){ toast("Drop a PDF file."); return; }
-    const dt = new DataTransfer(); dt.items.add(file); fileEl.files = dt.files; fileEl.onchange();
+    const pdfs = Array.from(e.dataTransfer.files).filter(x => x.type === "application/pdf" || /\.pdf$/i.test(x.name));
+    if(!pdfs.length){ toast("Drop a PDF file."); return; }
+    const dt = new DataTransfer(); (fixedName ? pdfs.slice(0, 1) : pdfs).forEach(x => dt.items.add(x)); fileEl.files = dt.files; fileEl.onchange();
     f.scrollIntoView({block:"center"}); $("#up-sum").focus({preventScroll:true});
   };
   f.onsubmit = async e => {
     e.preventDefault();
-    const file = fileEl.files[0];
-    if(!file){ toast("Choose a PDF file."); return; }
-    if(file.size > MAX_FILE){ toast(`The file is ${fmtBytes(file.size)}; the limit is ${fmtBytes(MAX_FILE)}.`, 6000); return; }
-    const data = await file.arrayBuffer();
-    if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-"){ toast("That file is not a PDF.", 6000); return; }
-    const name = fixedName || fileNameFrom(nameEl.value || file.name);
-    if(!FILE_RE.test(name)){ toast("Use a name with letters, digits, dots and hyphens, ending in .pdf."); return; }
-    if(!fixedName && S.files.some(x => x.name === name) && !confirm(`${name} already exists. Upload this as a new version of it?`)) return;
-    const btn = $("#up-btn"); btn.disabled = true; st.textContent = "Uploading…";
+    const list = Array.from(fileEl.files);
+    if(!list.length){ toast("Choose a PDF file."); return; }
+    const jobs = [], seen = new Set();
+    for(const file of list){
+      const name = fixedName || fileNameFrom((list.length === 1 && nameEl.value) || file.name);
+      if(file.size > MAX_FILE){ toast(`${file.name} is ${fmtBytes(file.size)}; the limit is ${fmtBytes(MAX_FILE)}.`, 6000); return; }
+      if(!FILE_RE.test(name)){ toast(`${name}: use a name with letters, digits, dots and hyphens, ending in .pdf.`, 6000); return; }
+      if(seen.has(name)){ toast(`Two of the files are called ${name}.`, 6000); return; }
+      seen.add(name); jobs.push({file, name});
+    }
+    const clash = jobs.filter(j => !fixedName && S.files.some(x => x.name === j.name)).map(j => j.name);
+    if(clash.length && !confirm(`${clash.join(", ")} already ${clash.length > 1 ? "exist" : "exists"}. Upload as a new version?`)) return;
+    const btn = $("#up-btn"); btn.disabled = true;
+    const done_ = [];
     try{
-      const sha = hex(await crypto.subtle.digest("SHA-256", data));
-      await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim());
-      st.textContent = ""; toast(`Uploaded ${name}.`);
-      await refreshFiles(); done(name);
-    }catch(err){ console.error(err); btn.disabled = false; st.textContent = ""; toast(err.message || String(err), 7000); }
+      for(const [i, {file, name}] of jobs.entries()){
+        st.textContent = `Uploading ${i + 1}/${jobs.length}: ${name}…`;
+        const data = await file.arrayBuffer();
+        if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
+        const sha = hex(await crypto.subtle.digest("SHA-256", data));
+        await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim());
+        done_.push(name);
+      }
+      st.textContent = ""; toast(done_.length > 1 ? `Uploaded ${done_.length} files.` : `Uploaded ${done_[0]}.`);
+      await refreshFiles(); done(done_.length === 1 ? done_[0] : null);
+    }catch(err){
+      console.error(err); btn.disabled = false; st.textContent = "";
+      toast((done_.length ? `Uploaded ${done_.join(", ")}. ` : "") + (err.message || String(err)), 8000);
+      if(done_.length) await refreshFiles();
+    }
   };
 }
 
@@ -2119,7 +2149,7 @@ async function viewFiles(){
       : `<div class="empty">No files yet.</div>`}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>${uploadForm(null)}` : ""}
     ${footer()}`);
-  bindUploadForm(null, name => { location.hash = "#/file/" + enc(name); });
+  bindUploadForm(null, name => { if(name) location.hash = "#/file/" + enc(name); else { S.nav++; route(); } });
 }
 
 async function viewFile(name, params){
