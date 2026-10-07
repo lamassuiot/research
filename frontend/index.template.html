@@ -9,6 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230100f8'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23fff'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&display=block" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem("kb.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/*VENDOR_MARKED*/</script>
 <script>/*VENDOR_PURIFY*/</script>
 <script>/*VENDOR_DIFF*/</script>
@@ -473,6 +474,7 @@ body.gated .gate{display:flex}
       <div class="search-results" id="qr" role="listbox"></div>
     </form>
     <div class="top-right">
+      <button class="icon-btn" id="themeBtn" type="button"><span class="ms" aria-hidden="true">dark_mode</span><span class="noicon">Theme</span></button>
       <span id="userBox"></span>
       <a class="btn primary" href="#/new" id="newBtn"><span class="ms" aria-hidden="true">add</span><span class="btn-label">Create article</span></a>
     </div>
@@ -1831,7 +1833,28 @@ function modeLabel(){
 /* ---------------------------------------------------------------- boot */
 function pickStore(){ return CONFIG.devMemoryStore ? new MemoryStore() : new GitHubStore(); }
 
+/* Light / dark: follows the system until the reader picks one (then remembered in this browser). */
+function currentTheme(){
+  const t = document.documentElement.getAttribute("data-theme");
+  return t === "light" || t === "dark" ? t : (matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light");
+}
+function syncThemeBtn(){
+  const dark = currentTheme() === "dark", b = $("#themeBtn");
+  b.querySelector(".ms").textContent = dark ? "light_mode" : "dark_mode";
+  b.title = b.ariaLabel = dark ? "Switch to light mode" : "Switch to dark mode";
+  b.setAttribute("aria-pressed", String(dark));
+}
+function setupTheme(){
+  $("#themeBtn").onclick = () => {
+    const next = currentTheme() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next); lsSet("kb.theme", next); syncThemeBtn();
+  };
+  matchMedia("(prefers-color-scheme:dark)").addEventListener?.("change", syncThemeBtn);
+  syncThemeBtn();
+}
+
 (async function boot(){
+  setupTheme();
   if(lsGet("kb.menu") === "off") document.body.classList.add("menu-off");
   $("#menuBtn").onclick = () => {
     if(isNarrow()){ openDrawer(!$("#side").classList.contains("open")); return; }

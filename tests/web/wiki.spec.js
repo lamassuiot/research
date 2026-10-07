@@ -152,3 +152,20 @@ test.describe("phone and dark mode", () => {
     expect(bg).toBe("rgb(17, 17, 17)");
   });
 });
+
+test.describe("theme toggle", () => {
+  test.use({ colorScheme: "light" });
+  test("switches between light and dark and remembers the choice", async ({ page }) => {
+    await open(page, "#/wiki/welcome");
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(await bg()).toBe("rgb(244, 244, 244)");
+    await page.locator("#themeBtn").click();
+    expect(await bg()).toBe("rgb(17, 17, 17)");
+    expect(await page.locator("html").getAttribute("data-theme")).toBe("dark");
+    await page.reload();
+    await expect(page.locator("h1.title")).toContainText("Welcome");
+    expect(await bg()).toBe("rgb(17, 17, 17)");
+    await page.locator("#themeBtn").click();
+    expect(await bg()).toBe("rgb(244, 244, 244)");
+  });
+});
