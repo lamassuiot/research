@@ -1992,8 +1992,14 @@ async function viewTags(){
 /* Floating change bar over a Markdown article: highlights, block by block, what changed against an earlier revision (the previous one by default),
    with a selector for older ones and previous/next buttons that jump between the changes. */
 function mountChanges(slug, rev, revs, prose){
-  const older = (revs || []).filter(r => r.n < rev.n).sort((a, b) => b.n - a.n);
-  if(!older.length || !window.Diff || !Diff.diffArrays) return;
+  const all = revs || [], at = all.findIndex(r => r.id === rev.id);      // newest first: the older revisions are the ones after this one
+  const older = at >= 0 ? all.slice(at + 1) : all.filter(r => r.n < rev.n);
+  if(!window.Diff || !Diff.diffArrays) return;
+  if(!older.length){      // first revision: say so instead of silently showing nothing
+    const b = document.createElement("div"); b.className = "chgbar"; b.setAttribute("role", "region"); b.setAttribute("aria-label", "Changes in this revision");
+    b.innerHTML = `<span class="chg-l"><span class="ms" aria-hidden="true">difference</span>First revision: nothing to compare yet. Changes show here after the next edit.</span>`;
+    $("#main").appendChild(b); return;
+  }
   const keyOf = el => el.tagName + "|" + el.textContent.replace(/\s+/g, " ").trim();
   const blocks = [...prose.children], keys = blocks.map(keyOf);
   const bar = document.createElement("div"); bar.className = "chgbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Changes in this revision");
