@@ -343,3 +343,56 @@ test.describe("project mode layout", () => {
     expect(style.rowBg).not.toBe("rgba(0, 0, 0, 0)");
   });
 });
+
+test.describe("structure bar", () => {
+  const crypto = require("node:crypto");
+  function longRepo() {
+    const r = seedFromTemplate(createRepo()), now = new Date().toISOString();
+    const body = Array.from({ length: 14 }, (_, i) => `## Fase ${i} — Un apartado largo del documento\n\nTexto.\n\n### Subapartado ${i}.1\n\nTexto.\n\n### Subapartado ${i}.2\n\nTexto.\n`).join("\n");
+    const meta = JSON.parse(r.head().files.get("pages/welcome/meta.json"));
+    r.add("long\n\nKnow-how-Page: roadmap", { "pages/roadmap/content.md": body,
+      "pages/roadmap/meta.json": JSON.stringify({ ...meta, title: "Roadmap", size: Buffer.byteLength(body), sha256: crypto.createHash("sha256").update(body).digest("hex") }),
+      "projects/mt.json": JSON.stringify({ title: "RFC 00X - Multi-tenant", description: "", createdAt: now, createdBy: "ada", updatedAt: now, updatedBy: "ada",
+        items: [{ type: "page", id: "welcome" }, { type: "page", id: "roadmap" }] }) });
+    return r;
+  }
+  test("the structure collapses to a rail, the choice is remembered, and the contents get the room", async ({ page }) => {
+    w.gh = await installFakeGitHub(page, { repo: longRepo() });
+    await page.setViewportSize({ width: 1800, height: 800 });
+    await page.goto("/research/#/wiki/mt/roadmap");
+    await expect(page.locator("#tocSide a.on")).toBeVisible();
+    const toggle = page.locator("#treeToggle");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator("#sideTree")).toBeVisible();
+    const open = { toc: (await page.locator("#tocSide").boundingBox()).width, side: (await page.locator("#side").boundingBox()).width };
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#sideTree")).toBeHidden();
+    await expect(page.locator("#sideProjHead")).toBeVisible();                  // the title stays
+    const shut = { toc: (await page.locator("#tocSide").boundingBox()).width, rail: (await page.locator("#sideProject").boundingBox()).width };
+    expect(shut.rail).toBeLessThan(80);                                           // a narrow rail with the toggle
+    expect(shut.toc).toBeGreaterThan(open.toc);
+    expect(await page.evaluate(() => localStorage.getItem("kb.tree"))).toBe("off");
+    await page.reload();
+    await expect(page.locator("#tocSide a.on")).toBeVisible();
+    await expect(page.locator("#sideTree")).toBeHidden();                         // remembered
+    await page.locator("#treeToggle").click();
+    await expect(page.locator("#sideTree")).toBeVisible();
+    await expect(page.locator("#treeToggle")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("each bar scrolls on its own: the title and the structure stay while the contents scroll", async ({ page }) => {
+    w.gh = await installFakeGitHub(page, { repo: longRepo() });
+    await page.setViewportSize({ width: 1800, height: 700 });
+    await page.goto("/research/#/wiki/mt/roadmap");
+    await expect(page.locator("#tocSide a.on")).toBeVisible();
+    const toc = page.locator("#tocSide");
+    expect(await toc.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);   // the contents are long
+    const y = async sel => Math.round((await page.locator(sel).boundingBox()).y);
+    const before = { head: await y("#sideProjHead"), tree: await y("#sideTree") };
+    await toc.evaluate(e => { e.scrollTop = e.scrollHeight; });
+    await page.waitForTimeout(150);
+    expect({ head: await y("#sideProjHead"), tree: await y("#sideTree") }).toEqual(before);
+    expect(await page.locator("#side").evaluate(e => e.scrollTop)).toBe(0);        // the sidebar as a whole does not scroll
+  });
+});

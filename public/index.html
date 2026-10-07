@@ -132,8 +132,10 @@ main:focus{outline:none}
 body.side-empty .shell{grid-template-columns:minmax(0,1fr)}
 body.side-empty .side{display:none}
 body.menu-off .side .menu{display:none}
-.side{position:sticky;top:calc(var(--head-h) + 20px);align-self:start;max-height:calc(100vh - var(--head-h) - 40px);overflow:auto;font-size:16px;padding:4px 4px 20px 0}
+.side{position:sticky;top:calc(var(--head-h) + 20px);align-self:start;max-height:calc(100vh - var(--head-h) - 40px);overflow:auto;font-size:16px;padding:12px 8px 40px 8px;margin-left:-8px}
 /* Slim sidebar scrollbar: invisible until the sidebar is hovered, focused or scrolled */
+/* edges fade out where the list continues, instead of being cut off */
+.side{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 12px,#000 calc(100% - 36px),transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 12px,#000 calc(100% - 36px),transparent 100%)}
 .side{overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable}
 .side:hover,.side:focus-within{scrollbar-color:var(--rule-2) transparent}
 .side::-webkit-scrollbar{width:8px}
@@ -145,7 +147,8 @@ body.menu-off .side .menu{display:none}
 .side-h{display:flex;align-items:center;justify-content:space-between;margin:20px 0 6px}
 .side nav:first-child .side-h:first-child{margin-top:4px}
 .side ul{list-style:none;margin:0;padding:0}
-.side li a{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:10px;color:var(--ink-2)}
+.side li a{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;color:var(--ink-2)}
+.side :focus-visible{outline-offset:-2px;box-shadow:none}
 .side li a{transition:background .12s,color .12s}
 .side li a:hover{background:var(--paper);text-decoration:none;color:var(--ink)}
 .side li a.cur{background:var(--lamassu-brand-soft-strong);color:var(--lamassu-brand);font-weight:600;box-shadow:none}
@@ -153,10 +156,10 @@ body.menu-off .side .menu{display:none}
 .side li a.cur .ms,.side li a.cur .count{color:var(--lamassu-brand)}
 .side .count{margin-left:auto;color:var(--ink-3);font-size:13.5px}
 .side .mode{margin-top:22px;font-size:13.5px;color:var(--ink-3);line-height:1.45;padding:0 10px}
-.toc-side ul{border-left:1px solid var(--rule-2);margin-left:10px}
-.toc-side li a{border-radius:0 10px 10px 0;padding:3px 10px;font-size:15.5px;line-height:1.35;margin-left:-1px;border-left:2px solid transparent}
-.toc-side li.lv3 a{padding-left:24px;font-size:15px}
-.toc-side li a.on{border-left-color:var(--lamassu-brand);color:var(--lamassu-brand);font-weight:600;background:var(--lamassu-brand-soft);box-shadow:none}
+.toc-side ul{border-left:1px solid var(--rule);margin-left:10px}
+.toc-side li a{border-radius:8px;padding:3px 10px;font-size:15.5px;line-height:1.35;margin-left:4px;border-left:0}
+.toc-side li.lv3 a{padding-left:22px;font-size:15px}
+.toc-side li a.on{color:var(--lamassu-brand);font-weight:600;background:var(--lamassu-brand-soft-strong);box-shadow:none}
 .backdrop{display:none}
 
 .page{background:var(--paper);border:1px solid var(--rule);border-radius:20px;box-shadow:0 24px 80px var(--shadow);padding:22px 36px 28px;min-width:0}
@@ -487,7 +490,13 @@ body.gated .gate{display:flex}
   .side,body.side-empty .side,body.wide .side{display:block;position:fixed;z-index:50;top:0;left:0;bottom:0;width:min(86vw,320px);max-height:none;
     background:var(--paper);padding:calc(16px + env(safe-area-inset-top,0px)) 16px 24px;transform:translateX(-105%);transition:transform .2s;box-shadow:0 24px 80px var(--shadow-modal)}
   body.menu-off .side .menu{display:block}
-  body.proj-mode .side,body.proj-mode.has-toc .side{display:block}
+  .side{-webkit-mask-image:none;mask-image:none;margin-left:0}
+  body.proj-mode .proj-tree,body.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0}
+  body.proj-mode .side,body.proj-mode.has-toc .side,body.tree-off.proj-mode.has-toc .side{display:block;height:auto;overflow:auto}
+  body.proj-mode .proj-tree,body.proj-mode .toc-side{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
+  body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:row;background:var(--bg);border:0;padding:6px 8px}
+  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:horizontal-tb}
+  body.tree-off.proj-mode .side .mode{display:block}
   body.proj-mode .shell,body.proj-mode.has-toc .shell,body.proj-mode.menu-off .shell{grid-template-columns:minmax(0,1fr)}
   body.proj-mode .side .menu,body.proj-mode.menu-off .side .menu{display:none}
   body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:block}
@@ -527,12 +536,33 @@ body.proj-mode{--main-w:1216px;--side-w:clamp(272px,17vw,420px)}
 body.proj-mode.has-toc{--main-w:1000px;--side-w:clamp(488px,36vw,860px)}
 body.proj-mode .shell{grid-template-columns:var(--side-w) minmax(0,1fr);max-width:calc(var(--side-w) + 24px + var(--main-w) + 48px)}
 body.proj-mode .top-in{max-width:calc(var(--side-w) + 24px + var(--main-w) + 48px)}
-body.proj-mode .side{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tree" "mode";align-content:start;column-gap:16px}
-body.proj-mode.has-toc .side{grid-template-columns:minmax(0,.9fr) minmax(0,1fr);grid-template-areas:"head head" "tree toc" "mode mode";column-gap:20px}
+body.proj-mode .side{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tree";grid-template-rows:auto minmax(0,1fr);align-content:stretch;column-gap:16px;height:calc(100vh - var(--head-h) - 40px);max-height:none;overflow:hidden;padding-bottom:0;-webkit-mask-image:none;mask-image:none}
+body.proj-mode.has-toc .side{grid-template-columns:minmax(0,.9fr) minmax(0,1fr);grid-template-areas:"head head" "tree toc";column-gap:20px}
 body.proj-mode .proj-head{grid-area:head}
 body.proj-mode .proj-tree{grid-area:tree;min-width:0}
 body.proj-mode .toc-side{grid-area:toc;min-width:0}
-body.proj-mode .side .mode{grid-area:mode}
+body.proj-mode.has-toc .proj-tree{padding-right:12px}
+body.proj-mode .side .mode{display:none}
+body.proj-mode .proj-tree,body.proj-mode .toc-side{overflow:auto;min-height:0;padding-bottom:40px;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable;
+  -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 36px),transparent 100%);mask-image:linear-gradient(to bottom,#000 calc(100% - 36px),transparent 100%)}
+body.proj-mode .proj-tree:hover,body.proj-mode .proj-tree:focus-within,body.proj-mode .toc-side:hover,body.proj-mode .toc-side:focus-within{scrollbar-color:var(--rule-2) transparent}
+body.proj-mode .proj-tree::-webkit-scrollbar,body.proj-mode .toc-side::-webkit-scrollbar{width:8px}
+body.proj-mode .proj-tree::-webkit-scrollbar-thumb,body.proj-mode .toc-side::-webkit-scrollbar-thumb{background:transparent;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+body.proj-mode .proj-tree:hover::-webkit-scrollbar-thumb,body.proj-mode .toc-side:hover::-webkit-scrollbar-thumb{background-color:var(--rule-2)}
+/* collapsible structure bar */
+.tree-toggle{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin:0 0 4px;padding:6px 8px;background:var(--bg);border:0;border-radius:8px;color:inherit;font:inherit;cursor:pointer}
+.tree-toggle:hover{background:var(--paper)}
+.tree-toggle .ms{font-size:20px;color:var(--ink-3);transition:transform .15s}
+.tree-toggle .tt-fb{color:var(--ink-3)}
+body.tree-off .tree-toggle .ms{transform:rotate(-90deg)}
+body.tree-off.proj-mode .proj-tree #sideTree{display:none}
+body.tree-off.proj-mode.has-toc{--side-w:clamp(330px,26vw,640px)}
+body.tree-off.proj-mode.has-toc .side{grid-template-columns:46px minmax(0,1fr);column-gap:12px}
+body.tree-off.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0;overflow:visible;-webkit-mask-image:none;mask-image:none}
+body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:column;justify-content:flex-start;gap:10px;padding:10px 0;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
+body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:vertical-rl;letter-spacing:.2em}
+body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow::before{display:none}
+body.tree-off.proj-mode.has-toc .tree-toggle:hover{border-color:var(--lamassu-brand)}
 body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:none}
 body.proj-mode.menu-off,body.proj-mode.menu-off.has-toc{--side-w:248px}
 body.proj-mode.menu-off .shell{grid-template-columns:248px minmax(0,1fr)}
@@ -546,7 +576,7 @@ body.proj-mode.menu-off.side-empty .shell{grid-template-columns:minmax(0,1fr)}
 .proj-tree .side-h{margin-top:4px}
 .side .ptree a.pt-l{display:inline;gap:0;padding:0;border-radius:0;background:none;box-shadow:none;color:var(--ink-2);font-weight:500}
 .side .ptree a.pt-l:hover{background:none;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
-.ptree.compact .pt-row{border-radius:10px;transition:background .12s}
+.ptree.compact .pt-row{border-radius:8px;transition:background .12s}
 .ptree.compact .pt-row:hover{background:var(--paper)}
 .ptree.compact .pt-row:has(.pt-l.cur){background:var(--lamassu-brand-soft-strong)}
 .ptree.compact .pt-row:has(.pt-l.cur) .ms{color:var(--lamassu-brand)}
@@ -669,7 +699,7 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
       <ul id="sideStatus"></ul>
     </nav>
     <div class="proj-head" id="sideProjHead" hidden><a class="ph-back" href="#/projects"><span class="ms" aria-hidden="true">arrow_back</span>Projects</a><a class="ph-title" id="sideProjectT" href="#"></a></div>
-    <nav class="proj-tree" id="sideProject" aria-label="Project structure" hidden><div class="side-h"><span class="eyebrow">Structure</span></div><ul id="sideTree" class="ptree compact"></ul></nav>
+    <nav class="proj-tree" id="sideProject" aria-label="Project structure" hidden><button type="button" class="tree-toggle" id="treeToggle" aria-expanded="true" aria-controls="sideTree" title="Hide the project structure"><span class="eyebrow">Structure</span><span class="ms tt-chev" aria-hidden="true">expand_more</span><span class="noicon tt-fb" aria-hidden="true">▾</span></button><ul id="sideTree" class="ptree compact"></ul></nav>
     <nav class="toc-side" id="tocSide" aria-label="Contents" hidden></nav>
     <div class="mode" id="modeNote"></div>
   </aside>
@@ -2892,6 +2922,12 @@ function syncThemeBtn(){
   b.title = b.ariaLabel = dark ? "Switch to light mode" : "Switch to dark mode";
   b.setAttribute("aria-pressed", String(dark));
 }
+function setupTree(){
+  const b = $("#treeToggle");
+  const apply = off => { document.body.classList.toggle("tree-off", off); b.setAttribute("aria-expanded", String(!off)); b.title = off ? "Show the project structure" : "Hide the project structure"; };
+  apply(lsGet("kb.tree") === "off");
+  b.onclick = () => { const off = !document.body.classList.contains("tree-off"); lsSet("kb.tree", off ? "off" : "on"); apply(off); };
+}
 function setupTheme(){
   $("#themeBtn").onclick = () => {
     const next = currentTheme() === "dark" ? "light" : "dark";
@@ -2902,7 +2938,7 @@ function setupTheme(){
 }
 
 (async function boot(){
-  setupTheme();
+  setupTheme(); setupTree();
   if(lsGet("kb.menu") === "off") document.body.classList.add("menu-off");
   $("#menuBtn").onclick = () => {
     if(isNarrow()){ openDrawer(!$("#side").classList.contains("open")); return; }
