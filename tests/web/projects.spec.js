@@ -94,7 +94,7 @@ test("the sidebar shows the project tree while reading inside it", async ({ page
   await open(page, "#/wiki/lamassu-ca/design/key-ceremony");
   const side = page.locator("#sideProject");
   await expect(side).toBeVisible();
-  await expect(side.locator("#sideProjectT")).toContainText("Lamassu CA");
+  await expect(page.locator("#sideProjHead #sideProjectT")).toContainText("Lamassu CA");
   await expect(side.locator("a.cur")).toHaveText("Key ceremony");
   await expect(side).toContainText("CA design post");
   await page.goto("/research/#/tags");
@@ -173,4 +173,87 @@ test("the home page lists the projects", async ({ page }) => {
   await open(page, "#/");
   await expect(page.locator(".mp-box h2", { hasText: "Projects" })).toBeVisible();
   await expect(page.locator(".mp-box a", { hasText: "Lamassu CA" })).toHaveAttribute("href", "#/wiki/lamassu-ca");
+});
+
+test.describe("project tags and project mode", () => {
+  test("a project can have tags; a tagged project is indexed instead of its pages", async ({ page }) => {
+    await open(page, "#/projects");
+    await page.fill("#np-title", "PQC programme");
+    await page.locator("#npf .tagchip", { hasText: /^PQC$/ }).locator("span").first().click();
+    await page.locator("#np-btn").click();
+    await expect(page).toHaveURL(/#\/wiki\/pqc-programme$/);
+    expect(project("pqc-programme").tags).toEqual(["PQC"]);
+    await expect(page.locator(".pr-tags .badge")).toHaveText(["PQC"]);
+    // the article "PQC migration notes" is tagged PQC; once it sits in the tagged project it is no longer listed under PQC
+    await page.goto("/research/#/tag/PQC");
+    await expect(page.locator("#main")).toContainText("PQC migration notes");                                  // still indexed: not in a project yet
+    await page.goto("/research/#/wiki/pqc-programme");
+    await page.locator(".addlink summary", { hasText: "Add existing items" }).click();
+    await page.selectOption("#ae-item", "page:pqc-migration-notes");
+    await page.locator("#aef button[type=submit]").click();
+    await expect(page.locator("#main .ptree a", { hasText: "PQC migration notes" })).toBeVisible();
+    await page.goto("/research/#/tag/PQC");
+    await expect(page.locator("#main h2", { hasText: "Projects tagged" })).toBeVisible();
+    await expect(page.locator("#main .linkcard a", { hasText: "PQC programme" })).toHaveAttribute("href", "#/wiki/pqc-programme");
+    await expect(page.locator("#main")).not.toContainText("PQC migration notes");                              // the child is not indexed
+    const side = page.locator("#sideTags li", { hasText: /^PQC/ });
+    await expect(side.locator(".count")).toHaveText("1");                                                      // the project, not its page
+    await page.goto("/research/#/tags");
+    await expect(page.locator("#main li", { hasText: "PQC" }).first()).toContainText("1 article");
+  });
+
+  test("editing the project's tags changes the index; removing them re-indexes the pages", async ({ page }) => {
+    await open(page, "#/wiki/pqc-programme");
+    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await page.locator("#epf .tagchip", { hasText: /^PQC$/ }).locator("span").first().click();     // untick
+    await page.locator("#epf button[type=submit]").click();
+    await expect(page.locator(".pr-tags")).toHaveCount(0);
+    expect(project("pqc-programme").tags).toEqual([]);
+    await page.goto("/research/#/tag/PQC");
+    await expect(page.locator("#main")).toContainText("PQC migration notes");
+    await expect(page.locator("#main h2", { hasText: "Projects tagged" })).toHaveCount(0);
+  });
+
+  test("a page inside an untagged project keeps being indexed by its own tags", async ({ page }) => {
+    await open(page, "#/tag/PKI");
+    await expect(page.locator("#main")).toContainText("Design");        // inside the untagged project "Lamassu CA"
+  });
+
+  test("inside a project the main menu steps aside: title, structure and contents", async ({ page }) => {
+    await open(page, "#/wiki/lamassu-ca/design/key-ceremony");
+    const side = page.locator("#side");
+    await expect(page.locator("body")).toHaveClass(/proj-mode/);
+    await expect(side.locator("nav.menu")).toBeHidden();                                // no main menu
+    await expect(page.locator("#sideProjHead")).toBeVisible();
+    await expect(page.locator("#sideProjectT")).toHaveText("Lamassu CA");
+    await expect(page.locator("#sideProject a.cur")).toHaveText("Key ceremony");        // the whole structure, current page marked
+    await expect(page.locator("#sideProject")).toContainText("Design");
+    await expect(page.locator("#tocSide")).toBeVisible();                               // the contents stay
+    // title on top, then two bars side by side: structure on the left, contents next to it
+    const head = await page.locator("#sideProjHead").boundingBox(), tree = await page.locator("#sideProject").boundingBox(), toc = await page.locator("#tocSide").boundingBox();
+    expect(head.y).toBeLessThan(tree.y);
+    expect(Math.abs(tree.y - toc.y)).toBeLessThan(8);
+    expect(tree.x).toBeLessThan(toc.x);
+    // leaving the project brings the main menu back immediately
+    await page.locator("#sideProjHead .ph-back").click();
+    await expect(page).toHaveURL(/#\/projects$/);
+    await expect(page.locator("body")).not.toHaveClass(/proj-mode/);
+    await expect(side.locator("nav.menu")).toBeVisible();
+    await expect(page.locator("#sideProjHead")).toBeHidden();
+  });
+
+  test("the sidebar switches at once when a project item is selected, and for the project itself", async ({ page }) => {
+    await open(page, "#/wiki/welcome");
+    await expect(page.locator("body")).not.toHaveClass(/proj-mode/);
+    await page.evaluate(() => { location.hash = "#/wiki/lamassu-ca"; });
+    await expect(page.locator("body")).toHaveClass(/proj-mode/);
+    await expect(page.locator("#sideProjectT")).toHaveClass(/cur/);                     // the project itself is the current item
+    await page.locator(".addlink summary", { hasText: "Add existing items" }).click();       // ca-spec.pdf is loose again after its project was deleted
+    await page.selectOption("#ae-item", "file:ca-spec.pdf");
+    await page.locator("#aef button[type=submit]").click();
+    await expect(page.locator("#main .ptree a", { hasText: "ca-spec.pdf" })).toBeVisible();
+    await page.evaluate(() => { location.hash = "#/file/ca-spec.pdf"; });
+    await expect(page.locator("body")).toHaveClass(/proj-mode/);
+    await expect(page.locator("#sideProject a.cur")).toHaveText("ca-spec.pdf");
+  });
 });

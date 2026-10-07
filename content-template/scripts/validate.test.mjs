@@ -138,3 +138,9 @@ test("a project without a title or with a bad file name fails", () => {
   const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "projects")); fs.writeFileSync(path.join(d, "projects", "Bad Name.json"), "{}"); }));
   assert.ok(errs.some((e) => e.startsWith("projects/Bad Name.json: invalid project file name")), errs.join("\n"));
 });
+test("a project may have tags; unknown or duplicate tags fail", () => {
+  assert.deepEqual(validate(fixture(withProjects({ a: proj([], { tags: ["PQC", "Lamassu RFCs"] }) }))), []);
+  assert.ok(validate(fixture(withProjects({ a: proj([], { tags: ["Nope"] }) }))).some((e) => e.includes('tag "Nope" is not listed')));
+  assert.ok(validate(fixture(withProjects({ a: proj([], { tags: ["PQC", "PQC"] }) }))).some((e) => e.includes('duplicate tag "PQC"')));
+  assert.ok(validate(fixture(withProjects({ a: proj([], { tags: "PQC" }) }))).some((e) => e.includes("tags must be an array")));
+});

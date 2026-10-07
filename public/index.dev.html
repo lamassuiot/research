@@ -485,6 +485,10 @@ body.gated .gate{display:flex}
   .side,body.side-empty .side,body.wide .side{display:block;position:fixed;z-index:50;top:0;left:0;bottom:0;width:min(86vw,320px);max-height:none;
     background:var(--paper);padding:calc(16px + env(safe-area-inset-top,0px)) 16px 24px;transform:translateX(-105%);transition:transform .2s;box-shadow:0 24px 80px var(--shadow-modal)}
   body.menu-off .side .menu{display:block}
+  body.proj-mode .side,body.proj-mode.has-toc .side{display:block}
+  body.proj-mode .shell,body.proj-mode.has-toc .shell,body.proj-mode.menu-off .shell{grid-template-columns:minmax(0,1fr)}
+  body.proj-mode .side .menu,body.proj-mode.menu-off .side .menu{display:none}
+  body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:block}
   .side.open{transform:none}
   .backdrop.open{display:block;position:fixed;inset:0;z-index:45;background:var(--shadow-modal)}
   .page{padding:14px 16px 20px;border-radius:16px}
@@ -514,8 +518,29 @@ body.gated .gate{display:flex}
 .tagchip input:checked + span{background:var(--link);border-color:var(--link);color:#fff}
 .tagchip input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
 .hint.err{color:var(--err)}
+/* ---------- project mode: title above two bars (structure | contents); the main menu steps aside ---------- */
+body.proj-mode .side .menu{display:none}
+body.proj-mode .shell{grid-template-columns:272px minmax(0,1fr)}
+body.proj-mode.has-toc .shell{grid-template-columns:488px minmax(0,1fr)}
+body.proj-mode .side{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "tree" "mode";align-content:start;column-gap:16px}
+body.proj-mode.has-toc .side{grid-template-columns:minmax(0,252px) minmax(0,1fr);grid-template-areas:"head head" "tree toc" "mode mode"}
+body.proj-mode .proj-head{grid-area:head}
+body.proj-mode .proj-tree{grid-area:tree;min-width:0}
+body.proj-mode .toc-side{grid-area:toc;min-width:0}
+body.proj-mode .side .mode{grid-area:mode}
+body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:none}
+body.proj-mode.menu-off .shell{grid-template-columns:248px minmax(0,1fr)}
+body.proj-mode.menu-off.side-empty .shell{grid-template-columns:minmax(0,1fr)}
+.proj-head{display:flex;flex-direction:column;gap:2px;padding:2px 10px 12px;margin-bottom:6px;border-bottom:1px solid var(--rule)}
+.ph-back{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;color:var(--ink-3)}
+.ph-back .ms{font-size:16px}
+.ph-title{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.ph-title:hover{text-decoration:none;color:var(--lamassu-brand)}
+.ph-title.cur{color:var(--lamassu-brand)}
+.proj-tree .side-h{margin-top:4px}
+.ptree.compact .pt-row:has(.cur){background:var(--paper);box-shadow:inset 3px 0 0 var(--lamassu-brand)}
+.pr-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}
 /* ---------- projects ---------- */
-#sideProject{margin-top:14px}
 .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;font-size:14.5px;color:var(--ink-3)}
 .crumbs .sep{color:var(--ink-4)}
 ul.ptree{list-style:none;margin:6px 0 0;padding:0}
@@ -609,12 +634,13 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
         <li><a href="#/help" data-nav="help"><span class="ms" aria-hidden="true">help</span>Help</a></li>
       </ul>
-      <div id="sideProject" hidden><div class="side-h"><span class="eyebrow" id="sideProjectT">Project</span></div><ul id="sideTree" class="ptree compact"></ul></div>
       <div class="side-h"><span class="eyebrow">Tags</span></div>
       <ul id="sideTags"></ul>
       <div class="side-h"><span class="eyebrow">Maturity</span></div>
       <ul id="sideStatus"></ul>
     </nav>
+    <div class="proj-head" id="sideProjHead" hidden><a class="ph-back" href="#/projects"><span class="ms" aria-hidden="true">arrow_back</span>Projects</a><a class="ph-title" id="sideProjectT" href="#"></a></div>
+    <nav class="proj-tree" id="sideProject" aria-label="Project structure" hidden><div class="side-h"><span class="eyebrow">Structure</span></div><ul id="sideTree" class="ptree compact"></ul></nav>
     <nav class="toc-side" id="tocSide" aria-label="Contents" hidden></nav>
     <div class="mode" id="modeNote"></div>
   </aside>
@@ -1093,9 +1119,10 @@ class GitHubStore{
     const now = new Date().toISOString(), title = cleanText(d.title, 200);
     if(!title) throw new Error("A project needs a title");
     const path = `projects/${id}.json`;
+    const tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
       if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
-      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
+      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
     });
   }
   /* Read-modify-write of one project file inside the commit loop, so a concurrent change is never overwritten. mutate returns false for "nothing to do". */
@@ -1111,7 +1138,7 @@ class GitHubStore{
       return {additions:[{path, contents:b64(projectText(pj))}], deletions:[]};
     });
   }
-  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); }); }
+  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20); }); }
   updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
   async deleteProject(id, title){
     if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
@@ -1134,8 +1161,8 @@ class MemoryStore{
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
   async listProjects(){ return Object.entries(this.projects).map(([id, p]) => Object.assign({id}, cloneJson(p))); }
-  async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
-  async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.updatedAt = new Date().toISOString(); return {rev:id}; }
+  async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
+  async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || []; p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async updateProjectItems(id, summary, mutate){ const p = this.projects[id]; if(!p) throw new Error("That project no longer exists"); mutate(p.items); p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async deleteProject(id){ delete this.projects[id]; return {rev:id}; }
   placeInProject(place, item){ const p = place && this.projects[place.project]; if(p) treeAdd(p.items, item, place.parent); }
@@ -1268,9 +1295,9 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { projects:[], loc:new Map(), placed:new Set(), avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { projects:[], loc:new Map(), placed:new Set(), itemProject:new Map(), inTagged:new Set(), avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
-const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
+const allTags = () => [...S.tags, ...[...new Set([...S.pages.flatMap(p => p.tags||[]), ...S.projects.flatMap(p => p.tags||[])])].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
   if(!force && Date.now() - S.pagesAt < 4000) return S.pages;
   try{
@@ -1319,8 +1346,7 @@ function renderUserBox(){
 function renderSide(){
   const sc = {};
   for(const p of S.pages) sc[p.status]=(sc[p.status]||0)+1;
-  const tc = {};
-  for(const p of S.pages) for(const t of (p.tags||[])) tc[t]=(tc[t]||0)+1;
+  const tc = tagCounts();
   $("#sideTags").innerHTML = allTags().map(t => `<li><a href="#/tag/${enc(t)}" data-nav="tag/${esc(enc(t))}">${esc(t)}<span class="count">${tc[t]||0}</span></a></li>`).join("");
   $("#sideStatus").innerHTML = STATUS_ORDER.map(s => `<li><a href="#/status/${s}" data-nav="status/${s}"><span class="pill sm ${s}" style="min-width:0;padding:3px 3px" aria-hidden="true"></span>${STATUS[s].label}<span class="count">${sc[s]||0}</span></a></li>`).join("");
   markNav(); renderSideTree();
@@ -1333,6 +1359,7 @@ function markNav(){
 function syncSide(){
   const tocHidden = $("#tocSide").hidden;
   document.body.classList.toggle("side-empty", document.body.classList.contains("menu-off") && tocHidden);
+  document.body.classList.toggle("has-toc", !tocHidden);
   $("#menuBtn").setAttribute("aria-expanded", String(isNarrow() ? $("#side").classList.contains("open") : !document.body.classList.contains("menu-off")));
 }
 const isNarrow = () => matchMedia("(max-width:1000px)").matches;
@@ -1588,7 +1615,9 @@ async function viewHome(){
   await resolveNames(recent.map(r=>r.by));
   const byDate = (a,b) => (b.updatedAt||"").localeCompare(a.updatedAt||"");
   const featured = pages.filter(p=>p.status==="validated").sort(byDate)[0] || pages.slice().sort(byDate)[0];
-  const byTag = {}; for(const p of pages){ for(const t of (p.tags||[])) (byTag[t] ||= []).push(p); }
+  const byTag = {};
+  for(const p of visiblePages()) for(const t of (p.tags||[])) (byTag[t] ||= []).push({title:p.title, href:wikiHref(p.slug)});
+  for(const pr of taggedProjects()) for(const t of pr.tags) (byTag[t] ||= []).push({title:pr.title, href:"#/wiki/" + enc(pr.id), project:true});
   const totalRevs = pages.reduce((a,p)=>a+(p.revN||0),0);
   const validated = pages.filter(p=>p.status==="validated").length;
   const seen = new Set(); const latest = recent.filter(r => !seen.has(r.slug) && seen.add(r.slug)).slice(0,8);
@@ -1607,7 +1636,7 @@ async function viewHome(){
           <p style="margin:0 0 10px">${esc(featured.abstract||"")} <a href="#/wiki/${featured.slug}">(Full article…)</a></p>
           ${pill(featured.status)} <span class="muted" style="font-size:15px"> ${(featured.tags||[]).map(t=>esc(t)).join(", ")} · revision ${featured.revN}</span></div></section>` : ""}
         <section class="mp-box t-slate"><h2>Browse by tag</h2><div class="in cat-list">
-          ${allTags().filter(t => byTag[t]).map(t => `<section><h3><a href="#/tag/${enc(t)}">${esc(t)}</a></h3><ul>${byTag[t].sort((a,b)=>a.title.localeCompare(b.title)).map(p=>`<li><a href="#/wiki/${p.slug}">${esc(p.title)}</a></li>`).join("")}</ul></section>`).join("")}
+          ${allTags().filter(t => byTag[t]).map(t => `<section><h3><a href="#/tag/${enc(t)}">${esc(t)}</a></h3><ul>${byTag[t].sort((a,b)=>a.title.localeCompare(b.title)).map(p=>`<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.project ? ' <span class="muted" style="font-size:13px">(project)</span>' : ""}</li>`).join("")}</ul></section>`).join("")}
         </div></section>
       </div>
       <div class="mp-col">
@@ -1632,16 +1661,19 @@ function groupedList(pages){
 async function viewList(title, pred, kind, help){
   const nav = S.nav;
   const all = await refreshPages(true);
-  const pages = all.filter(pred).sort((a,b)=>a.title.localeCompare(b.title));
-  const tagLinks = kind === "Tag" ? (await refreshLinks()).filter(l => (l.tags||[]).includes(title)).sort((a,b) => (b.addedAt||"").localeCompare(a.addedAt||"")) : [];
+  const pages = all.filter(pred).filter(p => kind !== "Tag" || !S.inTagged.has("page:" + p.slug)).sort((a,b)=>a.title.localeCompare(b.title));
+  const tagProjects = kind === "Tag" ? taggedProjects().filter(pr => pr.tags.includes(title)).sort((a,b) => a.title.localeCompare(b.title)) : [];
+  const tagLinks = kind === "Tag" ? (await refreshLinks()).filter(l => (l.tags||[]).includes(title) && !S.inTagged.has("link:" + l.id)).sort((a,b) => (b.addedAt||"").localeCompare(a.addedAt||"")) : [];
   if(tagLinks.length) await resolveNames(tagLinks.map(l => l.addedBy));
   const what = kind==="Tag" ? `with this tag` : kind==="Maturity" ? `at this maturity level` : `in ${SITE}`;
   setMainFor(nav, `<h1 class="title">${kind?`<span class="ns">${esc(kind)}:</span>`:""}${esc(title)}</h1>
     ${help?ambox(kind==="Maturity"&&title==="Draft"?"warn":"slate", "info", `<p>${esc(help)}</p>`):""}
+    ${tagProjects.length ? `<h2 style="font-size:20px;font-weight:700;margin:6px 0 4px">Projects tagged “${esc(title)}”</h2>
+      <ul class="linklist" style="margin-bottom:14px">${tagProjects.map(projectCard).join("")}</ul>` : ""}
     ${pages.length ? `<h2 style="font-size:20px;font-weight:700;margin:6px 0 4px">${kind==="Tag"?`Pages tagged “${esc(title)}”`:"Pages"}</h2>
       <p class="muted" style="margin:0 0 10px;font-size:16px">The following ${pages.length} page${pages.length>1?"s are":" is"} ${what}${kind?`, out of ${all.length} total`:""}.</p>
       ${groupedList(pages)}`
-    : `<div class="empty">No articles here yet.${S.me.canWrite && kind==="Tag" ? ` <a href="#/new?tag=${enc(title)}">Write one</a>.`:""}</div>`}
+    : tagProjects.length ? "" : `<div class="empty">No articles here yet.${S.me.canWrite && kind==="Tag" ? ` <a href="#/new?tag=${enc(title)}">Write one</a>.`:""}</div>`}
     ${tagLinks.length ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 4px">External links tagged “${esc(title)}”</h2><ul class="linklist">${tagLinks.map(linkCard).join("")}</ul><p style="margin:8px 0 0"><a href="#/links?tag=${enc(title)}">All links with this tag →</a></p>` : ""}
     ${footer()}`);
   $$(".linklist [data-del]").forEach(b => b.remove());
@@ -1649,7 +1681,7 @@ async function viewList(title, pred, kind, help){
 async function viewTags(){
   const nav = S.nav;
   const pages = await refreshPages(true);
-  const counts = {}; for(const p of pages) for(const t of (p.tags||[])) counts[t] = (counts[t]||0)+1;
+  const counts = tagCounts();
   setMainFor(nav, `<h1 class="title">Tags</h1>
     <p class="muted" style="margin:0 0 10px;font-size:16px">Every article carries one or more of these tags. Tags without articles are shown in red.</p>
     <ul style="columns:2 260px;column-gap:32px;margin:0 0 20px">${allTags().map(t => `<li><a href="#/tag/${enc(t)}" class="${counts[t]?"":"new"}">${esc(t)}</a> <span class="muted">(${counts[t]||0} article${counts[t]===1?"":"s"})</span></li>`).join("")}</ul>
@@ -1975,7 +2007,7 @@ Articles are written in **Markdown** (GitHub flavour: tables, fenced code blocks
 Always fill in the **edit summary**: it is the commit message other engineers will read in the history.
 
 ## Projects
-A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
+A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
 
 ## External links
 The **External links** page keeps news, blogs, papers and videos worth remembering, each with a title, a short note and tags. Links open in a new tab and also appear on the page of each of their tags. Anyone who can edit can add, change or remove links (the repository history keeps every change). To link from inside an article, just use normal Markdown: \`[text](https://…)\`.
@@ -2495,12 +2527,27 @@ async function viewLinks(params){
 
 /* ---------------------------------------------------------------- projects: URLs, tree rendering and views */
 function indexProjects(){
-  S.loc = new Map(); S.placed = new Set();
-  for(const pr of S.projects) treeWalk(pr.items || [], (it, chain) => {
-    S.placed.add(it.type + ":" + it.id);
-    if(it.type === "page") S.loc.set(it.id, {project:pr.id, chain:chain.concat(it.id)});
-  });
+  S.loc = new Map(); S.placed = new Set(); S.itemProject = new Map(); S.inTagged = new Set();
+  for(const pr of S.projects){
+    const tagged = (pr.tags || []).length > 0;
+    treeWalk(pr.items || [], (it, chain) => {
+      const key = it.type + ":" + it.id;
+      S.placed.add(key); S.itemProject.set(key, pr.id);
+      if(tagged) S.inTagged.add(key);                  // a tagged project is indexed in the tags instead of its children
+      if(it.type === "page") S.loc.set(it.id, {project:pr.id, chain:chain.concat(it.id)});
+    });
+  }
 }
+/* the tag index: pages that are not inside a tagged project, plus the tagged projects themselves */
+const visiblePages = () => S.pages.filter(p => !S.inTagged.has("page:" + p.slug));
+const taggedProjects = () => S.projects.filter(pr => (pr.tags || []).length);
+function tagCounts(){
+  const c = {};
+  for(const p of visiblePages()) for(const t of (p.tags || [])) c[t] = (c[t] || 0) + 1;
+  for(const pr of taggedProjects()) for(const t of pr.tags) c[t] = (c[t] || 0) + 1;
+  return c;
+}
+const tagChipsHtml = (name, selected) => [...S.tags, ...selected.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="${name}" value="${esc(t)}" ${selected.includes(t) ? "checked" : ""}><span>${esc(t)}</span></label>`).join("");
 const projectOf = id => S.projects.find(p => p.id === id);
 const pagePath = slug => { const l = S.loc.get(slug); return l ? [l.project].concat(l.chain) : [slug]; };
 const wikiHref = slug => "#/wiki/" + pagePath(slug).map(enc).join("/");
@@ -2515,7 +2562,7 @@ function treeList(items, o){
   o = o || {};
   const rows = (items || []).map(it => {
     const info = itemInfo(it); if(!info) return "";          // dangling reference: ignored
-    const cur = o.cur && it.type === "page" && it.id === o.cur ? " cur" : "";
+    const cur = o.cur && (it.type + ":" + it.id) === o.cur ? " cur" : "";
     const link = `<a class="pt-l${cur}" href="${esc(info.href)}"${info.external ? ' target="_blank" rel="noopener noreferrer nofollow"' : ""}>${esc(info.label)}</a>`;
     const ctl = o.organize ? `<span class="pt-ctl">${CTL.map(([op, ic, tx, lab]) => `<button type="button" class="sc-icon" data-op="${op}" data-type="${it.type}" data-id="${esc(it.id)}" title="${lab}" aria-label="${lab}: ${esc(info.label)}"><span class="ms" aria-hidden="true">${ic}</span><span class="noicon">${tx}</span></button>`).join("")}</span>` : "";
     const sub = o.compact ? "" : `<span class="pt-sub">${esc(info.sub || "")}</span>`;
@@ -2524,18 +2571,30 @@ function treeList(items, o){
   return rows ? `<ul class="ptree${o.compact ? " compact" : ""}">${rows}</ul>` : "";
 }
 /* sidebar: the tree of the project being read */
+/* Where the reader is: a project, or something inside one (a page, its edit/history views, a PDF). */
+function projectContext(){
+  const seg = location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean).map(x => { try{ return decodeURIComponent(x); }catch{ return x; } });
+  const last = seg[seg.length - 1];
+  if(seg[0] === "wiki" && seg.length > 1){
+    const pr = projectOf(seg[1]);
+    if(pr) return {pr, cur:seg.length > 2 ? "page:" + last : "project"};
+    if(S.loc.has(last)) return {pr:projectOf(S.loc.get(last).project), cur:"page:" + last};   // short address, before it is made canonical
+  }
+  if(["edit", "history", "diff", "info"].includes(seg[0]) && S.loc.has(seg[1])) return {pr:projectOf(S.loc.get(seg[1]).project), cur:"page:" + seg[1]};
+  if(seg[0] === "file" && S.itemProject.has("file:" + seg[1])) return {pr:projectOf(S.itemProject.get("file:" + seg[1])), cur:"file:" + seg[1]};
+  return null;
+}
+/* Inside a project the main menu gives way to: the project title, its whole structure, and the page's contents */
 function renderSideTree(){
-  const box = $("#sideProject"); if(!box) return;
-  const seg = location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean).map(s => { try{ return decodeURIComponent(s); }catch{ return s; } });
-  let pr = null, cur = null;
-  if(seg[0] === "wiki" && seg.length > 1){ pr = projectOf(seg[1]); cur = seg[seg.length - 1]; }
-  else if(seg[0] === "wiki" && seg.length === 1) pr = null;
-  if(!pr && (seg[0] === "edit" || seg[0] === "history" || seg[0] === "diff" || seg[0] === "info") && seg[1] && S.loc.has(seg[1])){ pr = projectOf(S.loc.get(seg[1]).project); cur = seg[1]; }
-  if(!pr){ box.hidden = true; return; }
-  box.hidden = false;
-  $("#sideProjectT").innerHTML = `<a href="#/wiki/${enc(pr.id)}">${esc(pr.title)}</a>`;
+  const head = $("#sideProjHead"), box = $("#sideProject"); if(!box) return;
+  const ctx = projectContext();
+  document.body.classList.toggle("proj-mode", !!(ctx && ctx.pr));
+  if(!ctx || !ctx.pr){ head.hidden = box.hidden = true; syncSide(); return; }
+  const {pr, cur} = ctx;
+  head.hidden = box.hidden = false;
+  const t = $("#sideProjectT"); t.textContent = pr.title; t.href = "#/wiki/" + enc(pr.id); t.classList.toggle("cur", cur === "project");
   $("#sideTree").innerHTML = treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
-  $("#sideTree").className = "ptree compact";
+  syncSide();
 }
 function crumbsHtml(slug){
   const l = S.loc.get(slug); if(!l) return "";
@@ -2557,6 +2616,12 @@ async function subpagesHtml(slug){
   if(!list && !add) return "";
   return `<section class="subpages"><h2>In this page</h2>${list || '<p class="muted" style="margin:0 0 8px">No sub-pages yet.</p>'}${add}</section>`;
 }
+const projectBadges = pr => (pr.tags || []).map(t => `<a class="badge secondary" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("");
+function projectCard(p){
+  const c = countItems(p);
+  return `<li class="linkcard"><div class="lc-h"><span class="ms" aria-hidden="true">folder_open</span><a class="lc-title" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></div>
+    ${p.description ? `<p class="lc-d">${esc(p.description)}</p>` : ""}<div class="lc-f"><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></li>`;
+}
 const projectsBoxHtml = () => S.projects.length ? `<section class="mp-box t-slate"><h2>Projects</h2><div class="in"><ul>${S.projects.slice().sort((a,b) => a.title.localeCompare(b.title)).map(p => { const c = countItems(p); return `<li><a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a> <span class="muted" style="font-size:14px">— ${c.page} page${c.page === 1 ? "" : "s"}</span></li>`; }).join("")}</ul><p style="margin:10px 0 0;font-size:15px"><a href="#/projects">All projects →</a></p></div></section>` : "";
 
 async function viewProjects(){
@@ -2566,11 +2631,11 @@ async function viewProjects(){
   const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
   setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
     <p class="muted" style="margin:0 0 12px;font-size:16px">A project groups pages (with sub-pages), external links and PDF files. Its structure is kept in one file, so moving or reordering things never changes the items themselves.</p>
-    ${list.length ? `<ul class="linklist">${list.map(p => { const c = countItems(p); return `<li class="linkcard"><div class="lc-h"><a class="lc-title" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></div>
-        ${p.description ? `<p class="lc-d">${esc(p.description)}</p>` : ""}<div class="lc-f muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</div></li>`; }).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
+    ${list.length ? `<ul class="linklist">${list.map(projectCard).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">New project</h2><form class="form" id="npf" novalidate>
       <div class="row"><div style="grid-column:span 3"><label for="np-title">Title</label><input type="text" id="np-title" maxlength="200" required><div class="hint">Address: <span class="mono" id="np-slug"></span></div></div></div>
       <div class="row"><div style="grid-column:span 3"><label for="np-desc">Description <small class="muted">(optional)</small></label><input type="text" id="np-desc" maxlength="300"></div></div>
+      <fieldset class="tagpick"><legend>Tags <small class="muted">(optional: a tagged project is listed under its tags instead of its pages)</small></legend><div class="tagchips">${tagChipsHtml("ptag", [])}</div></fieldset>
       <div class="actions"><button class="btn primary" id="np-btn" type="submit"><span class="ms" aria-hidden="true">create_new_folder</span><span>Create project</span></button></div></form>` : ""}
     ${footer()}`);
   const t = $("#np-title"); if(!t) return;
@@ -2581,7 +2646,7 @@ async function viewProjects(){
     const id = slugify(title);
     if(S.projects.some(p => p.id === id) || S.pages.some(p => p.slug === id)){ toast("That address is already used by a project or an article. Pick another title.", 6000); return; }
     const btn = $("#np-btn"); btn.disabled = true;
-    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim()}); S.pagesAt = 0; toast("Project created."); location.hash = "#/wiki/" + enc(id); }
+    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), tags:$$("input[name=ptag]:checked").map(x => x.value)}); S.pagesAt = 0; toast("Project created."); location.hash = "#/wiki/" + enc(id); }
     catch(err){ btn.disabled = false; toast(err.message || String(err), 7000); }
   };
 }
@@ -2604,6 +2669,7 @@ async function viewProject(id, params){
   setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
     <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?organize=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">swap_vert</span>${organize ? "Done organizing" : "Organize"}</a>` : ""}</nav></div><div class="maturity"></div>
     ${pr.description ? `<p style="margin:0 0 12px">${esc(pr.description)}</p>` : ""}
+    ${(pr.tags || []).length ? `<p class="pr-tags">${projectBadges(pr)} <span class="muted" style="font-size:13.5px">Listed under these tags; its pages are not listed separately.</span></p>` : ""}
     <p class="muted" style="margin:0 0 10px;font-size:15px">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${pr.updatedAt ? ` · updated ${timeAgo(pr.updatedAt)}` : ""}</p>
     ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
       <a class="btn small" href="#/links?new=1&project=${q}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
@@ -2621,6 +2687,7 @@ async function viewProject(id, params){
     ${S.me.canWrite ? `<details class="addlink" style="margin-top:10px"><summary class="btn small"><span class="ms" aria-hidden="true">edit</span>Edit project</summary>
       <form class="form" id="epf" novalidate><div class="row"><div style="grid-column:span 3"><label for="ep-title">Title</label><input type="text" id="ep-title" maxlength="200" value="${esc(pr.title)}"></div></div>
         <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
+        <fieldset class="tagpick"><legend>Tags <small class="muted">(optional; when set, the pages inside are not listed under tags)</small></legend><div class="tagchips">${tagChipsHtml("eptag", pr.tags || [])}</div></fieldset>
         <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
           <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form></details>` : ""}
     ${footer()}`);
@@ -2637,7 +2704,7 @@ async function viewProject(id, params){
     run(`Add to project: ${pr.title}`, i => treeAdd(i, {type, id:item}, $("#ae-par").value || null), null);
   };
   const ep = $("#epf"); if(ep){
-    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim()}); S.pagesAt = 0; toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), tags:$$("input[name=eptag]:checked").map(x => x.value)}); S.pagesAt = 0; toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
       if(!confirm(`Delete the project “${pr.title}”? Its pages, links and files are kept; they just stop being grouped.`)) return;
       try{ await S.store.deleteProject(id, pr.title); S.pagesAt = 0; toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
