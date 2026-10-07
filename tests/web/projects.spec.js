@@ -257,3 +257,64 @@ test.describe("project tags and project mode", () => {
     await expect(page.locator("#sideProject a.cur")).toHaveText("ca-spec.pdf");
   });
 });
+
+test.describe("project home: quick access and introduction", () => {
+  const PDF_NAME = "ca-spec.pdf";
+  test("links and PDFs are cards, with the introduction below them", async ({ page }) => {
+    await open(page, "#/wiki/lamassu-ca");
+    const qa = page.locator(".qa");
+    await expect(qa.locator("h2")).toHaveText("Quick access");
+    const link = qa.locator("a.qa-card", { hasText: "CA design post" });
+    await expect(link).toHaveAttribute("href", "https://example.org/ca-design");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer nofollow");
+    await expect(link.locator(".qa-s")).toHaveText("example.org");
+    const pdf = qa.locator("a.qa-card", { hasText: PDF_NAME });
+    await expect(pdf).toHaveAttribute("href", "#/file/" + PDF_NAME);
+    await expect(pdf).toContainText("PDF");
+    await expect(qa.locator("a.qa-card")).toHaveCount(2);                       // pages are not cards: they are the structure
+    await pdf.click();
+    await expect(page).toHaveURL(new RegExp("#/file/" + PDF_NAME + "$"));
+  });
+
+  test("the introduction is Markdown, safe, and sits between the cards and the structure", async ({ page }) => {
+    await open(page, "#/wiki/lamassu-ca");
+    const before = repo.commits.length;
+    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await page.fill("#ep-intro", "## About this project\n\nThe **CA** design, see [[Design]].\n\n<script>window.__pwned = 1</script>\n\n[x](javascript:alert(1))\n");
+    await page.locator("#epf button[type=submit]").click();
+    const intro = page.locator("#proj-intro");
+    await expect(intro.locator("h2")).toHaveText("About this project");
+    await expect(intro.locator("strong")).toHaveText("CA");
+    await expect(intro.locator("a", { hasText: "Design" })).toHaveAttribute("href", "#/wiki/lamassu-ca/design");
+    expect(await page.evaluate(() => window.__pwned)).toBeUndefined();
+    expect(await intro.locator("a[href^='javascript']").count()).toBe(0);
+    // order on the page: quick access, introduction, structure
+    const y = async sel => (await page.locator(sel).first().boundingBox()).y;
+    expect(await y(".qa")).toBeLessThan(await y(".proj-intro"));
+    expect(await y(".proj-intro")).toBeLessThan(await y("h2.pr-h:has-text('Structure')"));
+    // one commit, only the project file; the text is stored in the project
+    expect(repo.commits.length).toBe(before + 1);
+    expect([...repo.head().changed]).toEqual(["projects/lamassu-ca.json"]);
+    expect(project("lamassu-ca").intro).toContain("## About this project");
+  });
+
+  test("emptying the introduction removes it; an empty project has no cards", async ({ page }) => {
+    await open(page, "#/wiki/lamassu-ca");
+    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await page.fill("#ep-intro", "");
+    await page.locator("#epf button[type=submit]").click();
+    await expect(page.locator(".proj-intro")).toHaveCount(0);
+    await expect(page.locator("main, #main")).toContainText("No introduction yet");
+    expect(project("lamassu-ca")).not.toHaveProperty("intro");
+    await page.goto("/research/#/wiki/pqc-programme");
+    await expect(page.locator(".qa")).toHaveCount(0);
+  });
+
+  test("a reader sees the cards and the introduction but no editing hints", async ({ page }) => {
+    await open(page, "#/wiki/lamassu-ca", { permission: "read" });
+    await expect(page.locator(".qa a.qa-card")).toHaveCount(2);
+    await expect(page.locator("#main")).not.toContainText("No introduction yet");
+    await expect(page.locator(".addlink")).toHaveCount(0);
+  });
+});

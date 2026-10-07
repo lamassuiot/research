@@ -144,3 +144,8 @@ test("a project may have tags; unknown or duplicate tags fail", () => {
   assert.ok(validate(fixture(withProjects({ a: proj([], { tags: ["PQC", "PQC"] }) }))).some((e) => e.includes('duplicate tag "PQC"')));
   assert.ok(validate(fixture(withProjects({ a: proj([], { tags: "PQC" }) }))).some((e) => e.includes("tags must be an array")));
 });
+test("a project may have an introduction; a non-string or oversized one fails", () => {
+  assert.deepEqual(validate(fixture(withProjects({ a: proj([], { intro: "## Hello\n\nSome *Markdown*." }) }))), []);
+  assert.ok(validate(fixture(withProjects({ a: proj([], { intro: 5 }) }))).some((e) => e.includes("intro must be a Markdown string")));
+  assert.ok(validate(fixture(withProjects({ a: proj([], { intro: "x".repeat(50001) }) }))).some((e) => e.includes("at most 50000")));
+});

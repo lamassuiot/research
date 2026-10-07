@@ -99,6 +99,7 @@ export function validate(root) {
     if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
     if (pj.description !== undefined && (typeof pj.description !== "string" || pj.description.length > 300)) err(rel, "description must be at most 300 characters");
     for (const k of ["createdAt", "createdBy", "updatedAt", "updatedBy"]) if (typeof pj[k] !== "string" || !pj[k]) err(rel, `"${k}" must be a non-empty string`);
+    if (pj.intro !== undefined && (typeof pj.intro !== "string" || pj.intro.length > 50000)) err(rel, "intro must be a Markdown string of at most 50000 characters");
     if (pj.tags !== undefined) {                     // optional; a tagged project is indexed in the tags instead of its children
       if (!Array.isArray(pj.tags) || pj.tags.length > 20) err(rel, "tags must be an array of at most 20 entries");
       else { const seen = new Set(); for (const t of pj.tags) { if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`); if (seen.has(t)) err(rel, `duplicate tag "${t}"`); seen.add(t); } }
