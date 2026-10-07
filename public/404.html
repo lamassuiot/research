@@ -205,19 +205,49 @@ h1.title .ns{font-weight:400;color:var(--ink-3)}
 .pill.deprecated{background:var(--slate-soft);border-color:var(--slate-border)}
 
 /* infobox */
-.infobox{float:right;clear:right;width:320px;margin:0 0 18px 28px;border:1px solid var(--rule);border-radius:16px;overflow:hidden;font-size:15px;background:var(--paper)}
-.infobox .cap{display:block;background:var(--surface);padding:12px 14px;font-weight:700;font-size:17px;letter-spacing:-.01em;text-align:center;border-bottom:1px solid var(--rule)}
-.infobox table{border-collapse:collapse;width:100%}
-.infobox th{text-align:left;font-weight:500;padding:7px 12px;vertical-align:top;width:38%;color:var(--ink-3)}
-.infobox td{padding:7px 12px;vertical-align:top;overflow-wrap:anywhere}
-.infobox tr+tr th,.infobox tr+tr td{border-top:1px solid var(--rule)}
+/* article facts: shadcn-like card */
+.infobox{float:right;clear:right;width:320px;margin:0 0 18px 28px;border:1px solid var(--rule);border-radius:12px;background:var(--paper);box-shadow:0 1px 2px var(--shadow),0 1px 3px var(--shadow);font-size:14.5px;overflow:hidden}
+.sc-cap{padding:14px 16px 12px;font-weight:700;font-size:16px;letter-spacing:-.01em;line-height:1.3;border-bottom:1px solid var(--rule)}
+.sc-list{margin:0;padding:4px 0}
+.sc-row{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start;padding:9px 16px}
+.sc-row + .sc-row{border-top:1px solid var(--rule)}
+.sc-row dt{color:var(--ink-3);font-size:13px;font-weight:500;padding-top:3px}
+.sc-row dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.sc-tags{display:flex;flex-wrap:wrap;gap:6px}
+.sc-person{display:flex;align-items:center;gap:9px;min-width:0}
+.sc-person-t{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.sc-person-t .user{font-weight:600}
+.sc-person-t small{color:var(--ink-3);font-size:12.5px}
+.sc-person-t small a{color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+.av{width:28px;height:28px;border-radius:999px;flex:none;object-fit:cover;background:var(--surface)}
+.av.fb{display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink-2);border:1px solid var(--rule);font-size:11px;font-weight:700}
+.sc-stack{display:flex;padding-left:6px}
+.sc-av{margin-left:-6px;border-radius:999px;box-shadow:0 0 0 2px var(--paper);display:inline-flex;transition:transform .12s}
+.sc-av:hover{transform:translateY(-2px);z-index:1}
+.sc-av.more{width:28px;height:28px;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--rule);font-size:11px;font-weight:700;color:var(--ink-2)}
+.sc-sub{display:block;color:var(--ink-3);font-size:12.5px;margin-top:4px}
+.sc-link{font-size:13px;margin-left:6px}
+.sc-sha{display:flex;align-items:center;gap:6px}
+.sc-sha code{font-size:12.5px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:1px 6px}
+.sc-icon{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 4px;font-size:12px;border-radius:6px;border:1px solid transparent;background:none;color:var(--ink-3);cursor:pointer}
+.sc-icon:hover{background:var(--surface);border-color:var(--rule);color:var(--ink)}
+.sc-icon .ms{font-size:16px}
+time.ago{white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:2px 8px;font-size:12.5px;font-weight:600;line-height:1.5;border:1px solid transparent;white-space:nowrap;color:var(--ink)}
+.badge:hover{text-decoration:none;color:var(--ink)}
+.badge.secondary{background:var(--surface);border-color:var(--rule)}
+.badge.secondary:hover{border-color:var(--ink-4)}
+.badge.outline{border-color:var(--rule);background:none;font-weight:500}
+.badge.status{border-color:var(--rule);background:var(--paper)}
+.badge.status .dot{width:7px;height:7px;border-radius:999px;background:var(--ink-4)}
+.badge.status.validated .dot{background:var(--ok)}
+.badge.status.reviewed .dot{background:var(--info)}
+.badge.status.draft .dot{background:var(--warn-strong)}
+.badge.status.deprecated .dot{background:var(--slate-border)}
 .infobox.wide{float:none;width:auto;margin:0 0 16px}
-.infobox.wide table{display:block;overflow-x:auto}
-.infobox.wide tbody{display:flex;flex-wrap:wrap}
-.infobox.wide tr{display:flex;flex-direction:column;border-right:1px solid var(--rule);min-width:140px;flex:1}
-.infobox.wide tr:last-child{border-right:0}
-.infobox.wide tr+tr th,.infobox.wide tr+tr td{border-top:0}
-.infobox.wide th{width:auto;padding-bottom:0}
+.infobox.wide .sc-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));padding:0}
+.infobox.wide .sc-row{grid-template-columns:1fr;gap:4px;border-top:0;border-left:1px solid var(--rule)}
+.infobox.wide .sc-row:first-child{border-left:0}
 .tag{display:inline-block;border:1px solid var(--rule);background:var(--surface);padding:1px 8px;margin:0 4px 4px 0;font-size:13.5px;border-radius:999px;color:var(--ink-2)}
 .tag:hover{border-color:var(--ink);text-decoration:none;color:var(--ink)}
 
@@ -351,6 +381,7 @@ h2.rev-h{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:28px 0 12px
 .ed-bar .tb .noicon{font-size:13.5px;font-weight:700}
 .ed-bar .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
 .hint{font-size:14px;color:var(--ink-3);margin-top:4px}
+#main.dropping{outline:2px dashed var(--link,#36c);outline-offset:-6px;background:color-mix(in srgb,var(--link,#36c) 6%,transparent)}
 .save-box{border:1px solid var(--rule);border-radius:16px;background:var(--surface);padding:14px 16px;display:grid;gap:10px}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #pv-area:empty{display:none}
@@ -592,6 +623,17 @@ const fmtNum = n => Number(n||0).toLocaleString("en-GB");
 const fmtTime = iso => new Date(iso).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
 const fmtDay = iso => new Date(iso).toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
 const fmtMW = iso => iso ? `${fmtTime(iso)}, ${fmtDay(iso)}` : "—";
+const RTF = (() => { try{ return new Intl.RelativeTimeFormat("en", {numeric:"auto"}); }catch{ return null; } })();
+function fmtAgo(iso){
+  const sec = (new Date(iso) - Date.now()) / 1000, a = Math.abs(sec);
+  if(!isFinite(sec)) return "—";
+  if(a < 45) return "just now";
+  const [v, u] = a < 2700 ? [sec/60, "minute"] : a < 79200 ? [sec/3600, "hour"] : a < 2592000 ? [sec/86400, "day"] : a < 31536000 ? [sec/2592000, "month"] : [sec/31536000, "year"];
+  return RTF ? RTF.format(Math.round(v), u) : fmtMW(iso);
+}
+/* "13 minutes ago", with the exact time on hover; refreshed every minute */
+const timeAgo = iso => iso ? `<time class="ago" datetime="${esc(iso)}" title="${esc(fmtMW(iso))}">${esc(fmtAgo(iso))}</time>` : "—";
+setInterval(() => document.querySelectorAll("time.ago").forEach(t => { t.textContent = fmtAgo(t.dateTime); }), 60000);
 const statusLabel = s => STATUS[s]?.label || s || "";
 const pill = (s, sm) => s ? `<span class="pill ${sm?"sm ":""}${esc(s)}">${esc(statusLabel(s))}</span>` : "";
 function slugify(t){
@@ -639,7 +681,7 @@ const metaOf = text => { try{ const m = JSON.parse(text); return m && typeof m =
 const publicMeta = (slug, m) => ({slug, title:m.title, tags:m.tags||[], status:m.status, format:m.format, abstract:m.abstract||"",
   revN:m.revN, size:m.size, updatedAt:m.updatedAt, updatedBy:m.updatedBy, createdAt:m.createdAt, createdBy:m.createdBy});
 const BLOB = "... on Blob { text }";
-const AUTHOR = "author { name user { login } }";
+const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
 
 /* The private content repository on GitHub, read and written from the browser with the signed-in user's token. */
 class GitHubStore{
@@ -718,6 +760,8 @@ class GitHubStore{
     return Object.assign(publicMeta(slug, m), {rev:node ? node.oid : null});
   }
   revOf(c, m){
+    const u = c.author && c.author.user;
+    if(u && u.login && u.avatarUrl) S.avatars[u.login] = u.avatarUrl;
     return {id:c.oid, n:m.revN, at:c.authoredDate, by:(c.author && c.author.user && c.author.user.login) || (c.author && c.author.name) || null,
       summary:c.messageHeadline, size:m.size, format:m.format, status:m.status, title:m.title, tags:m.tags||[], sha256:m.sha256};
   }
@@ -1032,7 +1076,7 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
 const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
@@ -1050,6 +1094,13 @@ function nameOf(id, fallback){
   if(id === S.me.id) return "you";
   return S.names[id] || id;
 }
+function avatarHtml(id, cls){
+  const name = nameOf(id), url = id && S.avatars[id];
+  return url ? `<img class="av ${cls||""}" src="${esc(url)}" alt="" width="28" height="28" loading="lazy" referrerpolicy="no-referrer">`
+             : `<span class="av fb ${cls||""}" aria-hidden="true">${esc(initials(name === "you" ? (S.me.name || id) : name))}</span>`;
+}
+const personChip = (id, sub) => `<span class="sc-person">${avatarHtml(id)}<span class="sc-person-t">${personSpan(id)}${sub ? `<small>${sub}</small>` : ""}</span></span>`;
+const statusBadge = s => s ? `<a class="badge status ${esc(s)}" href="#/status/${esc(s)}" title="${esc(STATUS[s]?.help || "")}"><span class="dot" aria-hidden="true"></span>${esc(statusLabel(s))}</a>` : "";
 function personSpan(id, fallback){ const s=document.createElement("span"); s.className="user"; s.textContent = nameOf(id, fallback); return s.outerHTML; }
 const canEditPage = p => p ? (p.canEdit ?? S.me.canWrite) : S.me.canWrite;
 const initials = n => String(n||"?").split(/[\s.@_-]+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase() || "?";
@@ -1272,7 +1323,7 @@ function route(){
     default:           setMain(`<h1 class="title">Bad title</h1><div class="ambox warn"><span class="ms" aria-hidden="true">warning</span><p>There is no page or view called “${esc(seg[0])}”. <a href="#/">Return to the main page</a>.</p></div>`);
   }
 }
-function setMain(html){ const m=$("#main"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); }
+function setMain(html){ const m=$("#main"); m.ondragover = m.ondragleave = m.ondrop = null; m.classList.remove("dropping"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); }
 /* Views are async: if the reader navigated meanwhile, a late view must not paint over the new one.
    setMainFor throws STALE, which aborts the rest of that view; route() ignores it. */
 const STALE = Symbol("stale view");
@@ -1317,6 +1368,10 @@ function bindTools(ctx){
     } else if(act === "print"){ print(); }
   });
 }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-copy]"); if(!b) return;
+  try{ await navigator.clipboard.writeText(b.dataset.copy); toast("Copied."); }catch{ toast(b.dataset.copy, 8000); }
+});
 document.addEventListener("click", e => { $$("details.dd[open]").forEach(d => { if(!d.contains(e.target)) d.open = false; }); });
 document.addEventListener("keydown", e => { if(e.key === "Escape"){ $$("details.dd[open]").forEach(d => d.open = false); closeDrawer(); } });
 
@@ -1417,23 +1472,31 @@ async function viewArticle(slug, revId){
         <li><a href="#/search?q=${enc(t)}">Search for “${esc(t)}”</a> in other articles.</li></ul>`)}${footer()}`);
     return;
   }
-  const rev = await S.store.getRev(slug, revId || page.rev);
+  const [rev, revs] = await Promise.all([S.store.getRev(slug, revId || page.rev), S.store.listRevs(slug).catch(e => { console.warn(e); return []; })]);
   if(!rev){ setMainFor(nav, `${tabs(slug,"read")}<h1 class="title">${esc(page.title)}</h1>${ambox("err","error","<p>The revision of this page you asked for could not be found.</p>")}`); return; }
   const isOld = revId && revId !== page.rev && !String(page.rev).startsWith(revId);
-  await resolveNames([page.createdBy, page.updatedBy, rev.by]);
+  // authors in order of first contribution (the creator first), with their number of edits
+  const edits = {}; for(const r of revs.slice().reverse()) if(r.by) edits[r.by] = (edits[r.by] || 0) + 1;
+  if(!revs.length) for(const id of [page.createdBy, rev.by]) if(id) edits[id] = edits[id] || 1;
+  const people = Object.keys(edits);
+  await resolveNames([page.createdBy, page.updatedBy, rev.by, ...people]);
   const meta = isOld ? rev : page;
   const status = meta.status || page.status;
+  const prevRev = revs.find(r => r.n === rev.n - 1);
+  const stack = people.slice(0, 6).map(id => `<span class="sc-av" title="${esc(nameOf(id))} · ${edits[id]} edit${edits[id] === 1 ? "" : "s"}">${avatarHtml(id)}</span>`).join("")
+    + (people.length > 6 ? `<span class="sc-av more" title="${people.length - 6} more">+${people.length - 6}</span>` : "");
   const info = `
-    <aside class="infobox ${page.format==="html"?"wide":""}" aria-label="Article facts">
-      ${page.format==="html"?"":`<span class="cap">${esc(page.title)}</span>`}
-      <table><tbody>
-        <tr><th>Tags</th><td>${(page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—"}</td></tr>
-        <tr><th>Maturity</th><td>${pill(status, true)}</td></tr>
-        <tr><th>Revision</th><td class="mono">${rev.n} of ${page.revN}</td></tr>
-        <tr><th>Author</th><td>${personSpan(page.createdBy)}</td></tr>
-        <tr><th>Last edit</th><td>${personSpan(rev.by)}<br><span class="muted">${fmtMW(rev.at)}</span></td></tr>
-        ${rev.sha256?`<tr><th>SHA-256</th><td class="mono" title="${esc(rev.sha256)}">${esc(rev.sha256.slice(0,16))}…</td></tr>`:""}
-      </tbody></table>
+    <aside class="infobox sc ${page.format==="html"?"wide":""}" aria-label="Article facts">
+      ${page.format==="html"?"":`<div class="sc-cap">${esc(page.title)}</div>`}
+      <dl class="sc-list">
+        <div class="sc-row"><dt>Maturity</dt><dd>${statusBadge(status)}</dd></div>
+        <div class="sc-row"><dt>Tags</dt><dd class="sc-tags">${(page.tags||[]).map(t=>`<a class="badge secondary" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || '<span class="muted">—</span>'}</dd></div>
+        <div class="sc-row"><dt>Author</dt><dd>${personChip(page.createdBy, page.createdAt ? "created " + timeAgo(page.createdAt) : "")}</dd></div>
+        ${people.length > 1 ? `<div class="sc-row"><dt>Contributors</dt><dd><span class="sc-stack" aria-label="${people.length} contributors">${stack}</span><small class="sc-sub">${people.length} people · ${revs.length || page.revN} edits</small></dd></div>` : ""}
+        <div class="sc-row"><dt>Last edit</dt><dd>${personChip(rev.by, `${timeAgo(rev.at)}${prevRev ? ` · <a href="#/diff/${slug}/${enc(prevRev.id)}/${enc(rev.id)}">changes</a>` : ""}`)}</dd></div>
+        <div class="sc-row"><dt>Revision</dt><dd><span class="badge outline mono">${rev.n} / ${page.revN}</span> <a class="sc-link" href="#/history/${slug}">history</a></dd></div>
+        ${rev.sha256?`<div class="sc-row"><dt>SHA-256</dt><dd class="sc-sha"><code title="${esc(rev.sha256)}">${esc(rev.sha256.slice(0,12))}…</code><button type="button" class="sc-icon" data-copy="${esc(rev.sha256)}" title="Copy SHA-256" aria-label="Copy SHA-256"><span class="ms" aria-hidden="true">content_copy</span><span class="noicon">Copy</span></button></dd></div>`:""}
+      </dl>
     </aside>`;
   const oldNote = isOld ? ambox("warn","history",`<p>This is an old revision of this page, as edited by ${personSpan(rev.by)} at ${fmtMW(rev.at)}. It may differ significantly from the <a href="#/wiki/${slug}">current revision</a>.</p>
     <p style="margin-top:4px">(<a href="#/diff/${slug}/prev/${enc(rev.id)}">diff</a>) ← Previous revision | <a href="#/wiki/${slug}">Latest revision</a> (<a href="#/diff/${slug}/${enc(rev.id)}/cur">diff</a>)</p>`) : "";
@@ -2019,6 +2082,18 @@ function bindUploadForm(fixedName, done){
   const syncSyntax = () => { if($("#up-syntax")) $("#up-syntax").textContent = `[[File:${nameEl.value || "…"}]]`; };
   fileEl.onchange = () => { if(!fixedName && fileEl.files[0] && !nameEl.dataset.touched) nameEl.value = fileNameFrom(fileEl.files[0].name); syncSyntax(); };
   if(!fixedName) nameEl.oninput = () => { nameEl.dataset.touched = "1"; syncSyntax(); };
+  /* Drag and drop: dropping a PDF anywhere on the page fills the form (it does not upload by itself). */
+  const main = $("#main"), hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files");
+  main.ondragover = e => { if(!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; main.classList.add("dropping"); };
+  main.ondragleave = e => { if(!main.contains(e.relatedTarget)) main.classList.remove("dropping"); };
+  main.ondrop = e => {
+    if(!hasFiles(e)) return;
+    e.preventDefault(); main.classList.remove("dropping");
+    const file = Array.from(e.dataTransfer.files).find(x => x.type === "application/pdf" || /\.pdf$/i.test(x.name));
+    if(!file){ toast("Drop a PDF file."); return; }
+    const dt = new DataTransfer(); dt.items.add(file); fileEl.files = dt.files; fileEl.onchange();
+    f.scrollIntoView({block:"center"}); $("#up-sum").focus({preventScroll:true});
+  };
   f.onsubmit = async e => {
     e.preventDefault();
     const file = fileEl.files[0];
@@ -2319,6 +2394,7 @@ function setupTheme(){
     if(!e.auth) showGate("error", e.message || String(e));
     return;
   }
+  if(S.me.id && S.me.avatar) S.avatars[S.me.id] = S.me.avatar;
   try{ S.tags = await S.store.tags(); }catch(e){ console.warn(e); S.tags = []; }
   document.body.classList.remove("gated");
   document.title = SITE;

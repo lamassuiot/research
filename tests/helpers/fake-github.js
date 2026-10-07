@@ -75,7 +75,12 @@ async function installFakeGitHub(page, opts = {}) {
     const req = route.request(), url = new URL(req.url()), method = req.method();
     if (url.hostname === "fonts.googleapis.com") return route.fulfill({ status: 200, headers: { "content-type": "text/css" }, body: "" });
     if (url.hostname === "fonts.gstatic.com") return route.abort();
-    if (url.hostname === "avatars.githubusercontent.com") return route.fulfill({ status: 200, headers: { "content-type": "image/gif" }, body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64") });
+    if (url.hostname === "avatars.githubusercontent.com") {
+      // a coloured circle with the first letter of the login, so screenshots show distinct avatars
+      const who = decodeURIComponent(url.pathname.split("/").pop() || "?"), hue = [...who].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+      return route.fulfill({ status: 200, headers: { "content-type": "image/svg+xml" },
+        body: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="hsl(${hue},55%,45%)"/><text x="32" y="42" font-size="30" font-family="sans-serif" text-anchor="middle" fill="#fff">${who[0].toUpperCase()}</text></svg>` });
+    }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     state.requests.push({ method, host: url.hostname, path: url.pathname });
 
@@ -112,7 +117,7 @@ async function installFakeGitHub(page, opts = {}) {
     if (url.hostname === "api.github.com") {
       const token = (req.headers()["authorization"] || "").replace(/^Bearer /, "");
       if (!state.tokens.has(token)) return json(route, 401, { message: "Bad credentials" });
-      if (url.pathname === "/user") { state.userAt = state.requests.length; return json(route, 200, { login: user.login, name: user.name, avatar_url: "https://avatars.githubusercontent.com/u/1" }); }
+      if (url.pathname === "/user") { state.userAt = state.requests.length; return json(route, 200, { login: user.login, name: user.name, avatar_url: `https://avatars.githubusercontent.com/u/${user.login}?s=64` }); }
       if (url.pathname === `/repos/${OWNER}/${REPO}`) {
         const p = perms[opts.permission || "write"];
         return p ? json(route, 200, { full_name: `${OWNER}/${REPO}`, permissions: p }) : json(route, 404, { message: "Not Found" });
@@ -131,7 +136,7 @@ async function installFakeGitHub(page, opts = {}) {
     return json(route, 500, { message: "unexpected request in the test" });
   });
 
-  const author = c => ({ name: c.author.name, user: { login: c.author.login } });
+  const author = c => ({ name: c.author.name, user: { login: c.author.login, avatarUrl: `https://avatars.githubusercontent.com/u/${c.author.login}?s=64` } });
   const node = c => ({ oid: c.oid, authoredDate: c.date, messageHeadline: c.message.split("\n")[0], message: c.message, author: author(c) });
   const blob = text => text == null ? null : { text };
   const metas = vars => Object.fromEntries(Object.keys(vars).filter(k => /^e\d+$/.test(k)).map(k => ["m" + k.slice(1), blob(repo.read(vars[k]))]));

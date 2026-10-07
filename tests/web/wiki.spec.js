@@ -169,3 +169,28 @@ test.describe("theme toggle", () => {
     expect(await bg()).toBe("rgb(244, 244, 244)");
   });
 });
+
+test.describe("article facts", () => {
+  test("shows maturity, tags, author and contributor avatars, and the last edit as relative time", async ({ page }) => {
+    const repo = seedFromTemplate(createRepo());
+    const m = JSON.parse(repo.head().files.get("pages/pqc-migration-notes/meta.json"));
+    for (const [who, name, n] of [["grace", "Grace Hopper", 2], ["alan", "Alan Turing", 3]]) {
+      const c = repo.add(`Edit by ${name}\n\nKnow-how-Page: pqc-migration-notes\nKnow-how-Revision: ${n}`,
+        { "pages/pqc-migration-notes/meta.json": JSON.stringify({ ...m, revN: n, updatedBy: who }) }, { name, login: who });
+      c.date = new Date(Date.now() - (n === 3 ? 13 : 60) * 60000).toISOString();
+    }
+    await open(page, "#/wiki/pqc-migration-notes", { repo });
+    const box = page.locator(".infobox");
+    await expect(box.locator(".badge.status")).toHaveText("Draft");
+    await expect(box.locator(".sc-tags .badge")).toHaveText(["PQC", "Crypto Agility"]);
+    await expect(box.locator(".sc-stack .sc-av")).toHaveCount(3);                       // creator + grace + alan
+    await expect(box.locator(".sc-stack img").first()).toHaveAttribute("src", /avatars\.githubusercontent\.com\/u\/lamassu-research/);
+    await expect(box.locator(".sc-stack .sc-av").nth(2)).toHaveAttribute("title", "alan · 1 edit");
+    const last = box.locator(".sc-row", { hasText: "Last edit" });
+    await expect(last).toContainText("alan");
+    await expect(last.locator("time.ago")).toHaveText("13 minutes ago");
+    await expect(last.locator("time.ago")).toHaveAttribute("title", /\d{2}:\d{2}, \d+ \w+ \d{4}/);
+    await expect(last.locator("a", { hasText: "changes" })).toHaveAttribute("href", /#\/diff\/pqc-migration-notes\/[0-9a-f]{40}\/[0-9a-f]{40}$/);
+    await expect(box.locator(".sc-row", { hasText: "Revision" })).toContainText("3 / 3");
+  });
+});
