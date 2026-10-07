@@ -123,6 +123,15 @@ body.side-empty .shell{grid-template-columns:minmax(0,1fr)}
 body.side-empty .side{display:none}
 body.menu-off .side .menu{display:none}
 .side{position:sticky;top:calc(var(--head-h) + 20px);align-self:start;max-height:calc(100vh - var(--head-h) - 40px);overflow:auto;font-size:16px;padding:4px 4px 20px 0}
+/* Slim sidebar scrollbar: invisible until the sidebar is hovered, focused or scrolled */
+.side{overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:transparent transparent;scrollbar-gutter:stable}
+.side:hover,.side:focus-within{scrollbar-color:var(--rule-2) transparent}
+.side::-webkit-scrollbar{width:8px}
+.side::-webkit-scrollbar-track{background:transparent}
+.side::-webkit-scrollbar-thumb{background:transparent;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+.side:hover::-webkit-scrollbar-thumb,.side:focus-within::-webkit-scrollbar-thumb{background-color:var(--rule-2)}
+.side::-webkit-scrollbar-thumb:hover{background-color:var(--ink-4)}
+@media (hover:none){.side{scrollbar-color:var(--rule-2) transparent}}
 .side-h{display:flex;align-items:center;justify-content:space-between;margin:20px 0 6px}
 .side nav:first-child .side-h:first-child{margin-top:4px}
 .side ul{list-style:none;margin:0;padding:0}
