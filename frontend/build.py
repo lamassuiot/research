@@ -27,6 +27,10 @@ worker_origin = f"{u.scheme}://{u.netloc}" if u.scheme and u.netloc else ""
 s = s.replace("__AUTH_WORKER_ORIGIN__", "'self'" if a.dev else worker_origin)
 s = s.replace("/*APP_CONFIG*/null", json.dumps(cfg, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
 s = s.replace("__SITE_NAME__", cfg["siteName"])
+# the icon font only carries the icons listed in frontend/icons.txt (Google wants them in alphabetical order)
+icons = sorted({l.strip() for l in (here / "icons.txt").read_text(encoding="utf-8").splitlines() if l.strip()})
+s = s.replace("__ICON_NAMES__", ",".join(icons))
+s = s.replace("__PRECONNECT_WORKER__", "" if a.dev or not worker_origin else f'<link rel="preconnect" href="{worker_origin}" crossorigin>')
 
 public = here.parent / "public"
 public.mkdir(exist_ok=True)

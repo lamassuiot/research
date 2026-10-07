@@ -183,6 +183,15 @@ async function installFakeGitHub(page, opts = {}) {
     const ref = history => ({ ref: { target: { history: { nodes: history } } } });
     let data;
     switch (op) {
+      case "Index": {
+        const f = [...repo.head().files.entries()], dir = (d, ext) => f.filter(([p]) => new RegExp(`^${d}/[^/]+$`).test(p));
+        const tree = (expr, withText) => { const d = expr.split(":")[1], es = dir(d); return es.length ? { entries: es.map(([p, v]) => ({ name: p.slice(d.length + 1), type: "blob",
+          object: withText === "size" ? { byteSize: Buffer.byteLength(v) } : { text: String(v) } })) } : null; };
+        const pageNames = [...new Set(f.map(([p]) => p).filter(p => p.startsWith("pages/")).map(p => p.split("/")[1]))];
+        data = { repository: { pages: pageNames.length ? { entries: pageNames.map(name => ({ name, type: "tree" })) } : null,
+          files: tree(v.files, "size"), projects: tree(v.projects, "text"), links: tree(v.links, "text") } }; break;
+      }
+      case "GetArticle": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) } }; break;
       case "ListFiles": {
         const files = [...repo.head().files.entries()].filter(([f]) => /^files\/[^/]+$/.test(f));
         data = { repository: { object: files.length ? { entries: files.map(([f, v]) => ({ name: f.slice(6), type: "blob", object: { byteSize: Buffer.byteLength(v) } })) } : null } }; break;

@@ -21,6 +21,13 @@ Ver la sección 4 de `TASK.md` y `content-template/README.md`: `tags.json`, `pag
 - `npm test`: tests unitarios (Worker y validador) + Playwright con GitHub simulado (`tests/helpers/fake-github.js`).
 - Para probar a mano: `node tests/helpers/static.js 8301` y abrir `http://127.0.0.1:8301/research/index.dev.html`.
 
+## Rendimiento (cada ida y vuelta a GitHub cuesta ~0,6 s: se cuentan las peticiones)
+- `refreshPages()` carga el **listado** (páginas, archivos, proyectos y enlaces) con `loadIndex()`: 2 viajes (uno con los árboles y los JSON pequeños de proyectos y enlaces; otro con los `meta.json` de las páginas, en trozos paralelos). Se reutiliza **60 s** (`PAGES_TTL`), las peticiones simultáneas se comparten y **toda escritura propia llama a `invalidatePages()`** (si añades una escritura nueva, hazlo). Las vistas llaman a `refreshPages()` sin forzar; solo el arranque fuerza.
+- Un artículo cuesta **una** consulta GraphQL (`GetArticle`: ficha + historial, que comparten `getPage`/`listRevs`/`getRev`, 20 s) y una lectura REST del contenido, que se guarda en memoria por id de commit (inmutable, ~24 MB). `GitHubStore.gql` vacía esa caché tras `CreateCommit`.
+- Arranque: `/user` y el permiso del repo en paralelo; etiquetas y listado en paralelo; la portada pide `recent(12, true)` (sin metas por revisión).
+- La fuente de iconos es un subconjunto (`frontend/icons.txt`, ~8 KB en lugar de 395 KB; el build lo pasa a `icon_names`, **si añades un icono nuevo, añádelo ahí**: `tests/web/icons.spec.js` falla si falta) y las hojas de fuentes cargan sin bloquear el primer pintado. Hay `preconnect` a `api.github.com` y al Worker.
+- `tests/web/perf.spec.js` fija el presupuesto de peticiones por navegación.
+
 ## Convenciones
 - Commits en inglés, en imperativo.
 - Cambios de UI: editar la plantilla, `npm run build` y commitear la plantilla junto con `public/` (el CI comprueba `git diff --exit-code public/`).

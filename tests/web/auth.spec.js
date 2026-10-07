@@ -96,10 +96,10 @@ test("a 401 from the API signs in again and returns to the same page", async ({ 
   const gh = await open(page);
   await expect(page.locator("h1.title")).toContainText("Welcome");
   gh.expireAll();
-  await page.evaluate(() => { location.hash = "#/tags"; });
-  await expect(page.locator("h1.title")).toHaveText("Tags");
+  await page.evaluate(() => { location.hash = "#/recent"; });          // a view that needs the API (the listing is cached)
+  await expect(page.locator("h1.title")).toContainText("Recent changes");
   expect(gh.authorizes).toHaveLength(2);
-  expect(page.url()).toBe("http://127.0.0.1:8301/research/#/tags");
+  expect(page.url()).toBe("http://127.0.0.1:8301/research/#/recent");
 });
 
 test("sign out revokes the token and shows the signed-out page without redirecting", async ({ page }) => {

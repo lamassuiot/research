@@ -138,3 +138,24 @@ Decisiones del usuario: el proyecto es **solo un contenedor** (sin contenido pro
 - **Se recuerda por diseño:** un ancho para el menú principal (`kb.sidew.n`) y otro para el modo proyecto (`kb.sidew.p`), en este navegador. Con un ancho propio en modo proyecto, el contenido deja de tener su máximo fijo y ocupa el resto de la pantalla, de modo que más barra significa menos contenido y al revés (sin ancho propio sigue el reparto automático anterior).
 - **Dónde no aparece:** en pantallas estrechas (cajón lateral), con la barra oculta, en el modo de informe a ancho completo y en la pantalla de acceso. Durante el arrastre se desactivan los iframes (los informes HTML no capturan el ratón) y las transiciones.
 - **Tests:** 4 de Playwright (arrastrar y que el contenido ceda, recordarlo tras recargar, límites, teclado, restablecer; anchos independientes entre menú y proyecto; sin tirador en el móvil).
+
+## 15. Rendimiento
+
+Medido con el GitHub simulado (cuenta las peticiones) y con llamadas reales a la API desde esta máquina (0,6–0,8 s cada una, así que cada petición evitada o encadenada de menos son unos 0,6 s).
+
+| Navegación | Antes | Ahora |
+|---|---|---|
+| Arranque hasta la portada | 16 peticiones (el listado completo, dos veces) | **7** (`/token`, `/user`, repo, etiquetas, listado ×2, recientes) |
+| Abrir un artículo | 6 peticiones en cadena (≈5 viajes) | **2** (≈2 viajes) |
+| Abrir el mismo artículo otra vez | 6 | **0** (historial y contenido en memoria) |
+| Proyecto, etiqueta, etiquetas, enlaces, proyectos | 2–7 | **0** (listado en caché) |
+| Historial / info de un artículo ya abierto | 3–4 | **0** |
+
+- **Un solo listado, compartido y en caché:** `loadIndex()` trae todo en 2 viajes (árboles de `pages/`, `files/`, `projects/` y `links/` con los JSON pequeños en línea, y los `meta.json` de las páginas en trozos paralelos). Se reutiliza 60 s, se comparte entre llamadas simultáneas y toda escritura propia lo invalida al instante. Las vistas ya no fuerzan la recarga en cada visita.
+- **Un artículo = una consulta (`GetArticle`) + una lectura de contenido.** El contenido de una revisión es inmutable, así que se guarda en memoria por id de commit (hasta ~24 MB). Se vacía la caché del artículo tras un commit propio.
+- **Arranque más corto:** `/user` y el permiso del repositorio en paralelo, etiquetas y listado en paralelo, y la portada pide los recientes en su versión ligera (sin consultar la meta de cada revisión).
+- **Búsqueda:** el índice de texto pide 1 lectura por artículo (antes 2-3 peticiones), por rama, sin necesitar el id de commit.
+- **Carga de la página:** la fuente de iconos pasa de **395 KB a ~8 KB** (solo los ~70 iconos usados, `frontend/icons.txt`), las hojas de fuentes ya no bloquean el primer pintado, y hay `preconnect` a `api.github.com`, al Worker y a las fuentes. Un test recorre todas las vistas y falla si alguna muestra un icono que no está en el subconjunto.
+- **Verificado contra GitHub real (solo lectura):** `Index` y `GetArticle` se aceptan sin errores de esquema.
+- **Tests:** `perf.spec.js` fija el presupuesto de peticiones por navegación y `icons.spec.js` vigila el subconjunto de iconos.
+- **Lo que sigue costando:** cada **carga completa** de la página (F5, abrir un enlace en una pestaña nueva) repite el inicio de sesión por GitHub (`/authorize` → Worker → `/user`), unos 3 viajes, porque el token solo vive en memoria; navegar dentro de la app no recarga. Reducirlo exigiría guardar el token en `sessionStorage`, lo que se descartó por seguridad (misma origen que la web de Lamassu). Otras mejoras posibles: mostrar el listado antiguo mientras se refresca (*stale-while-revalidate*) y un `index.json` mantenido por el repo para evitar el segundo viaje del listado.

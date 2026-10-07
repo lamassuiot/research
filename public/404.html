@@ -7,8 +7,13 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://avatars.githubusercontent.com; connect-src https://api.github.com https://research-auth.hsaizsierra.workers.dev 'self'; worker-src 'self'; frame-src 'self' about:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230100f8'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23fff'/%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&display=block" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.github.com" crossorigin>
+<link rel="preconnect" href="https://research-auth.hsaizsierra.workers.dev" crossorigin>
+<!-- Fonts load without blocking the first paint. The icon font holds only the icons this page uses (about 8 KB instead of 395 KB). -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script>try{var t=localStorage.getItem("kb.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/**
  * marked v12.0.2 - a markdown parser
@@ -885,7 +890,7 @@ const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
 
 /* The private content repository on GitHub, read and written from the browser with the signed-in user's token. */
 class GitHubStore{
-  constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; }
+  constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; this._art = new Map(); this._content = new Map(); this._contentChars = 0; }
   get full(){ return this.owner + "/" + this.repo; }
   async gh(path, opt){
     opt = opt || {};
@@ -908,17 +913,16 @@ class GitHubStore{
     const r = await this.gh("/graphql", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({query, variables, operationName})});
     const j = await r.json();
     if(j.errors && j.errors.length) throw Object.assign(new Error(j.errors[0].message), {gqlType:j.errors[0].type});
+    if(operationName === "CreateCommit") this._art.clear();          // our own commit: anything cached about articles may be stale
     return j.data;
   }
   v(extra){ return Object.assign({owner:this.owner, name:this.repo, ref:"refs/heads/" + this.branch}, extra); }
   slug(slug){ if(!SLUG_RE.test(slug)) throw Object.assign(new Error("Invalid article address"), {status:404}); return slug; }
 
   async me(){
-    const u = await (await this.gh("/user")).json();
-    let repo;
-    try{ repo = await (await this.gh("/repos/" + this.full)).json(); }
-    catch(e){
-      if(e.rateLimited || (e.status && e.status !== 404 && e.status !== 403)) throw e;
+    const [u, repo] = await Promise.all([this.gh("/user").then(r => r.json()), this.gh("/repos/" + this.full).then(r => r.json()).catch(e => e)]);
+    if(repo instanceof Error){
+      if(repo.rateLimited || (repo.status && repo.status !== 404 && repo.status !== 403)) throw repo;
       throw Object.assign(new Error("No access"), {status:403, noAccess:true, login:u.login});
     }
     const p = repo.permissions || {};
@@ -933,6 +937,32 @@ class GitHubStore{
   }
   async names(ids){ const o = {}; for(const id of ids) if(id) o[id] = id; return o; }
 
+  /* Everything the app lists, in two round trips: (1) the trees of pages/files/projects/links, with the small project and link
+     files inline; (2) the metas of all pages, in parallel chunks. */
+  async loadIndex(){
+    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$pages:String!,$files:String!,$projects:String!,$links:String!){ repository(owner:$owner,name:$name){
+        pages: object(expression:$pages){ ... on Tree { entries { name type } } }
+        files: object(expression:$files){ ... on Tree { entries { name type object { ... on Blob { byteSize } } } } }
+        projects: object(expression:$projects){ ... on Tree { entries { name type object { ... on Blob { text } } } } }
+        links: object(expression:$links){ ... on Tree { entries { name type object { ... on Blob { text } } } } } } }`,
+      {owner:this.owner, name:this.repo, pages:this.branch + ":pages", files:this.branch + ":files", projects:this.branch + ":projects", links:this.branch + ":links"});
+    const r = d.repository || {}, entries = k => (r[k] && r[k].entries) || [];
+    const projects = entries("projects").filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => ({id:e.name.slice(0, -5), m:metaOf(e.object && e.object.text)}))
+      .filter(x => x.m && typeof x.m.title === "string").map(x => Object.assign({items:[]}, x.m, {id:x.id}));
+    const links = entries("links").filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => ({id:e.name.slice(0, -5), m:metaOf(e.object && e.object.text)}))
+      .filter(x => x.m && typeof x.m.url === "string").map(x => Object.assign({}, x.m, {id:x.id}));
+    const files = entries("files").filter(e => e.type === "blob" && FILE_RE.test(e.name)).map(e => ({name:e.name, size:(e.object && e.object.byteSize) || 0}));
+    const slugs = entries("pages").filter(e => e.type === "tree" && SLUG_RE.test(e.name)).map(e => e.name);
+    const chunks = []; for(let i = 0; i < slugs.length; i += 50) chunks.push(slugs.slice(i, i + 50));
+    const pages = (await Promise.all(chunks.map(async chunk => {
+      const vars = {owner:this.owner, name:this.repo};
+      chunk.forEach((sl, k) => vars["e" + k] = `${this.branch}:pages/${sl}/meta.json`);
+      const q = `query PageMetas($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+      const rr = (await this.gql("PageMetas", q, vars)).repository || {};
+      return chunk.map((sl, k) => { const m = metaOf(rr["m" + k] && rr["m" + k].text); return m ? publicMeta(sl, m) : null; }).filter(Boolean);
+    }))).flat();
+    return {pages, files, projects, links};
+  }
   async listPages(){
     const d = await this.gql("ListPages", `query ListPages($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
       {owner:this.owner, name:this.repo, expr:this.branch + ":pages"});
@@ -948,7 +978,7 @@ class GitHubStore{
     }
     return out;
   }
-  async getPage(slug){
+  async getPageLight(slug){      // latest revision only (used by the search index)
     this.slug(slug);
     const d = await this.gql("GetPage", `query GetPage($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!){ repository(owner:$owner,name:$name){
         meta: object(expression:$metaExpr){ ${BLOB} }
@@ -959,25 +989,61 @@ class GitHubStore{
     const node = r.ref && r.ref.target && r.ref.target.history && r.ref.target.history.nodes[0];
     return Object.assign(publicMeta(slug, m), {rev:node ? node.oid : null});
   }
+  /* One query returns the page and its history; getPage, listRevs and getRev all read from it. Short-lived: it is dropped after our own commits. */
+  _article(slug){
+    this.slug(slug);
+    const hit = this._art.get(slug);
+    if(hit && Date.now() - hit.at < 20000) return hit.p;
+    const p = this.gql("GetArticle", `query GetArticle($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!,$file:String!){ repository(owner:$owner,name:$name){
+        meta: object(expression:$metaExpr){ ${BLOB} }
+        ref(qualifiedName:$ref){ target { ... on Commit { history(first:100, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
+          file(path:$file){ object { ${BLOB} } } } } } } } } }`,
+      this.v({metaExpr:`${this.branch}:pages/${slug}/meta.json`, path:"pages/" + slug, file:`pages/${slug}/meta.json`})).then(d => {
+      const r = d.repository || {}, nodes = (r.ref && r.ref.target && r.ref.target.history && r.ref.target.history.nodes) || [];
+      // TODO: paginate beyond 100 revisions
+      const revs = nodes.map(c => { const m = metaOf(c.file && c.file.object && c.file.object.text); return m && m.revN != null ? Object.assign({slug}, this.revOf(c, m)) : null; }).filter(Boolean);
+      return {meta:metaOf(r.meta && r.meta.text), revs};
+    });
+    this._art.set(slug, {at:Date.now(), p});
+    p.catch(() => this._art.delete(slug));
+    return p;
+  }
+  async getPage(slug){
+    const a = await this._article(slug);
+    return a.meta ? Object.assign(publicMeta(slug, a.meta), {rev:a.revs[0] ? a.revs[0].id : null}) : null;
+  }
+  async listRevs(slug){ return (await this._article(slug)).revs; }
+  /* Content of a revision is immutable (a commit id), so it is kept in memory for the session; at most ~24 MB. */
+  async _readContent(slug, oid, format){
+    const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
+    if(hit !== undefined){ this._content.delete(key); this._content.set(key, hit); return hit; }
+    let res;
+    try{ res = await this.gh(`/repos/${this.full}/contents/pages/${slug}/content.${format === "html" ? "html" : "md"}?ref=${oid}`, {headers:{Accept:"application/vnd.github.raw+json"}}); }
+    catch(e){ if(e.status === 404) return null; throw e; }
+    const text = await res.text();
+    this._content.set(key, text); this._contentChars += text.length;
+    while(this._contentChars > 24e6 && this._content.size > 1){ const [k, v] = this._content.entries().next().value; this._content.delete(k); this._contentChars -= v.length; }
+    return text;
+  }
+  async getLatestContent(slug, format){    // for the search index: no commit id needed
+    this.slug(slug);
+    const res = await this.gh(`/repos/${this.full}/contents/pages/${slug}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
+    return res.text();
+  }
   revOf(c, m){
     const u = c.author && c.author.user;
     if(u && u.login && u.avatarUrl) S.avatars[u.login] = u.avatarUrl;
     return {id:c.oid, n:m.revN, at:c.authoredDate, by:(c.author && c.author.user && c.author.user.login) || (c.author && c.author.name) || null,
       summary:c.messageHeadline, size:m.size, format:m.format, status:m.status, title:m.title, tags:m.tags||[], sha256:m.sha256};
   }
-  async listRevs(slug){
-    this.slug(slug);
-    const d = await this.gql("ListRevs", `query ListRevs($owner:String!,$name:String!,$ref:String!,$path:String!,$file:String!){ repository(owner:$owner,name:$name){
-        ref(qualifiedName:$ref){ target { ... on Commit { history(first:100, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
-          file(path:$file){ object { ${BLOB} } } } } } } } } }`,
-      this.v({path:"pages/" + slug, file:`pages/${slug}/meta.json`}));
-    // TODO: paginate beyond 100 revisions
-    const nodes = (d.repository && d.repository.ref && d.repository.ref.target && d.repository.ref.target.history && d.repository.ref.target.history.nodes) || [];
-    return nodes.map(c => { const m = metaOf(c.file && c.file.object && c.file.object.text); return m && m.revN != null ? Object.assign({slug}, this.revOf(c, m)) : null; }).filter(Boolean);
-  }
   async getRev(slug, sha){
     this.slug(slug);
     if(!SHA_RE.test(String(sha))) return null;
+    const a = await this._article(slug), hit = a.revs.find(r => r.id === sha || r.id.startsWith(sha));
+    if(hit){ const content = await this._readContent(slug, hit.id, hit.format); return content == null ? null : Object.assign({}, hit, {content}); }
+    return this._getRevSlow(slug, sha);          // older than the 100 revisions of the history
+  }
+  async _getRevSlow(slug, sha){
     const d = await this.gql("GetRev", `query GetRev($owner:String!,$name:String!,$sha:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
         commit: object(expression:$sha){ ... on Commit { oid authoredDate messageHeadline ${AUTHOR} } }
         meta: object(expression:$metaExpr){ ${BLOB} } } }`,
@@ -991,7 +1057,7 @@ class GitHubStore{
     }catch(e){ if(e.status === 404) return null; throw e; }
     return Object.assign({slug}, this.revOf(r.commit, m), {content:await res.text()});
   }
-  async recent(limit){
+  async recent(limit, light){
     limit = limit || 60;
     const d = await this.gql("Recent", `query Recent($owner:String!,$name:String!,$ref:String!,$path:String!,$n:Int!){ repository(owner:$owner,name:$name){
         ref(qualifiedName:$ref){ target { ... on Commit { history(first:$n, path:$path){ nodes { oid authoredDate messageHeadline message ${AUTHOR} } } } } } } }`,
@@ -999,6 +1065,8 @@ class GitHubStore{
     const nodes = (d.repository && d.repository.ref && d.repository.ref.target && d.repository.ref.target.history && d.repository.ref.target.history.nodes) || [];
     const items = nodes.map(c => { const m = /^Know-how-Page:\s*(\S+)\s*$/m.exec(c.message || ""); return m && SLUG_RE.test(m[1]) ? {c, slug:m[1]} : null; }).filter(Boolean);
     if(!items.length) return [];
+    if(light) return items.map(x => ({id:x.c.oid, slug:x.slug, at:x.c.authoredDate, summary:x.c.messageHeadline, title:(S.pages.find(p => p.slug === x.slug) || {}).title || x.slug,
+      by:(x.c.author && x.c.author.user && x.c.author.user.login) || (x.c.author && x.c.author.name) || null}));
     const vars = {owner:this.owner, name:this.repo};
     items.forEach((x, k) => vars["e" + k] = `${x.c.oid}:pages/${x.slug}/meta.json`);
     const q = `query RecentMetas($owner:String!,$name:String!${items.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${items.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
@@ -1088,6 +1156,7 @@ class GitHubStore{
       const commit = await post("commits", {message, tree:tree.sha, parents:[head]});
       try{
         await post(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
+        this._art.clear();
         return {rev:commit.sha};
       }catch(e){
         if(e.status !== 422 && e.status !== 409) throw e;   // 422 "Update is not a fast forward": main moved meanwhile
@@ -1235,6 +1304,7 @@ class MemoryStore{
   }
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
+  async loadIndex(){ return {pages:await this.listPages(), files:await this.listFiles(), projects:await this.listProjects(), links:await this.listLinks()}; }
   async listProjects(){ return Object.entries(this.projects).map(([id, p]) => Object.assign({id}, cloneJson(p))); }
   async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
   async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
@@ -1371,17 +1441,30 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { projects:[], loc:new Map(), placed:new Set(), itemProject:new Map(), inTagged:new Set(), avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { pagesGen:0, projects:[], loc:new Map(), placed:new Set(), itemProject:new Map(), inTagged:new Set(), avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
 const allTags = () => [...S.tags, ...[...new Set([...S.pages.flatMap(p => p.tags||[]), ...S.projects.flatMap(p => p.tags||[])])].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
-async function refreshPages(force){
-  if(!force && Date.now() - S.pagesAt < 4000) return S.pages;
-  try{
-    const [pages, files, projects] = await Promise.all([S.store.listPages(), S.store.listFiles().catch(e => { console.warn(e); return S.files; }), S.store.listProjects().catch(e => { console.warn(e); return S.projects; })]);
-    S.pages = pages; S.files = files; S.projects = projects; S.pagesAt = Date.now(); indexProjects();
-  }catch(e){ console.error(e); }
-  renderSide();
-  return S.pages;
+/* The listing (pages, files, projects, links) is loaded once and reused for PAGES_TTL; our own writes drop it at once
+   (invalidatePages), and concurrent callers share the request in flight. */
+const PAGES_TTL = 60000;
+let pagesLoading = null;
+function invalidatePages(){ S.pagesAt = 0; S.pagesGen++; pagesLoading = null; }
+function refreshPages(force){
+  if(!force && S.pagesAt && Date.now() - S.pagesAt < PAGES_TTL) return Promise.resolve(S.pages);
+  if(pagesLoading) return pagesLoading;
+  const gen = S.pagesGen;
+  const run = (async () => {
+    try{
+      const ix = await S.store.loadIndex();
+      if(gen === S.pagesGen){ S.pages = ix.pages; S.files = ix.files; S.projects = ix.projects; S.links = ix.links; S.pagesAt = Date.now(); indexProjects(); }
+    }catch(e){ console.error(e); }
+    finally{ if(pagesLoading === run) pagesLoading = null; }
+    if(gen !== S.pagesGen) return refreshPages(true);          // a write happened meanwhile: this answer is stale
+    renderSide();
+    return S.pages;
+  })();
+  pagesLoading = run;
+  return run;
 }
 async function resolveNames(ids){
   const need = [...new Set(ids.filter(id => id && !(id in S.names)))];
@@ -1688,8 +1771,7 @@ const deltaSpan = d => `<span class="delta ${d>0?"pos":d<0?"neg":"zero"}${Math.a
 async function viewHome(){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading…</div>');
-  const pages = await refreshPages(true);
-  let recent = []; try{ recent = await S.store.recent(12); }catch(e){ console.warn(e); }
+  const [pages, recent] = await Promise.all([refreshPages(), S.store.recent(12, true).catch(e => { console.warn(e); return []; })]);
   await resolveNames(recent.map(r=>r.by));
   const byDate = (a,b) => (b.updatedAt||"").localeCompare(a.updatedAt||"");
   const featured = pages.filter(p=>p.status==="validated").sort(byDate)[0] || pages.slice().sort(byDate)[0];
@@ -1738,7 +1820,7 @@ function groupedList(pages){
 }
 async function viewList(title, pred, kind, help){
   const nav = S.nav;
-  const all = await refreshPages(true);
+  const all = await refreshPages();
   const pages = all.filter(pred).filter(p => kind !== "Tag" || !S.inTagged.has("page:" + p.slug)).sort((a,b)=>a.title.localeCompare(b.title));
   const tagProjects = kind === "Tag" ? taggedProjects().filter(pr => pr.tags.includes(title)).sort((a,b) => a.title.localeCompare(b.title)) : [];
   const tagLinks = kind === "Tag" ? (await refreshLinks()).filter(l => (l.tags||[]).includes(title) && !S.inTagged.has("link:" + l.id)).sort((a,b) => (b.addedAt||"").localeCompare(a.addedAt||"")) : [];
@@ -1758,7 +1840,7 @@ async function viewList(title, pred, kind, help){
 }
 async function viewTags(){
   const nav = S.nav;
-  const pages = await refreshPages(true);
+  const pages = await refreshPages();
   const counts = tagCounts();
   setMainFor(nav, `<h1 class="title">Tags</h1>
     <p class="muted" style="margin:0 0 10px;font-size:16px">Every article carries one or more of these tags. Tags without articles are shown in red.</p>
@@ -1932,7 +2014,7 @@ async function viewDiff(slug, aId, bId){
     try{
       await S.store.save(slug, {title:a.title||page.title, tags:(a.tags && a.tags.length ? a.tags : page.tags), status:a.status||page.status,
         format:a.format||page.format, abstract:page.abstract, summary:`Restored revision ${a.n}`, content:a.content}, page.revN);
-      toast(`Restored revision ${a.n}.`); S.pagesAt=0; location.hash = "#/wiki/"+slug;
+      toast(`Restored revision ${a.n}.`); invalidatePages(); location.hash = "#/wiki/"+slug;
     }catch(err){ toast(err.message||String(err), 6000); }
   };
   bindTools({slug, page, rev:b});
@@ -2000,8 +2082,9 @@ async function loadTexts(pages, onProgress){
   let done = 0;
   const work = async p => {
     try{
-      const rid = p.rev || (await S.store.getPage(p.slug))?.rev;
-      const r = rid ? await S.store.getRev(p.slug, rid) : null;
+      let r = null;
+      if(S.store.getLatestContent){ const c = await S.store.getLatestContent(p.slug, p.format); r = {content:c, format:p.format}; }
+      else { const rid = p.rev || (await S.store.getPage(p.slug))?.rev; r = rid ? await S.store.getRev(p.slug, rid) : null; }
       if(r) S.texts[p.slug] = {revN:p.revN, text:(r.format||p.format)==="html" ? htmlText(r.content) : mdText(r.content)};
     }catch(e){ console.warn(e); }
     onProgress && onProgress(++done, todo.length);
@@ -2020,7 +2103,7 @@ async function viewSearch(q){
     <div id="sr-top"></div><p class="muted" id="sr-status" style="font-size:15px"></p><ul class="sr" id="sr"></ul>${footer()}`);
   $("#sbig").onsubmit = e => { e.preventDefault(); location.hash = "#/search?q=" + enc($("#q2").value.trim()); };
   if(!q){ $("#sr-status").textContent = "Type a word or phrase: titles, abstracts, tags and the full text of every article are searched."; return; }
-  const pages = await refreshPages(true);
+  const pages = await refreshPages();
   const t = q.toLowerCase();
   const exact = pages.find(p => p.title.toLowerCase() === t || p.slug === slugify(q));
   $("#sr-top").innerHTML = exact
@@ -2290,7 +2373,7 @@ async function viewEdit(slug, params){
     const btn = $("#saveBtn"); const lbl = btn.lastElementChild; btn.disabled = true; lbl.textContent = "Publishing…";
     try{
       const res = await S.store.save(target, data, isNew ? 0 : baseRevN, isNew && $("#f-proj") && $("#f-proj").value ? {project:$("#f-proj").value, parent:$("#f-par").value || null} : null);
-      S.pagesAt = 0;
+      invalidatePages();
       toast(res.conflict ? `Saved as revision ${res.n}. Someone else edited in between: check the history.` : `Saved revision ${res.n}.`, res.conflict?7000:3200);
       location.hash = "#/wiki/" + target;
     }catch(err){
@@ -2389,7 +2472,7 @@ function downloadBytes(name, data){
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 const readAsBase64 = file => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
-async function refreshFiles(){ try{ S.files = await S.store.listFiles(); }catch(e){ console.warn(e); } return S.files; }
+async function refreshFiles(){ invalidatePages(); await refreshPages(); return S.files; }
 
 /* Upload form: used on the Files page (new file) and on a file page (new version of that file). */
 function uploadForm(fixedName){
@@ -2449,7 +2532,7 @@ function bindUploadForm(fixedName, done, place){
         if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
         const sha = hex(await crypto.subtle.digest("SHA-256", data));
         await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || null);
-        S.pagesAt = 0;
+        invalidatePages();
         done_.push(name);
       }
       st.textContent = ""; toast(done_.length > 1 ? `Uploaded ${done_.length} files.` : `Uploaded ${done_[0]}.`);
@@ -2465,7 +2548,7 @@ function bindUploadForm(fixedName, done, place){
 async function viewFiles(params){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading files…</div>');
-  await refreshPages(true);
+  await refreshPages();
   const files = S.files.slice().sort((a,b) => a.name.localeCompare(b.name));
   const place = params && params.get("project") && projectOf(params.get("project")) ? {project:params.get("project"), parent:params.get("parent") || null} : null;
   setMainFor(nav, `<h1 class="title">Files</h1><div class="tabs"><nav><a class="on">Files</a></nav><nav></nav></div><div class="maturity"></div>
@@ -2533,7 +2616,7 @@ const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
 const KIND_LABEL = {news:"News", blog:"Blog", paper:"Paper", video:"Video", docs:"Docs", other:"Other"};
 function isHttpUrl(u){ try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") && !x.username && !x.password; }catch{ return false; } }
 const hostOf = u => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch{ return ""; } };
-async function refreshLinks(){ try{ S.links = await S.store.listLinks(); }catch(e){ console.warn(e); } renderSideTree(); return S.links; }
+async function refreshLinks(force){ await refreshPages(force); renderSideTree(); return S.links; }
 function linkCard(l){
   const tags = (l.tags || []).map(t => `<a class="tag" href="#/links?tag=${enc(t)}">${esc(t)}</a>`).join("");
   return `<li class="linkcard" data-id="${esc(l.id)}">
@@ -2582,7 +2665,7 @@ async function viewLinks(params){
   $$("[data-del]").forEach(b => b.onclick = async () => {
     const l = links.find(x => x.id === b.dataset.del); if(!l || !confirm(`Remove “${l.title}”? It stays in the repository history.`)) return;
     b.disabled = true;
-    try{ await S.store.deleteLink(l.id, l.title); toast("Link removed."); route(); }catch(err){ b.disabled = false; toast(err.message || String(err), 7000); }
+    try{ await S.store.deleteLink(l.id, l.title); invalidatePages(); toast("Link removed."); route(); }catch(err){ b.disabled = false; toast(err.message || String(err), 7000); }
   });
   const f = $("#lf"); if(!f) return;
   f.onsubmit = async e => {
@@ -2598,7 +2681,7 @@ async function viewLinks(params){
     const btn = $("#l-save"); btn.disabled = true;
     try{
       await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags}, editing, place);
-      S.pagesAt = 0;
+      invalidatePages();
       toast(editing ? "Link saved." : "Link added.");
       const dest = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : "#/links" + (tag ? "?tag=" + enc(tag) : "");
       if(location.hash === dest) route(); else location.hash = dest;
@@ -2725,7 +2808,7 @@ const projectsBoxHtml = () => S.projects.length ? `<section class="mp-box t-slat
 async function viewProjects(){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading projects…</div>');
-  await refreshPages(true);
+  await refreshPages();
   const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
   setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
     <p class="muted" style="margin:0 0 12px;font-size:16px">A project groups pages (with sub-pages), external links and PDF files. Its structure is kept in one file, so moving or reordering things never changes the items themselves.</p>
@@ -2744,7 +2827,7 @@ async function viewProjects(){
     const id = slugify(title);
     if(S.projects.some(p => p.id === id) || S.pages.some(p => p.slug === id)){ toast("That address is already used by a project or an article. Pick another title.", 6000); return; }
     const btn = $("#np-btn"); btn.disabled = true;
-    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), tags:$$("input[name=ptag]:checked").map(x => x.value)}); S.pagesAt = 0; toast("Project created."); location.hash = "#/wiki/" + enc(id); }
+    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), tags:$$("input[name=ptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project created."); location.hash = "#/wiki/" + enc(id); }
     catch(err){ btn.disabled = false; toast(err.message || String(err), 7000); }
   };
 }
@@ -2797,7 +2880,7 @@ async function viewProject(id, params){
     ${footer()}`);
   if($("#proj-intro")) hydrateEmbeds($("#proj-intro"));
   const run = async (summary, fn, done) => {
-    try{ await S.store.updateProjectItems(id, summary, fn); S.pagesAt = 0; if(done) done(); else route(); }
+    try{ await S.store.updateProjectItems(id, summary, fn); invalidatePages(); if(done) done(); else route(); }
     catch(err){ console.error(err); toast(err.message || String(err), 7000); }
   };
   $$(".pt-ctl [data-op]").forEach(b => b.onclick = () => {
@@ -2809,10 +2892,10 @@ async function viewProject(id, params){
     run(`Add to project: ${pr.title}`, i => treeAdd(i, {type, id:item}, $("#ae-par").value || null), null);
   };
   const ep = $("#epf"); if(ep){
-    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); S.pagesAt = 0; toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
       if(!confirm(`Delete the project “${pr.title}”? Its pages, links and files are kept; they just stop being grouped.`)) return;
-      try{ await S.store.deleteProject(id, pr.title); S.pagesAt = 0; toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
+      try{ await S.store.deleteProject(id, pr.title); invalidatePages(); toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
     };
   }
 }
@@ -2997,6 +3080,10 @@ function setupTheme(){
   syncThemeBtn();
 }
 
+/* Icons stay hidden until their font is there (the font stylesheet loads without blocking the page). */
+function checkIcons(){
+  try{ document.fonts && document.fonts.load('20px "Material Symbols Rounded"', "search").then(f => { if(f && f.length) document.documentElement.classList.add("icons"); }); }catch{}
+}
 (async function boot(){
   setupTheme(); setupTree(); setupResizer();
   if(lsGet("kb.menu") === "off") document.body.classList.add("menu-off");
@@ -3008,7 +3095,7 @@ function setupTheme(){
   $("#backdrop").onclick = closeDrawer;
   matchMedia("(max-width:1000px)").addEventListener?.("change", () => { closeDrawer(); syncSide(); });
   setupSearch();
-  try{ document.fonts && document.fonts.load('20px "Material Symbols Rounded"', "search").then(f => { if(f && f.length) document.documentElement.classList.add("icons"); }); }catch{}
+  checkIcons();
   if(CONFIG.devMemoryStore){ document.body.classList.remove("gated"); }
   else if(!(await authBoot())) return;
   S.store = pickStore();
@@ -3020,7 +3107,7 @@ function setupTheme(){
     return;
   }
   if(S.me.id && S.me.avatar) S.avatars[S.me.id] = S.me.avatar;
-  try{ S.tags = await S.store.tags(); }catch(e){ console.warn(e); S.tags = []; }
+  const tagsP = S.store.tags().catch(e => { console.warn(e); return []; });
   document.body.classList.remove("gated");
   document.title = SITE;
   if(!S.me.canWrite) $("#newBtn").style.display = "none";
@@ -3028,7 +3115,8 @@ function setupTheme(){
   $("#modeNote").innerHTML = S.store.kind === "memory"
     ? ambox("warn","warning",'<p style="font-size:13.5px">Development build: data lives in this tab only.</p>')
     : `Storage: GitHub · ${esc(S.store.full)}`;
-  await refreshPages(true);
+  const [tags] = await Promise.all([tagsP, refreshPages(true)]);
+  S.tags = tags; renderSide();
   addEventListener("hashchange", route);
   route();
 })();
