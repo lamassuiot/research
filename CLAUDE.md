@@ -21,6 +21,9 @@ Ver la sección 4 de `TASK.md` y `content-template/README.md`: `tags.json`, `pag
 - `npm test`: tests unitarios (Worker y validador) + Playwright con GitHub simulado (`tests/helpers/fake-github.js`).
 - Para probar a mano: `node tests/helpers/static.js 8301` y abrir `http://127.0.0.1:8301/research/index.dev.html`.
 
+## Tarjetas
+Todas las tarjetas (enlaces, accesos rápidos, proyectos, PDF incrustado) usan `.ucard`: `.uc-body` (título `.uc-t`, descripción `.uc-d`, origen `.uc-src` con `.uc-ico`) y un panel `.uc-media` a la derecha. El color sale de `--h` (matiz derivado del dominio con `hostHue`). En las tarjetas con elementos interactivos el enlace principal es `a.uc-main` (se estira con `::after`) y lo demás lleva `position:relative; z-index:1`.
+
 ## Rendimiento (cada ida y vuelta a GitHub cuesta ~0,6 s: se cuentan las peticiones)
 - `refreshPages()` carga el **listado** (páginas, archivos, proyectos y enlaces) con `loadIndex()`: 2 viajes (uno con los árboles y los JSON pequeños de proyectos y enlaces; otro con los `meta.json` de las páginas, en trozos paralelos). Se reutiliza **60 s** (`PAGES_TTL`), las peticiones simultáneas se comparten y **toda escritura propia llama a `invalidatePages()`** (si añades una escritura nueva, hazlo). Las vistas llaman a `refreshPages()` sin forzar; solo el arranque fuerza.
 - Un artículo cuesta **una** consulta GraphQL (`GetArticle`: ficha + historial, que comparten `getPage`/`listRevs`/`getRev`, 20 s) y una lectura REST del contenido, que se guarda en memoria por id de commit (inmutable, ~24 MB). `GitHubStore.gql` vacía esa caché tras `CreateCommit`.

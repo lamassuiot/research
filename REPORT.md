@@ -159,3 +159,10 @@ Medido con el GitHub simulado (cuenta las peticiones) y con llamadas reales a la
 - **Verificado contra GitHub real (solo lectura):** `Index` y `GetArticle` se aceptan sin errores de esquema.
 - **Tests:** `perf.spec.js` fija el presupuesto de peticiones por navegación y `icons.spec.js` vigila el subconjunto de iconos.
 - **Lo que sigue costando:** cada **carga completa** de la página (F5, abrir un enlace en una pestaña nueva) repite el inicio de sesión por GitHub (`/authorize` → Worker → `/user`), unos 3 viajes, porque el token solo vive en memoria; navegar dentro de la app no recarga. Reducirlo exigiría guardar el token en `sessionStorage`, lo que se descartó por seguridad (misma origen que la web de Lamassu). Otras mejoras posibles: mostrar el listado antiguo mientras se refresca (*stale-while-revalidate*) y un `index.json` mantenido por el repo para evitar el segundo viaje del listado.
+
+## 16. Tarjetas con el estilo de la vista previa de un enlace
+
+- **Una sola tarjeta (`.ucard`) para todo:** enlaces, accesos rápidos del proyecto, proyectos (lista, etiquetas y portada) y PDFs incrustados. Horizontal, con el título en negrita, la descripción (2 líneas), una fila de **origen con icono y nombre** y un **panel visual a la derecha**, a ras del borde, con una barra de acento en la base.
+- **Enlaces:** icono de origen (cuadrado con la inicial del sitio y un color derivado del dominio), dominio, tipo, etiquetas y "added by…", con *Edit* y *Remove*. **Toda la tarjeta es el enlace** (enlace estirado), y las etiquetas y botones quedan por encima.
+- **Panel derecho:** se **genera** a partir del dominio (inicial grande sobre un degradado del mismo color); los PDFs usan el rojo con el icono de PDF, y los proyectos, la carpeta. Claro y oscuro con los mismos tokens; en pantallas estrechas el panel se reduce.
+- **No hay imágenes reales de las webs** (la portada que muestra Slack o un blog): la app no contacta con esos sitios y la CSP no permite imágenes externas. Mostrarlas exigiría decidir cómo obtenerlas (ver abajo).

@@ -35,6 +35,7 @@ __PRECONNECT_WORKER__
   --del-word:#e8c565; --ins-word:#82b9eb;
   --logo-dark:none; --logo-light:block;
   --head-h:64px;
+  --uc-l1:94%; --uc-l2:87%; --uc-ink:36%;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -46,7 +47,7 @@ __PRECONNECT_WORKER__
     --info-soft:#164e8c40; --warn:#e8c565; --warn-soft:#73500040; --warn-soft-2:#73500026; --warn-border:#806000;
     --err-soft:#c53c1d33; --ok:#4ade80; --ok-soft:#176b2a4d; --slate-soft:#34495e66; --slate-border:#4d6377;
     --del-word:#806000; --ins-word:#164e8c;
-    --logo-dark:block; --logo-light:none;
+    --logo-dark:block; --logo-light:none; --uc-l1:19%; --uc-l2:27%; --uc-ink:78%;
   }
 }
 :root[data-theme="dark"]{
@@ -58,7 +59,7 @@ __PRECONNECT_WORKER__
   --info-soft:#164e8c40; --warn:#e8c565; --warn-soft:#73500040; --warn-soft-2:#73500026; --warn-border:#806000;
   --err-soft:#c53c1d33; --ok:#4ade80; --ok-soft:#176b2a4d; --slate-soft:#34495e66; --slate-border:#4d6377;
   --del-word:#806000; --ins-word:#164e8c;
-  --logo-dark:block; --logo-light:none;
+  --logo-dark:block; --logo-light:none; --uc-l1:19%; --uc-l2:27%; --uc-ink:78%;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:calc(var(--head-h) + 16px)}
@@ -578,21 +579,37 @@ body.proj-mode.menu-off.side-empty .shell{grid-template-columns:minmax(0,1fr)}
 .ptree.compact .pt-row:has(.pt-l.cur) .ms{color:var(--lamassu-brand)}
 .side .ptree a.pt-l.cur{color:var(--lamassu-brand);font-weight:700}
 .pr-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}
+/* ---------- the card: title, description, source (icon + name) and a visual panel at the right edge ---------- */
+.ucard{position:relative;display:flex;align-items:stretch;min-width:0;border:1px solid var(--rule);border-radius:14px;background:var(--paper);overflow:hidden;color:var(--ink);box-shadow:0 1px 2px var(--shadow);transition:border-color .12s,box-shadow .12s}
+.ucard:hover,.ucard:focus-within{border-color:var(--lamassu-brand);box-shadow:0 6px 18px var(--shadow)}
+a.ucard:hover{text-decoration:none;color:var(--ink)}
+.uc-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;padding:14px 18px}
+.uc-t{font-weight:700;font-size:17px;line-height:1.3;letter-spacing:-.01em;color:var(--ink);overflow-wrap:anywhere}
+a.uc-main{color:inherit}
+a.uc-main:hover{text-decoration:none;color:inherit}
+a.uc-main:hover .uc-t{color:var(--lamassu-brand)}
+a.uc-main::after{content:"";position:absolute;inset:0;z-index:0}         /* the whole card is the link; tags and buttons sit above it */
+.lc-ext{font-size:16px;margin-left:6px;vertical-align:-2px;color:var(--ink-3)}
+.uc-d{margin:0;color:var(--ink-3);font-size:15px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.uc-src{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:auto;padding-top:6px;color:var(--ink-3);font-size:14px}
+.uc-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;border-radius:6px;background:hsl(var(--h) 62% 44%);color:#fff;font-size:12px;font-weight:800;line-height:1}
+.uc-ico .ms{font-size:15px;color:#fff;width:1em}
+.uc-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:6px;font-size:14px}
+.uc-meta > *,.uc-src a,.uc-src button,.uc-body .btn{position:relative;z-index:1}
+.uc-meta .tag{margin:0}
+.uc-media{position:relative;flex:0 0 clamp(104px,24%,180px);display:flex;align-items:center;justify-content:center;overflow:hidden;border-left:1px solid var(--rule);
+  background:radial-gradient(circle at 78% 18%,hsl(var(--h) 85% calc(var(--uc-l1) - 4%) / .9),transparent 55%),linear-gradient(135deg,hsl(var(--h) 70% var(--uc-l1)),hsl(var(--h) 55% var(--uc-l2)))}
+.uc-media::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:hsl(var(--h) 85% 52%)}
+.uc-big{font-size:56px;font-weight:800;line-height:1;letter-spacing:-.04em;color:hsl(var(--h) 55% var(--uc-ink));opacity:.9}
+.uc-media .ms.uc-big{font-size:52px;width:1em;height:1em;color:hsl(var(--h) 55% var(--uc-ink))}
+.uc-media::before{content:"";position:absolute;width:120px;height:120px;border-radius:50%;right:-40px;top:-44px;background:hsl(var(--h) 80% 60% / .16)}
+@media (max-width:560px){.uc-media{flex-basis:68px}.uc-big,.uc-media .ms.uc-big{font-size:32px}.uc-body{padding:12px 14px}}
+.pdf-card{margin:0}
+.pdf-card .uc-body{gap:6px}
 /* ---------- project home: quick access cards + introduction ---------- */
 .pr-h{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:22px 0 10px}
-.qa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.qa-card{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--paper);box-shadow:0 1px 2px var(--shadow);color:var(--ink);transition:border-color .12s,box-shadow .12s,transform .12s;min-width:0}
-.qa-card:hover{text-decoration:none;color:var(--ink);border-color:var(--lamassu-brand);box-shadow:0 4px 14px var(--shadow);transform:translateY(-1px)}
-.qa-card:focus-visible{outline-offset:2px}
-.qa-ic{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;margin-bottom:6px;background:var(--lamassu-brand-soft-strong)}
-.qa-ic .ms{font-size:20px;color:var(--lamassu-brand)}
-.qa-ic.pdf{background:var(--err-soft)}
-.qa-ic.pdf .ms{color:var(--err)}
-.qa-t{font-weight:700;font-size:16px;line-height:1.3;overflow-wrap:anywhere}
-.qa-ext{font-size:15px;margin-left:4px;vertical-align:-2px;color:var(--ink-3)}
-.qa-s{font-size:13px;color:var(--ink-3)}
-.qa-d{font-size:14.5px;color:var(--ink-2);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.qa-f{margin-top:auto;padding-top:8px}
+.qa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:12px}
+.qa-card:hover{text-decoration:none}
 .proj-intro{margin:22px 0 4px}
 .proj-intro .prose > :first-child{margin-top:0}
 /* ---------- projects ---------- */
@@ -618,15 +635,7 @@ ul.ptree ul.ptree{margin:2px 0 0 14px;padding-left:12px;border-left:1px solid va
 .subpages{margin:22px 0 0;clear:both}
 .subpages h2{font-size:20px;font-weight:700;margin:0 0 6px}
 /* ---------- external links ---------- */
-.linklist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
-.linkcard{border:1px solid var(--rule);border-radius:12px;padding:10px 14px;background:var(--paper)}
-.lc-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.lc-title{font-weight:700;font-size:18px}
-.lc-title .ms{font-size:16px;margin-left:4px;vertical-align:-2px;color:var(--ink-3)}
-.lc-host{font-size:13.5px;color:var(--ink-3)}
-.lc-d{margin:4px 0 6px}
-.lc-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:14.5px}
-.lc-by{margin-left:auto}
+.linklist{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,470px),1fr));gap:12px}
 .pill.kind{background:var(--slate-soft);border-color:var(--slate-border)}
 details.addlink{margin:0 0 14px}
 details.addlink > summary{cursor:pointer;display:inline-flex;list-style:none}
@@ -657,7 +666,6 @@ body.resizing .shell,body.resizing .shell *{transition:none!important}
 .pdfv-slot{flex:none;background:#fff;box-shadow:0 1px 4px var(--shadow);max-width:none}
 .pdfv-slot canvas{display:block}
 .pdf-embed{display:block;margin:12px 0}
-.pdf-card{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--surface)}
 .pdf-inline{display:block;margin-top:8px}
 .pdf-inline .pdfv-pages{height:min(70vh,900px)}
 a.file-link .ms{font-size:18px;vertical-align:-3px;margin-right:2px}
@@ -2588,9 +2596,11 @@ async function viewFile(name, params){
 function hydrateEmbeds(root){
   $$(".pdf-embed", root).forEach(el => {
     const name = el.dataset.file, page = parseInt(el.dataset.page || "", 10) || null, f = S.files.find(x => x.name === name);
-    el.innerHTML = `<span class="pdf-card"><span class="ms" aria-hidden="true">picture_as_pdf</span>
-      <a href="#/file/${enc(name)}${page ? "?page=" + page : ""}" class="${f ? "" : "new"}">${esc(name)}</a>${f ? ` <span class="muted">${fmtBytes(f.size)}</span>` : ' <span class="muted">(file does not exist)</span>'}
-      ${f ? `<button class="btn small" type="button" data-preview>Preview here</button>` : ""}</span><span class="pdf-inline" hidden></span>`;
+    el.innerHTML = `<span class="ucard pdf-card" style="--h:4"><span class="uc-body">
+        <a class="uc-t ${f ? "" : "new"}" href="#/file/${enc(name)}${page ? "?page=" + page : ""}">${esc(name)}</a>
+        <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span>${f ? `<span>PDF · ${fmtBytes(f.size)}${page ? " · page " + page : ""}</span>` : '<span>(file does not exist)</span>'}
+          ${f ? `<button class="btn small" type="button" data-preview>Preview here</button>` : ""}</span></span>
+        <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></span><span class="pdf-inline" hidden></span>`;
     const b = el.querySelector("[data-preview]");
     if(b) b.onclick = async () => {
       b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading PDF…</span>';
@@ -2608,15 +2618,20 @@ const KIND_LABEL = {news:"News", blog:"Blog", paper:"Paper", video:"Video", docs
 function isHttpUrl(u){ try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") && !x.username && !x.password; }catch{ return false; } }
 const hostOf = u => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch{ return ""; } };
 async function refreshLinks(force){ await refreshPages(force); renderSideTree(); return S.links; }
+const hostHue = h => [...String(h)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+const siteInitial = h => (String(h).replace(/^www\./, "").match(/[a-z0-9]/i) || ["?"])[0].toUpperCase();
 function linkCard(l){
+  const host = hostOf(l.url), ini = siteInitial(host);
   const tags = (l.tags || []).map(t => `<a class="tag" href="#/links?tag=${enc(t)}">${esc(t)}</a>`).join("");
-  return `<li class="linkcard" data-id="${esc(l.id)}">
-    <div class="lc-h"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" class="lc-title">${esc(l.title)}<span class="ms" aria-hidden="true">open_in_new</span></a>
-      <span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div>
-    <div class="lc-host mono">${esc(hostOf(l.url))}</div>
-    ${l.description ? `<p class="lc-d">${esc(l.description)}</p>` : ""}
-    <div class="lc-f">${tags}<span class="muted lc-by">added by ${personSpan(l.addedBy)}, ${fmtMW(l.addedAt)}</span>
-      ${S.me.canWrite ? `<span class="lc-act"><a href="#/links?edit=${enc(l.id)}" data-edit="${esc(l.id)}">Edit</a> · <button type="button" class="linkish" data-del="${esc(l.id)}">Remove</button></span>` : ""}</div></li>`;
+  return `<li class="ucard linkcard" data-id="${esc(l.id)}" style="--h:${hostHue(host)}">
+    <div class="uc-body">
+      <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" class="uc-main lc-title"><span class="uc-t">${esc(l.title)}</span><span class="ms lc-ext" aria-hidden="true">open_in_new</span></a>
+      ${l.description ? `<p class="uc-d">${esc(l.description)}</p>` : ""}
+      <div class="uc-src"><span class="uc-ico" aria-hidden="true">${esc(ini)}</span><span class="lc-host">${esc(host)}</span><span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div>
+      <div class="uc-meta">${tags}<span class="muted lc-by">added by ${personSpan(l.addedBy)}, ${fmtMW(l.addedAt)}</span>
+        ${S.me.canWrite ? `<span class="lc-act"><a href="#/links?edit=${enc(l.id)}" data-edit="${esc(l.id)}">Edit</a> · <button type="button" class="linkish" data-del="${esc(l.id)}">Remove</button></span>` : ""}</div>
+    </div>
+    <div class="uc-media" aria-hidden="true"><span class="uc-big">${esc(ini)}</span></div></li>`;
 }
 async function viewLinks(params){
   const nav = S.nav;
@@ -2776,23 +2791,30 @@ const projectBadges = pr => (pr.tags || []).map(t => `<a class="badge secondary"
 function quickCard(it){
   const info = itemInfo(it); if(!info) return "";
   if(it.type === "link"){
-    const l = S.links.find(x => x.id === it.id);
-    return `<a class="qa-card" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow"><span class="qa-ic link"><span class="ms" aria-hidden="true">link</span></span>
-      <span class="qa-t">${esc(l.title)}<span class="ms qa-ext" aria-hidden="true">open_in_new</span></span><span class="qa-s mono">${esc(hostOf(l.url))}</span>
-      ${l.description ? `<span class="qa-d">${esc(l.description)}</span>` : ""}<span class="qa-f"><span class="badge secondary">${esc(KIND_LABEL[l.kind] || "Other")}</span></span></a>`;
+    const l = S.links.find(x => x.id === it.id), host = hostOf(l.url), ini = siteInitial(host);
+    return `<a class="ucard qa-card" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" style="--h:${hostHue(host)}">
+      <span class="uc-body"><span class="uc-t qa-t">${esc(l.title)}<span class="ms lc-ext" aria-hidden="true">open_in_new</span></span>
+        ${l.description ? `<span class="uc-d">${esc(l.description)}</span>` : ""}
+        <span class="uc-src"><span class="uc-ico" aria-hidden="true">${esc(ini)}</span><span class="qa-s">${esc(host)}</span><span class="badge secondary">${esc(KIND_LABEL[l.kind] || "Other")}</span></span></span>
+      <span class="uc-media" aria-hidden="true"><span class="uc-big">${esc(ini)}</span></span></a>`;
   }
   const f = S.files.find(x => x.name === it.id);
-  return `<a class="qa-card" href="#/file/${enc(f.name)}"><span class="qa-ic pdf"><span class="ms" aria-hidden="true">picture_as_pdf</span></span>
-    <span class="qa-t">${esc(f.name)}</span><span class="qa-s">PDF · ${fmtBytes(f.size)}</span><span class="qa-f"><span class="badge secondary">Preview</span></span></a>`;
+  return `<a class="ucard qa-card" href="#/file/${enc(f.name)}" style="--h:4">
+    <span class="uc-body"><span class="uc-t qa-t">${esc(f.name)}</span><span class="uc-d">PDF document. Opens in the built-in viewer.</span>
+      <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span><span class="qa-s">PDF · ${fmtBytes(f.size)}</span><span class="badge secondary">Preview</span></span></span>
+    <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></a>`;
 }
 function quickAccessHtml(pr){
   const cards = []; treeWalk(pr.items || [], it => { if(it.type !== "page"){ const h = quickCard(it); if(h) cards.push(h); } });
   return cards.length ? `<section class="qa"><h2 class="pr-h">Quick access</h2><div class="qa-grid">${cards.join("")}</div></section>` : "";
 }
 function projectCard(p){
-  const c = countItems(p);
-  return `<li class="linkcard"><div class="lc-h"><span class="ms" aria-hidden="true">folder_open</span><a class="lc-title" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></div>
-    ${p.description ? `<p class="lc-d">${esc(p.description)}</p>` : ""}<div class="lc-f"><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></li>`;
+  const c = countItems(p), h = hostHue(p.id);
+  return `<li class="ucard linkcard" style="--h:${h}"><div class="uc-body">
+      <a class="uc-main lc-title" href="#/wiki/${enc(p.id)}"><span class="uc-t">${esc(p.title)}</span></a>
+      ${p.description ? `<p class="uc-d">${esc(p.description)}</p>` : ""}
+      <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></div>
+    <div class="uc-media" aria-hidden="true"><span class="ms uc-big">folder_open</span></div></li>`;
 }
 const projectsBoxHtml = () => S.projects.length ? `<section class="mp-box t-slate"><h2>Projects</h2><div class="in"><ul>${S.projects.slice().sort((a,b) => a.title.localeCompare(b.title)).map(p => { const c = countItems(p); return `<li><a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a> <span class="muted" style="font-size:14px">— ${c.page} page${c.page === 1 ? "" : "s"}</span></li>`; }).join("")}</ul><p style="margin:10px 0 0;font-size:15px"><a href="#/projects">All projects →</a></p></div></section>` : "";
 
