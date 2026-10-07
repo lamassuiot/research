@@ -4,14 +4,22 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { validate } from "./validate.mjs";
 
-const TEMPLATE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
+const AT = "2026-10-07T00:00:00.000Z";
+const BY = { createdAt: AT, createdBy: "t", updatedAt: AT, updatedBy: "t" };
+const articleMeta = (title, tags) => ({ title, tags, status: "draft", format: "md", abstract: "", revN: 1, ...BY });
+/* A small repository of its own, so the tests do not depend on what the content repo holds today: tags.json plus the project "general"
+   with the articles "welcome" and "pqc-migration-notes". */
 function fixture(mutate) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lr-validate-"));
-  fs.cpSync(TEMPLATE, dir, { recursive: true, filter: (s) => !s.includes(`${path.sep}scripts`) && !s.includes(`${path.sep}.github`) });
+  const put = (rel, data) => { const f = path.join(dir, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, typeof data === "string" ? data : JSON.stringify(data, null, 2) + "\n"); };
+  put("tags.json", { tags: ["Lamassu", "PKI", "X509", "Lamassu RFCs", "IETF RFCs", "PQC", "CBOM", "Updates", "RATs", "Crypto Agility"] });
+  put("projects/general/project.json", { title: "General", description: "", tags: [], items: [{ type: "page", id: "welcome" }, { type: "page", id: "pqc-migration-notes" }], ...BY });
+  put("projects/general/pages/welcome/meta.json", articleMeta("Welcome", ["Lamassu"]));
+  put("projects/general/pages/welcome/content.md", "## What this is\n\nThe wiki.\n");
+  put("projects/general/pages/pqc-migration-notes/meta.json", articleMeta("PQC migration notes", ["PQC", "Crypto Agility"]));
+  put("projects/general/pages/pqc-migration-notes/content.md", "## Notes\n\nSkeleton.\n");
   if (mutate) mutate(dir);
   return dir;
 }
@@ -19,8 +27,8 @@ const G = (...p) => path.join("projects", "general", ...p);       // paths insid
 const metaPath = (dir, slug = "welcome") => path.join(dir, G("pages", slug, "meta.json"));
 const editMeta = (dir, fn, slug) => { const m = JSON.parse(fs.readFileSync(metaPath(dir, slug), "utf8")); fn(m); fs.writeFileSync(metaPath(dir, slug), JSON.stringify(m, null, 2) + "\n"); };
 
-test("the template passes", () => {
-  assert.deepEqual(validate(TEMPLATE), []);
+test("the baseline passes", () => {
+  assert.deepEqual(validate(fixture()), []);
 });
 test("an unknown tag fails", () => {
   const errs = validate(fixture((d) => editMeta(d, (m) => { m.tags = ["Nope"]; })));
