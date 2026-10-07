@@ -627,6 +627,19 @@ details.addlink{margin:0 0 14px}
 details.addlink > summary{cursor:pointer;display:inline-flex;list-style:none}
 details.addlink[open] > summary{margin-bottom:10px}
 .linkfilter{margin:6px 0 8px}
+/* ---------- resizable sidebar ---------- */
+.side-resizer{position:fixed;z-index:20;width:14px;margin:0;cursor:col-resize;touch-action:none;outline:none}
+.side-resizer::after{content:"";position:absolute;top:0;bottom:0;left:6px;width:2px;border-radius:2px;background:transparent;transition:background .12s}
+.side-resizer:hover::after,.side-resizer:focus-visible::after,.side-resizer.on::after{background:var(--lamassu-brand)}
+.side-resizer:focus-visible::before{content:"";position:absolute;top:calc(50% - 18px);left:2px;width:10px;height:36px;border-radius:6px;background:var(--lamassu-brand-soft-strong)}
+body.resizing{cursor:col-resize;user-select:none}
+body.resizing iframe{pointer-events:none}
+body.resizing .shell,body.resizing .shell *{transition:none!important}
+@media (min-width:1001px){
+  body.sw-n:not(.proj-mode):not(.side-empty):not(.wide) .shell{grid-template-columns:var(--sidew-n) minmax(0,1fr)}
+  body.sw-p.proj-mode:not(.menu-off):not(.wide) .shell{grid-template-columns:var(--sidew-p) minmax(0,1fr);max-width:none}
+  body.sw-p.proj-mode:not(.menu-off):not(.wide) .top-in{max-width:none}
+}
 /* ---------- PDF files ---------- */
 .file-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
 .file-bar .sp,.pdfv-bar .sp{flex:1}
@@ -696,6 +709,7 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
   </aside>
   <main id="main" class="page" tabindex="-1"><div class="loading">Loading know-how…</div></main>
 </div>
+<div class="side-resizer" id="sideResizer" role="separator" aria-orientation="vertical" aria-label="Resize the sidebar" title="Drag to resize the sidebar (double-click to reset)" tabindex="0" hidden></div>
 <div class="backdrop" id="backdrop"></div>
 <div class="gate" id="gate" aria-live="polite"><section>
   <img class="l-light" src="__LOGO_DARK_INK__" alt="Lamassu"><img class="l-dark" src="__LOGO_WHITE_INK__" alt="Lamassu">
@@ -1409,10 +1423,12 @@ function markNav(){
   const key = !h ? "home" : (h.startsWith("status/") || h.startsWith("tag/")) ? h : h.split("/")[0];
   $$(".side .menu a[data-nav]").forEach(a => a.classList.toggle("cur", a.dataset.nav === key));
 }
+let placeResizer = () => {};
 function syncSide(){
   const tocHidden = $("#tocSide").hidden;
   document.body.classList.toggle("side-empty", document.body.classList.contains("menu-off") && tocHidden);
   document.body.classList.toggle("has-toc", !tocHidden);
+  placeResizer();
   $("#menuBtn").setAttribute("aria-expanded", String(isNarrow() ? $("#side").classList.contains("open") : !document.body.classList.contains("menu-off")));
 }
 const isNarrow = () => matchMedia("(max-width:1000px)").matches;
@@ -2058,6 +2074,9 @@ Articles are written in **Markdown** (GitHub flavour: tables, fenced code blocks
 | \\\`code\\\` and \\\`\\\`\\\` fences | Inline code and code blocks |
 
 Always fill in the **edit summary**: it is the commit message other engineers will read in the history.
+
+## Sidebar width
+Drag the edge of the sidebar to make it wider or narrower: the content takes the rest. Double-click the edge (or press Home on it) to reset it, and use the arrow keys for fine adjustments. The main menu and the project layout each remember their own width in this browser.
 
 ## Projects
 A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
@@ -2913,6 +2932,47 @@ function syncThemeBtn(){
   b.title = b.ariaLabel = dark ? "Switch to light mode" : "Switch to dark mode";
   b.setAttribute("aria-pressed", String(dark));
 }
+/* Drag the edge of the sidebar to make it wider or narrower; the content takes the rest. One width per layout
+   (main menu / project mode), remembered in this browser; double-click or Home resets, arrow keys fine-tune. */
+function setupResizer(){
+  const h = $("#sideResizer"), root = document.documentElement, body = document.body;
+  const mode = () => body.classList.contains("proj-mode") ? "p" : "n";
+  const limits = () => mode() === "p" ? {min:body.classList.contains("has-toc") ? 360 : 220, max:Math.min(1100, innerWidth * .62)} : {min:200, max:Math.min(520, innerWidth * .4)};
+  const colLeft = () => $("#side").getBoundingClientRect().left + (parseFloat(getComputedStyle($("#side")).marginLeft) < 0 ? 8 : 0);
+  const colWidth = () => $("#side").getBoundingClientRect().width - (parseFloat(getComputedStyle($("#side")).marginLeft) < 0 ? 8 : 0);
+  const applySaved = () => { for(const m of ["n", "p"]){ const v = parseInt(lsGet("kb.sidew." + m) || "", 10); if(v > 0){ root.style.setProperty("--sidew-" + m, v + "px"); body.classList.add("sw-" + m); } else { root.style.removeProperty("--sidew-" + m); body.classList.remove("sw-" + m); } } };
+  placeResizer = () => {
+    const r = $("#side").getBoundingClientRect(), top = Math.max(r.top, 70), bottom = Math.min(r.bottom, innerHeight);
+    const show = !isNarrow() && r.width > 40 && bottom - top > 80 && !body.classList.contains("gated") && !body.classList.contains("wide");
+    h.hidden = !show; if(!show) return;
+    h.style.left = Math.round(r.right + 5) + "px"; h.style.top = Math.round(top) + "px"; h.style.height = Math.round(bottom - top) + "px";
+    h.setAttribute("aria-valuenow", Math.round(colWidth()));
+  };
+  const setW = (px, save) => {
+    const {min, max} = limits(), m = mode(); px = Math.round(Math.max(min, Math.min(max, px)));
+    root.style.setProperty("--sidew-" + m, px + "px"); body.classList.add("sw-" + m);
+    if(save) lsSet("kb.sidew." + m, String(px));
+    placeResizer();
+  };
+  const reset = () => { lsSet("kb.sidew." + mode(), ""); applySaved(); requestAnimationFrame(placeResizer); };
+  let drag = false;
+  h.onpointerdown = e => { e.preventDefault(); drag = true; h.setPointerCapture(e.pointerId); body.classList.add("resizing"); h.classList.add("on"); };
+  h.onpointermove = e => { if(drag) setW(e.clientX - colLeft() - 12, false); };
+  const end = () => { if(!drag) return; drag = false; body.classList.remove("resizing"); h.classList.remove("on"); lsSet("kb.sidew." + mode(), String(Math.round(colWidth()))); };
+  h.onpointerup = end; h.onpointercancel = end;
+  h.ondblclick = reset;
+  h.onkeydown = e => {
+    const step = e.shiftKey ? 64 : 16;
+    if(e.key === "ArrowLeft"){ e.preventDefault(); setW(colWidth() - step, true); }
+    else if(e.key === "ArrowRight"){ e.preventDefault(); setW(colWidth() + step, true); }
+    else if(e.key === "Home"){ e.preventDefault(); reset(); }
+  };
+  applySaved();
+  addEventListener("resize", () => placeResizer());
+  addEventListener("scroll", () => requestAnimationFrame(placeResizer), {passive:true});
+  try{ new ResizeObserver(() => placeResizer()).observe($("#side")); }catch{}
+  placeResizer();
+}
 function setupTree(){
   const b = $("#treeToggle");
   const apply = off => { document.body.classList.toggle("tree-off", off); b.setAttribute("aria-expanded", String(!off)); b.title = off ? "Show the project structure" : "Hide the project structure"; };
@@ -2929,7 +2989,7 @@ function setupTheme(){
 }
 
 (async function boot(){
-  setupTheme(); setupTree();
+  setupTheme(); setupTree(); setupResizer();
   if(lsGet("kb.menu") === "off") document.body.classList.add("menu-off");
   $("#menuBtn").onclick = () => {
     if(isNarrow()){ openDrawer(!$("#side").classList.contains("open")); return; }

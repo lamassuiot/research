@@ -130,3 +130,11 @@ Decisiones del usuario: el proyecto es **solo un contenedor** (sin contenido pro
 - **Cada barra con su propio scroll** en modo proyecto: el título del proyecto queda fijo y *Structure* y *Contents* se desplazan por separado (antes toda la lateral era un único scroll y el título y la estructura se iban con el contenido). Cada una con su barra de desplazamiento fina y su desvanecido. Se oculta la nota de almacenamiento de la lateral en este modo (sigue en el pie de página). En pantallas estrechas vuelve a ser un solo cajón.
 - **Structure se puede colapsar:** el encabezado es un botón (`aria-expanded`, con título de ayuda). Colapsada, queda una **ranura estrecha** con el texto *STRUCTURE* en vertical y la flecha, y *Contents* gana ese ancho. La elección se recuerda en este navegador (`kb.tree`).
 - **Tests:** 2 de Playwright (colapsar, recordarlo tras recargar y ganar ancho; scroll independiente con el título y la estructura fijos).
+
+## 14. Ancho de la barra lateral ajustable
+
+- **Cómo:** un tirador (`#sideResizer`) junto al borde derecho de la barra lateral. Al arrastrarlo, la barra se ensancha o se estrecha y **el contenido toma la diferencia**. Con teclado: `←`/`→` (16 px; con Mayús, 64 px), `Inicio` y doble clic restablecen. Tiene `role="separator"` con `aria-valuenow`, y se resalta en el color de marca al pasar el ratón, al enfocarlo y al arrastrar.
+- **Límites:** menú principal de 200 px a 520 px (máximo 40 % de la pantalla); modo proyecto de 360 px (220 px sin *Contents*) a 1100 px (máximo 62 % de la pantalla).
+- **Se recuerda por diseño:** un ancho para el menú principal (`kb.sidew.n`) y otro para el modo proyecto (`kb.sidew.p`), en este navegador. Con un ancho propio en modo proyecto, el contenido deja de tener su máximo fijo y ocupa el resto de la pantalla, de modo que más barra significa menos contenido y al revés (sin ancho propio sigue el reparto automático anterior).
+- **Dónde no aparece:** en pantallas estrechas (cajón lateral), con la barra oculta, en el modo de informe a ancho completo y en la pantalla de acceso. Durante el arrastre se desactivan los iframes (los informes HTML no capturan el ratón) y las transiciones.
+- **Tests:** 4 de Playwright (arrastrar y que el contenido ceda, recordarlo tras recargar, límites, teclado, restablecer; anchos independientes entre menú y proyecto; sin tirador en el móvil).
