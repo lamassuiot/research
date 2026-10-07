@@ -4,8 +4,8 @@
   "owner": "lamassuiot",
   "contentRepo": "research-content",
   "branch": "main",
-  "githubClientId": "REPLACE_ME",
-  "authWorkerUrl": "https://research-auth.REPLACE_ME.workers.dev",
+  "githubClientId": "Iv23li9ykunNUIBv7qWr",
+  "authWorkerUrl": "https://research-auth.hsaizsierra.workers.dev",
   "accessTeamUrl": "https://github.com/orgs/lamassuiot/teams/research-editors",
   "devMemoryStore": false
 }
