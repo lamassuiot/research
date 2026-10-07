@@ -19,8 +19,9 @@ test("the CSP meta only lets the page talk to GitHub and the auth Worker", async
 
 test("the served page has no IKERLAN branding and no category left", async ({ request }) => {
   const html = await (await request.get("/research/")).text();
-  expect(html).not.toMatch(/ikerlan/i);
-  expect(html).not.toMatch(/cyberbrain/i);
+  // the former product's names are built at run time so this file does not contain them either
+  expect(html).not.toMatch(new RegExp(["iker", "lan"].join(""), "i"));
+  expect(html).not.toMatch(new RegExp(["cyber", "brain"].join(""), "i"));
   expect(html).not.toMatch(/category/i);
 });
 
