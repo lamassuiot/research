@@ -1,0 +1,33 @@
+name: validate
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate content
+        id: validate
+        run: node scripts/validate.mjs 2>&1 | tee validate.log; exit "${PIPESTATUS[0]}"
+      - name: Open an issue when main is broken
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "The content validation failed on commit ${GITHUB_SHA} (pushed by ${GITHUB_ACTOR})."
+            echo
+            echo '```'
+            cat validate.log
+            echo '```'
+          } > body.md
+          gh issue create --repo "${GITHUB_REPOSITORY}" --title "Content validation failed on main" --body-file body.md
