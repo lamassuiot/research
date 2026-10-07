@@ -445,6 +445,15 @@ body.gated .gate{display:flex}
   .page{border:0;box-shadow:none;padding:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+.tagpick{border:0;padding:0;margin:10px 0 0;min-width:0}
+.tagpick legend{font-size:14px;font-weight:700;padding:0;margin-bottom:6px}
+.tagchips{display:flex;flex-wrap:wrap;gap:8px}
+.tagchip{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.tagchip input{position:absolute;opacity:0;pointer-events:none}
+.tagchip span{border:1px solid var(--rule-2);border-radius:999px;padding:4px 12px;font-size:15px;background:var(--paper)}
+.tagchip input:checked + span{background:var(--link);border-color:var(--link);color:#fff}
+.tagchip input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
+.hint.err{color:var(--err)}
 </style>
 </head>
 <body>
@@ -476,11 +485,13 @@ body.gated .gate{display:flex}
       <ul id="sideNav">
         <li><a href="#/" data-nav="home"><span class="ms" aria-hidden="true">home</span>Main page</a></li>
         <li><a href="#/all" data-nav="all"><span class="ms" aria-hidden="true">list</span>All articles</a></li>
-        <li><a href="#/categories" data-nav="categories"><span class="ms" aria-hidden="true">category</span>Categories</a></li>
+        <li><a href="#/tags" data-nav="tags"><span class="ms" aria-hidden="true">sell</span>All tags</a></li>
         <li><a href="#/recent" data-nav="recent"><span class="ms" aria-hidden="true">history</span>Recent changes</a></li>
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
         <li><a href="#/help" data-nav="help"><span class="ms" aria-hidden="true">help</span>Help</a></li>
       </ul>
+      <div class="side-h"><span class="eyebrow">Tags</span></div>
+      <ul id="sideTags"></ul>
       <div class="side-h"><span class="eyebrow">Maturity</span></div>
       <ul id="sideStatus"></ul>
       <div id="sideAdmin" hidden>
@@ -515,15 +526,7 @@ body.gated .gate{display:flex}
    ===================================================================== */
 const CONFIG = /*APP_CONFIG*/null;
 const SITE = CONFIG.siteName;
-const CATEGORIES = [
-  "Cryptography",
-  "Secure boot & firmware",
-  "Standards & compliance",
-  "Industrial & IoT security",
-  "Hardware security",
-  "Offensive security & testing",
-  "Tooling & infrastructure"
-];
+const DEV_TAGS = ["Lamassu","PKI","X509","Lamassu RFCs","IETF RFCs","PQC","CBOM","Updates","RATs","Crypto Agility"];
 const STATUS = {
   draft:      {label:"Draft",      help:"Work in progress. Not reviewed; do not rely on it for customer deliverables."},
   reviewed:   {label:"Reviewed",   help:"Peer-reviewed by a second engineer."},
@@ -631,8 +634,8 @@ class ClaudeStore{
     const size = utf8len(d.content);
     const hash = await sha256(d.content);
     await this.db.doc("revs/"+rid).set({slug, n, at, by:me.id||null, summary:d.summary||"", size, sha256:hash,
-      format:d.format, status:d.status, title:d.title, category:d.category, chunks:chunks.length, parent:page.rev||null});
-    await pref.set({title:d.title, category:d.category, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
+      format:d.format, status:d.status, title:d.title, tags:d.tags||[], chunks:chunks.length, parent:page.rev||null});
+    await pref.set({title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
       revN:n, rev:rid, size, updatedAt:at, updatedBy:me.id||null,
       createdAt:page.createdAt||at, createdBy:page.createdBy||me.id||null});
     return {rev:rid, n, conflict: baseRevN != null && (page.revN||0) !== baseRevN};
@@ -684,16 +687,17 @@ class MemoryStore{
   async save(slug, d, baseRevN){
     const page = this.pages[slug] || {}; const n=(page.revN||0)+1; const rid=`${slug}~${n}`; const at=new Date().toISOString();
     const size = utf8len(d.content);
-    this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, size, format:d.format, status:d.status, title:d.title, category:d.category, content:d.content, sha256:await sha256(d.content)};
-    this.pages[slug] = {slug, title:d.title, category:d.category, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
+    this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, size, format:d.format, status:d.status, title:d.title, tags:d.tags||[], content:d.content, sha256:await sha256(d.content)};
+    this.pages[slug] = {slug, title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
       revN:n, rev:rid, size, updatedAt:at, updatedBy:"you", createdAt:page.createdAt||at, createdBy:page.createdBy||"you"};
     return {rev:rid, n, conflict: baseRevN != null && (page.revN||0) !== baseRevN};
   }
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
+const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
   if(!force && Date.now() - S.pagesAt < 4000) return S.pages;
   try{ S.pages = await S.store.listPages(); S.pagesAt = Date.now(); }catch(e){ console.error(e); }
@@ -747,12 +751,15 @@ function renderUserBox(){
 function renderSide(){
   const sc = {};
   for(const p of S.pages) sc[p.status]=(sc[p.status]||0)+1;
+  const tc = {};
+  for(const p of S.pages) for(const t of (p.tags||[])) tc[t]=(tc[t]||0)+1;
+  $("#sideTags").innerHTML = allTags().map(t => `<li><a href="#/tag/${enc(t)}" data-nav="tag/${esc(enc(t))}">${esc(t)}<span class="count">${tc[t]||0}</span></a></li>`).join("");
   $("#sideStatus").innerHTML = STATUS_ORDER.map(s => `<li><a href="#/status/${s}" data-nav="status/${s}"><span class="pill sm ${s}" style="min-width:0;padding:3px 3px" aria-hidden="true"></span>${STATUS[s].label}<span class="count">${sc[s]||0}</span></a></li>`).join("");
   markNav();
 }
 function markNav(){
   const h = location.hash.replace(/^#\/?/,"").split("?")[0];
-  const key = !h ? "home" : (h.startsWith("status/") || h.startsWith("admin/")) ? h : h.split("/")[0];
+  const key = !h ? "home" : (h.startsWith("status/") || h.startsWith("tag/")) ? h : h.split("/")[0];
   $$(".side .menu a[data-nav]").forEach(a => a.classList.toggle("cur", a.dataset.nav === key));
 }
 function syncSide(){
@@ -930,9 +937,8 @@ function route(){
     case "recent":     return go(viewRecent());
     case "search":     return go(viewSearch(params.get("q")||""));
     case "help":       return go(viewHelp(params.get("s")));
-    case "categories": return go(viewCategories());
+    case "tags":       return go(viewTags());
     case "all":        return go(viewList("All articles", () => true, "", "Every article in "+SITE+", in alphabetical order."));
-    case "category":   return go(viewList(seg[1], p => p.category === seg[1], "Category"));
     case "status":     return go(viewList(statusLabel(seg[1]), p => p.status === seg[1], "Maturity", STATUS[seg[1]]?.help));
     case "tag":        return go(viewList(seg[1], p => (p.tags||[]).includes(seg[1]), "Tag"));
     case "random":     return go(refreshPages().then(ps => { if(!ps.length){ location.replace("#/"); return; } location.replace("#/wiki/"+ps[Math.floor(Math.random()*ps.length)].slug); }));
@@ -1005,7 +1011,7 @@ async function viewHome(){
   await resolveNames(recent.map(r=>r.by));
   const byDate = (a,b) => (b.updatedAt||"").localeCompare(a.updatedAt||"");
   const featured = pages.filter(p=>p.status==="validated").sort(byDate)[0] || pages.slice().sort(byDate)[0];
-  const byCat = {}; for(const p of pages){ (byCat[p.category] ||= []).push(p); }
+  const byTag = {}; for(const p of pages){ for(const t of (p.tags||[])) (byTag[t] ||= []).push(p); }
   const totalRevs = pages.reduce((a,p)=>a+(p.revN||0),0);
   const validated = pages.filter(p=>p.status==="validated").length;
   const seen = new Set(); const latest = recent.filter(r => !seen.has(r.slug) && seen.add(r.slug)).slice(0,8);
@@ -1022,9 +1028,9 @@ async function viewHome(){
         ${featured ? `<section class="mp-box t-brand"><h2>${featured.status==="validated"?"Featured know-how":"Latest article"}</h2><div class="in">
           <h3 style="margin:0 0 6px;font-weight:700;font-size:21px;letter-spacing:-.02em"><a href="#/wiki/${featured.slug}">${esc(featured.title)}</a></h3>
           <p style="margin:0 0 10px">${esc(featured.abstract||"")} <a href="#/wiki/${featured.slug}">(Full article…)</a></p>
-          ${pill(featured.status)} <span class="muted" style="font-size:15px"> ${esc(featured.category)} · revision ${featured.revN}</span></div></section>` : ""}
-        <section class="mp-box t-slate"><h2>Browse by category</h2><div class="in cat-list">
-          ${Object.keys(byCat).sort().map(c => `<section><h3><a href="#/category/${enc(c)}">${esc(c)}</a></h3><ul>${byCat[c].sort((a,b)=>a.title.localeCompare(b.title)).map(p=>`<li><a href="#/wiki/${p.slug}">${esc(p.title)}</a></li>`).join("")}</ul></section>`).join("")}
+          ${pill(featured.status)} <span class="muted" style="font-size:15px"> ${(featured.tags||[]).map(t=>esc(t)).join(", ")} · revision ${featured.revN}</span></div></section>` : ""}
+        <section class="mp-box t-slate"><h2>Browse by tag</h2><div class="in cat-list">
+          ${allTags().filter(t => byTag[t]).map(t => `<section><h3><a href="#/tag/${enc(t)}">${esc(t)}</a></h3><ul>${byTag[t].sort((a,b)=>a.title.localeCompare(b.title)).map(p=>`<li><a href="#/wiki/${p.slug}">${esc(p.title)}</a></li>`).join("")}</ul></section>`).join("")}
         </div></section>
       </div>
       <div class="mp-col">
@@ -1049,26 +1055,22 @@ async function viewList(title, pred, kind, help){
   const nav = S.nav;
   const all = await refreshPages(true);
   const pages = all.filter(pred).sort((a,b)=>a.title.localeCompare(b.title));
-  const what = kind==="Category" ? `in this category` : kind==="Tag" ? `with this tag` : kind==="Maturity" ? `at this maturity level` : `in ${SITE}`;
+  const what = kind==="Tag" ? `with this tag` : kind==="Maturity" ? `at this maturity level` : `in ${SITE}`;
   setMainFor(nav, `<h1 class="title">${kind?`<span class="ns">${esc(kind)}:</span>`:""}${esc(title)}</h1>
     ${help?ambox(kind==="Maturity"&&title==="Draft"?"warn":"slate", "info", `<p>${esc(help)}</p>`):""}
-    ${pages.length ? `<h2 style="font-size:20px;font-weight:700;margin:6px 0 4px">${kind==="Category"?`Pages in category “${esc(title)}”`:"Pages"}</h2>
+    ${pages.length ? `<h2 style="font-size:20px;font-weight:700;margin:6px 0 4px">${kind==="Tag"?`Pages tagged “${esc(title)}”`:"Pages"}</h2>
       <p class="muted" style="margin:0 0 10px;font-size:16px">The following ${pages.length} page${pages.length>1?"s are":" is"} ${what}${kind?`, out of ${all.length} total`:""}.</p>
       ${groupedList(pages)}`
-    : `<div class="empty">No articles here yet.${S.me.canWrite && kind==="Category" ? ` <a href="#/new?category=${enc(title)}">Write one</a>.`:""}</div>`}
+    : `<div class="empty">No articles here yet.${S.me.canWrite && kind==="Tag" ? ` <a href="#/new?tag=${enc(title)}">Write one</a>.`:""}</div>`}
     ${footer()}`);
 }
-async function viewCategories(){
+async function viewTags(){
   const nav = S.nav;
   const pages = await refreshPages(true);
-  const counts = {}; for(const p of pages) counts[p.category] = (counts[p.category]||0)+1;
-  const cats = [...new Set([...CATEGORIES, ...Object.keys(counts)])].sort((a,b)=>a.localeCompare(b));
-  const tags = {}; for(const p of pages) for(const t of (p.tags||[])) tags[t] = (tags[t]||0)+1;
-  setMainFor(nav, `<h1 class="title">Categories</h1>
-    <p class="muted" style="margin:0 0 10px;font-size:16px">The following categories exist in ${SITE}. Empty categories are shown in red.</p>
-    <ul style="columns:2 260px;column-gap:32px;margin:0 0 20px">${cats.map(c => `<li><a href="#/category/${enc(c)}" class="${counts[c]?"":"new"}">${esc(c)}</a> <span class="muted">(${counts[c]||0} member${counts[c]===1?"":"s"})</span></li>`).join("")}</ul>
-    <h2 style="font-size:20px;font-weight:700;margin:20px 0 8px">Tags</h2>
-    <div>${Object.keys(tags).sort((a,b)=>a.localeCompare(b)).map(t => `<a class="tag" href="#/tag/${enc(t)}">${esc(t)} · ${tags[t]}</a>`).join("") || '<span class="muted">No tags yet.</span>'}</div>
+  const counts = {}; for(const p of pages) for(const t of (p.tags||[])) counts[t] = (counts[t]||0)+1;
+  setMainFor(nav, `<h1 class="title">Tags</h1>
+    <p class="muted" style="margin:0 0 10px;font-size:16px">Every article carries one or more of these tags. Tags without articles are shown in red.</p>
+    <ul style="columns:2 260px;column-gap:32px;margin:0 0 20px">${allTags().map(t => `<li><a href="#/tag/${enc(t)}" class="${counts[t]?"":"new"}">${esc(t)}</a> <span class="muted">(${counts[t]||0} article${counts[t]===1?"":"s"})</span></li>`).join("")}</ul>
     ${footer()}`);
 }
 
@@ -1095,7 +1097,7 @@ async function viewArticle(slug, revId){
     <aside class="infobox ${page.format==="html"?"wide":""}" aria-label="Article facts">
       ${page.format==="html"?"":`<span class="cap">${esc(page.title)}</span>`}
       <table><tbody>
-        <tr><th>Category</th><td><a href="#/category/${enc(page.category)}">${esc(page.category)}</a></td></tr>
+        <tr><th>Tags</th><td>${(page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—"}</td></tr>
         <tr><th>Maturity</th><td>${pill(status, true)}</td></tr>
         <tr><th>Revision</th><td class="mono">${rev.n} of ${page.revN}</td></tr>
         <tr><th>Author</th><td>${personSpan(page.createdBy)}</td></tr>
@@ -1108,9 +1110,8 @@ async function viewArticle(slug, revId){
   const statusNote = status==="draft" ? ambox("warn","edit_note",`<p><b>This article is a draft.</b> ${STATUS.draft.help}</p>`)
                    : status==="deprecated" ? ambox("slate","archive",`<p><b>This article is deprecated.</b> ${STATUS.deprecated.help}</p>`) : "";
   const tagsHtml = (page.tags||[]).map(t=>`<a href="#/tag/${enc(t)}">${esc(t)}</a>`).join('<span class="sep">|</span>');
-  const cats = `<div class="catlinks"><a href="#/categories">Category</a>: <a href="#/category/${enc(page.category)}">${esc(page.category)}</a>
+  const cats = `<div class="catlinks"><a href="#/tags">Tags</a>: ${tagsHtml||"—"}
     <span class="sep">·</span><a href="#/status/${esc(status)}">Maturity</a>: <a href="#/status/${esc(status)}">${esc(statusLabel(status))}</a>
-    ${tagsHtml?`<span class="sep">·</span>Tags: ${tagsHtml}`:""}
     ${hasAcl()?`<span class="sep">·</span><a href="#/access/${slug}">Access</a>: ${page.visibility==="restricted"?"Restricted":"Internal"}`:""}</div>`;
   const foot = footer([`This page was last edited on ${fmtDay(page.updatedAt||rev.at)}, at ${fmtTime(page.updatedAt||rev.at)}, by ${personSpan(page.updatedBy)} (revision ${page.revN}).`]);
   const head = `<div class="title-row"><h1 class="title">${esc(meta.title||page.title)}</h1>
@@ -1202,7 +1203,9 @@ async function viewDiff(slug, aId, bId){
   const isLatest = ib === 0;
   const model = diffModel(a.content, b.content);
   const metaChanges = [];
-  for(const k of ["title","status","category"]) if((a[k]||"") !== (b[k]||"")) metaChanges.push(`${k}: <s>${esc(k==="status"?statusLabel(a[k]):a[k]||"—")}</s> → <b>${esc(k==="status"?statusLabel(b[k]):b[k]||"—")}</b>`);
+  const tagsTxt = x => (x.tags||[]).join(", ");
+  if(tagsTxt(a) !== tagsTxt(b)) metaChanges.push(`tags: <s>${esc(tagsTxt(a)||"—")}</s> → <b>${esc(tagsTxt(b)||"—")}</b>`);
+  for(const k of ["title","status"]) if((a[k]||"") !== (b[k]||"")) metaChanges.push(`${k}: <s>${esc(k==="status"?statusLabel(a[k]):a[k]||"—")}</s> → <b>${esc(k==="status"?statusLabel(b[k]):b[k]||"—")}</b>`);
   let mode = lsGet("kb.diffmode") || (isNarrow() ? "inl" : "sxs");
   setMainFor(nav, `<h1 class="title">${esc(page.title)}: Difference between revisions</h1>${tabs(slug,"diff",true,page)}<div class="maturity ${page.status}"></div>
     <table class="diff-head"><tbody><tr>
@@ -1225,7 +1228,7 @@ async function viewDiff(slug, aId, bId){
   if(r) r.onclick = async () => {
     if(!confirm(`Restore revision ${a.n}? This creates a new revision with its content.`)) return;
     try{
-      await S.store.save(slug, {title:a.title||page.title, category:a.category||page.category, tags:page.tags, status:a.status||page.status,
+      await S.store.save(slug, {title:a.title||page.title, tags:(a.tags && a.tags.length ? a.tags : page.tags), status:a.status||page.status,
         format:a.format||page.format, abstract:page.abstract, summary:`Restored revision ${a.n}`, content:a.content}, page.revN);
       toast(`Restored revision ${a.n}.`); S.pagesAt=0; location.hash = "#/wiki/"+slug;
     }catch(err){ toast(err.message||String(err), 6000); }
@@ -1250,7 +1253,6 @@ async function viewInfo(slug){
       ${row("Address", `<span class="mono">#/wiki/${esc(slug)}</span>`)}
       ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : "Markdown")}
       ${row("Page length (in bytes)", fmtNum(page.size))}
-      ${row("Category", `<a href="#/category/${enc(page.category)}">${esc(page.category)}</a>`)}
       ${row("Maturity", pill(page.status, true))}
       ${row("Tags", (page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—")}
       ${row("Abstract", esc(page.abstract||"—"))}
@@ -1328,13 +1330,13 @@ async function viewSearch(q){
     if(nav !== S.nav) return;
     $("#sr").innerHTML = hits.map(r => `<li><div class="h"><a href="#/wiki/${r.slug}">${hilite(r.title, q)}</a>${lockIcon(r)}</div>
       ${r.snippet?`<div class="snip">${hilite(r.snippet, q)}</div>`:""}
-      <div class="meta">${esc(r.category)} · ${esc(statusLabel(r.status))} · ${fmtBytes(r.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.revN}) · ${fmtMW(r.updatedAt)}</div></li>`).join("");
+      <div class="meta">${esc((r.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.status))} · ${fmtBytes(r.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.revN}) · ${fmtMW(r.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = hits.length ? `Results 1 – ${hits.length} of ${hits.length}` : "There were no results matching the query.";
     return;
   }
   const res = new Map();
   for(const p of pages){
-    const s = (p.title.toLowerCase()===t?10:0) + (p.title.toLowerCase().includes(t)?4:0) + ((p.tags||[]).some(x=>x.toLowerCase().includes(t))?2:0) + ([p.abstract,p.category].join(" ").toLowerCase().includes(t)?1:0);
+    const s = (p.title.toLowerCase()===t?10:0) + (p.title.toLowerCase().includes(t)?4:0) + ((p.tags||[]).some(x=>x.toLowerCase().includes(t))?2:0) + ([p.abstract].join(" ").toLowerCase().includes(t)?1:0);
     if(s) res.set(p.slug, {p, score:s, snip:p.abstract||"", hits:0});
   }
   const draw = (final) => {
@@ -1342,7 +1344,7 @@ async function viewSearch(q){
     const list = [...res.values()].sort((a,b)=>b.score-a.score || a.p.title.localeCompare(b.p.title));
     $("#sr").innerHTML = list.map(r => `<li><div class="h"><a href="#/wiki/${r.p.slug}">${hilite(r.p.title, q)}</a></div>
       ${r.snip?`<div class="snip">${hilite(r.snip, q)}</div>`:""}
-      <div class="meta">${esc(r.p.category)} · ${esc(statusLabel(r.p.status))} · ${fmtBytes(r.p.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.p.revN}) · ${fmtMW(r.p.updatedAt)}</div></li>`).join("");
+      <div class="meta">${esc((r.p.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.p.status))} · ${fmtBytes(r.p.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.p.revN}) · ${fmtMW(r.p.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = (list.length ? `Results 1 – ${list.length} of ${list.length}` : "There were no results matching the query.") + (final ? "" : " · searching article text…");
   };
   draw(false);
@@ -1361,7 +1363,7 @@ async function viewSearch(q){
 const HELP_MD = `${SITE} is IKERLAN's internal wiki for cybersecurity know-how: procedures, interpretations of standards, lab results and state-of-the-art reports, written once and kept current.
 
 ## How pages work
-Every article has a **category**, a **maturity level**, optional **tags** and a one-line **abstract**. Each save creates a new, immutable **revision** with the editor, the time, an edit summary and a SHA-256 of the content. On the self-hosted server every revision is a git commit.
+Every article has one or more **tags** (chosen from a fixed list kept in `tags.json` in the content repository; there are no categories), a **maturity level** and a one-line **abstract**. Each save creates a new, immutable **revision** with the editor, the time, an edit summary and a SHA-256 of the content. On the self-hosted server every revision is a git commit.
 
 - **View history** lists every revision. Pick two and press *Compare selected revisions*, or use the (cur) and (prev) links.
 - **Restore**: open the difference between an old revision and the current one and choose *Restore revision N*. This adds a new revision; nothing is ever deleted.
@@ -1432,13 +1434,12 @@ async function viewEdit(slug, params){
   const isNew = !page;
   const d = {
     title: page?.title || params?.get?.("title") || (slug ? slug.replace(/-/g," ") : ""),
-    category: page?.category || params?.get?.("category") || CATEGORIES[0],
-    tags: (page?.tags||[]).join(", "), status: page?.status || "draft",
+    tags: page ? (page.tags||[]).slice() : (params?.get?.("tag") && S.tags.includes(params.get("tag")) ? [params.get("tag")] : []), status: page?.status || "draft",
     format: page?.format || "md", abstract: page?.abstract || "",
     content: cur?.content ?? "## Context\n\nWhat problem does this know-how solve, and where did we learn it?\n\n## Procedure\n\n1. \n\n## Pitfalls\n\n- \n\n## References\n\n- \n"
   };
   const baseRevN = page?.revN ?? 0;
-  const catOpts = [...new Set([...CATEGORIES, d.category])].map(c=>`<option ${c===d.category?"selected":""}>${esc(c)}</option>`).join("");
+  const tagOpts = [...S.tags, ...d.tags.filter(t => !S.tags.includes(t))].map((t,i) => `<label class="tagchip"><input type="checkbox" name="tag" value="${esc(t)}" ${d.tags.includes(t)?"checked":""}><span>${esc(t)}</span>${S.tags.includes(t)?"":'<small> (not in tags.json)</small>'}</label>`).join("");
   const stOpts = STATUS_ORDER.map(s=>`<option value="${s}" ${s===d.status?"selected":""}>${STATUS[s].label}</option>`).join("");
   const TB = [["bold","format_bold","B","Bold"],["italic","format_italic","I","Italic"],["h2","title","H","Section heading"],["wlink","link","[[ ]]","Link to an article"],
               ["xlink","public","URL","External link"],["ul","format_list_bulleted","•","Bulleted list"],["ol","format_list_numbered","1.","Numbered list"],["code","code","</>","Code block"],["table","table","▦","Table"]];
@@ -1451,17 +1452,18 @@ async function viewEdit(slug, params){
         <div class="row">
           <div><label for="f-title">Title</label><input type="text" id="f-title" value="${esc(d.title)}" required ${isNew?"":"readonly"}>
             <div class="hint">${isNew?`Address: <span class="mono" id="slugv"></span>`:"Titles are fixed after creation so links keep working."}</div></div>
-          <div><label for="f-cat">Category</label><select id="f-cat">${catOpts}</select></div>
           <div><label for="f-status">Maturity</label><select id="f-status">${stOpts}</select><div class="hint" id="st-help">${STATUS[d.status].help}</div></div>
         </div>
         <div class="row">
-          <div><label for="f-tags">Tags</label><input type="text" id="f-tags" value="${esc(d.tags)}" placeholder="e.g. IEC 62443-4-2, SL2, i.MX93"><div class="hint">Comma separated.</div></div>
-          <div style="grid-column:span 2"><label for="f-abs">One-line abstract</label><input type="text" id="f-abs" value="${esc(d.abstract)}" maxlength="240" placeholder="What will a colleague learn from this article?"></div>
+          <div style="grid-column:span 3"><label for="f-abs">One-line abstract</label><input type="text" id="f-abs" value="${esc(d.abstract)}" maxlength="240" placeholder="What will a colleague learn from this article?"></div>
         </div>
         ${isNew && hasAcl() ? `<div><label>Who can see it</label><div class="radio-cards">
           <label><input type="radio" name="vis" value="internal" checked><span><b>Internal</b><small>Every signed-in IKERLAN user.</small></span></label>
           <label><input type="radio" name="vis" value="restricted"><span><b><span class="ms lock" aria-hidden="true">lock</span> Restricted</b><small>Only you and the administrators. Add people and groups in <i>Permissions</i> after creating it.</small></span></label>
         </div></div>` : ""}
+        <fieldset class="tagpick" id="f-tags"><legend>Tags <small class="muted">(at least one)</small></legend>
+          <div class="tagchips">${tagOpts || '<span class="muted">No tags are defined yet: add them to tags.json in the content repository.</span>'}</div>
+          <div class="hint err" id="tags-err" hidden>Choose at least one tag.</div></fieldset>
       </fieldset>
       <div>
         <div class="ed-bar">
@@ -1558,10 +1560,13 @@ async function viewEdit(slug, params){
     if(!body.value.trim()){ toast("The article is empty."); body.focus(); return; }
     const target = slug || slugify(title);
     if(isNew && S.pages.some(p=>p.slug===target)){ toast("An article with that address already exists. Pick another title."); return; }
-    const data = {title, category:$("#f-cat").value, status:$("#f-status").value, format:fmt, abstract:$("#f-abs").value.trim(),
-      tags:$("#f-tags").value.split(",").map(s=>s.trim()).filter(Boolean).slice(0,20), summary, content:body.value};
+    const picked = $$("input[name=tag]:checked").map(x => x.value).slice(0,20);
+    $("#tags-err").hidden = picked.length > 0;
+    if(!picked.length){ toast("Choose at least one tag."); $("#f-tags").scrollIntoView({block:"center"}); return; }
+    const data = {title, status:$("#f-status").value, format:fmt, abstract:$("#f-abs").value.trim(),
+      tags:picked, summary, content:body.value};
     if(isNew && $('input[name=vis]:checked')) data.access = {visibility:$('input[name=vis]:checked').value};
-    if(!isNew && data.status===page.status && data.category===page.category && data.content===cur.content && data.abstract===page.abstract && data.tags.join()=== (page.tags||[]).join() && data.format===page.format){
+    if(!isNew && data.status===page.status && data.content===cur.content && data.abstract===page.abstract && data.tags.join()=== (page.tags||[]).join() && data.format===page.format){
       toast("Nothing changed, so no revision was created."); return;
     }
     const btn = $("#saveBtn"); const lbl = btn.lastElementChild; btn.disabled = true; lbl.textContent = "Publishing…";
@@ -1857,12 +1862,12 @@ function setupSearch(){
     const raw = q.value.trim(), t = raw.toLowerCase();
     if(!t){ close(); return; }
     const hits = S.pages.map(p => {
-      const hay = [p.title, p.abstract, p.category, ...(p.tags||[])].join(" ").toLowerCase();
+      const hay = [p.title, p.abstract, ...(p.tags||[])].join(" ").toLowerCase();
       const score = (p.title.toLowerCase().startsWith(t)?4:0) + (p.title.toLowerCase().includes(t)?3:0) + ((p.tags||[]).some(x=>x.toLowerCase().includes(t))?2:0) + (hay.includes(t)?1:0);
       return {p, score};
     }).filter(h=>h.score).sort((a,b)=>b.score-a.score).slice(0,8);
     sel = -1;
-    box.innerHTML = hits.map(h=>`<a href="#/wiki/${h.p.slug}" role="option">${hilite(h.p.title, raw)}<small>${esc(h.p.category)} · ${esc(statusLabel(h.p.status))}</small></a>`).join("")
+    box.innerHTML = hits.map(h=>`<a href="#/wiki/${h.p.slug}" role="option">${hilite(h.p.title, raw)}<small>${esc((h.p.tags||[]).join(", "))} · ${esc(statusLabel(h.p.status))}</small></a>`).join("")
       + `<a href="#/search?q=${enc(raw)}" class="sr-more" role="option"><span class="ms" aria-hidden="true">search</span> Search for pages containing <b>${esc(raw)}</b></a>`
       + (S.me.canWrite && !S.pages.some(p=>p.slug===slugify(raw)) ? `<a href="#/new?title=${enc(raw)}" role="option"><small>Create the page “${esc(raw)}”</small></a>` : "");
     box.classList.add("open");
