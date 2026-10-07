@@ -25,7 +25,7 @@ for tag, f in [("VENDOR_MARKED", "marked.min.js"), ("VENDOR_PURIFY", "purify.min
 u = urlparse(cfg["authWorkerUrl"])
 worker_origin = f"{u.scheme}://{u.netloc}" if u.scheme and u.netloc else ""
 s = s.replace("__AUTH_WORKER_ORIGIN__", "'self'" if a.dev else worker_origin)
-s = s.replace("/*APP_CONFIG*/null", json.dumps(cfg, ensure_ascii=False).replace("</", "<\\/"))
+s = s.replace("/*APP_CONFIG*/null", json.dumps(cfg, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/"))
 s = s.replace("__SITE_NAME__", cfg["siteName"])
 
 public = here.parent / "public"
