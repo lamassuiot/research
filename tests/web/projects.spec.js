@@ -318,3 +318,28 @@ test.describe("project home: quick access and introduction", () => {
     await expect(page.locator(".addlink")).toHaveCount(0);
   });
 });
+
+test.describe("project mode layout", () => {
+  test("a selected item has one indicator, and big screens give the sidebars the extra room", async ({ page }) => {
+    w.gh = await installFakeGitHub(page, { repo });
+    const measure = async width => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/research/#/wiki/lamassu-ca/design/key-ceremony");
+      await expect(page.locator("#tocSide")).toBeVisible();
+      return { side: (await page.locator("#side").boundingBox()).width, main: (await page.locator("#main").boundingBox()).width };
+    };
+    const small = await measure(1366), big = await measure(2400);
+    expect(big.side).toBeGreaterThan(small.side + 150);          // the margins are used by the sidebars...
+    expect(big.main).toBeLessThanOrEqual(1000);                  // ...while the main column keeps its size
+    expect(big.main).toBeGreaterThanOrEqual(small.main);
+    // exactly one selected indicator: a tinted row for the current item, no inset bar on the link as well
+    const cur = page.locator("#sideProject a.cur");
+    await expect(cur).toHaveCount(1);
+    const style = await cur.evaluate(a => ({ link: getComputedStyle(a), row: getComputedStyle(a.closest(".pt-row")) }) && ({
+      linkShadow: getComputedStyle(a).boxShadow, linkBg: getComputedStyle(a).backgroundColor, rowBg: getComputedStyle(a.closest(".pt-row")).backgroundColor, rowShadow: getComputedStyle(a.closest(".pt-row")).boxShadow }));
+    expect(style.linkShadow).toBe("none");
+    expect(style.linkBg).toBe("rgba(0, 0, 0, 0)");
+    expect(style.rowShadow).toBe("none");
+    expect(style.rowBg).not.toBe("rgba(0, 0, 0, 0)");
+  });
+});
