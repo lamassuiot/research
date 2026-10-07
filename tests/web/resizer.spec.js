@@ -1,6 +1,6 @@
 // The sidebar can be made wider or narrower; the content takes the rest. Widths are remembered per layout.
 const { test, expect } = require("@playwright/test");
-const { installFakeGitHub, createRepo, seedFromTemplate } = require("../helpers/fake-github");
+const { installFakeGitHub, createRepo, seedFromTemplate, projectJson, pageFiles } = require("../helpers/fake-github");
 const { watch } = require("../helpers/watch");
 
 let w;
@@ -8,9 +8,8 @@ test.beforeEach(({ page }) => { w = watch(page); });
 test.afterEach(() => w.check());
 
 function repoWithProject() {
-  const r = seedFromTemplate(createRepo()), now = new Date().toISOString();
-  r.add("project", { "projects/lamassu-ca.json": JSON.stringify({ title: "Lamassu CA", description: "", createdAt: now, createdBy: "ada", updatedAt: now, updatedBy: "ada",
-    items: [{ type: "page", id: "pqc-migration-notes" }] }) });   // "welcome" stays outside the project
+  const r = seedFromTemplate(createRepo());
+  r.add("project", { ...pageFiles("lamassu-ca", "ca-notes"), "projects/lamassu-ca/project.json": projectJson({ title: "Lamassu CA", items: [{ type: "page", id: "ca-notes" }] }) });
   return r;
 }
 async function open(page, hash, width = 1400) {
@@ -26,7 +25,7 @@ async function drag(page, dx) {
 }
 
 test("dragging the edge resizes the sidebar and the content takes the difference; it is remembered", async ({ page }) => {
-  await open(page, "#/wiki/welcome");
+  await open(page, "#/tags");
   await expect(page.locator("#sideResizer")).toBeVisible();
   const before = { side: (await box(page, "#side")).width, main: (await box(page, "#main")).width };
   await drag(page, 100);
@@ -44,7 +43,7 @@ test("dragging the edge resizes the sidebar and the content takes the difference
 });
 
 test("the width is clamped, can be set with the keyboard, and is reset by double-click or Home", async ({ page }) => {
-  await open(page, "#/wiki/welcome");
+  await open(page, "#/tags");
   const def = (await box(page, "#side")).width;
   await drag(page, -400);
   expect((await box(page, "#side")).width).toBeGreaterThanOrEqual(200);            // never below the minimum
@@ -65,10 +64,10 @@ test("the width is clamped, can be set with the keyboard, and is reset by double
 });
 
 test("project mode has its own width, and the main menu keeps its own", async ({ page }) => {
-  await open(page, "#/wiki/welcome", 1700);
+  await open(page, "#/tags", 1700);
   await drag(page, 60);
   const menuW = (await box(page, "#side")).width;
-  await page.evaluate(() => { location.hash = "#/wiki/lamassu-ca/pqc-migration-notes"; });
+  await page.evaluate(() => { location.hash = "#/wiki/lamassu-ca/ca-notes"; });
   await expect(page.locator("body")).toHaveClass(/proj-mode/);
   await expect(page.locator("#tocSide")).toBeVisible();
   const projDefault = (await box(page, "#side")).width;
@@ -85,7 +84,7 @@ test("project mode has its own width, and the main menu keeps its own", async ({
 });
 
 test("no resize handle on a phone, and none while the sidebar is hidden", async ({ page }) => {
-  await open(page, "#/wiki/welcome", 700);
+  await open(page, "#/wiki/general/welcome", 700);
   await expect(page.locator("#sideResizer")).toBeHidden();
   await page.setViewportSize({ width: 1400, height: 800 });
   await expect(page.locator("#sideResizer")).toBeVisible();

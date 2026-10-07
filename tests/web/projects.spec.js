@@ -1,6 +1,6 @@
-// Projects: containers whose structure is one JSON tree (projects/<id>.json). Serial: one shared in-memory repository.
+// Projects: everything lives inside one (projects/<id>/project.json holds the structure). Serial: one shared in-memory repository.
 const { test, expect } = require("@playwright/test");
-const { installFakeGitHub, createRepo, seedFromTemplate } = require("../helpers/fake-github");
+const { installFakeGitHub, createRepo, seedFromTemplate, projectJson, pageFiles } = require("../helpers/fake-github");
 const { makePdf } = require("../helpers/pdf");
 const { watch } = require("../helpers/watch");
 
@@ -9,7 +9,7 @@ test.beforeEach(({ page }) => { w = watch(page); });
 test.afterEach(() => w.check());
 test.describe.configure({ mode: "serial" });
 const repo = seedFromTemplate(createRepo());
-const project = id => JSON.parse(repo.head().files.get(`projects/${id}.json`));
+const project = id => JSON.parse(repo.head().files.get(`projects/${id}/project.json`));
 const items = id => project(id).items;
 
 async function open(page, hash, opts) {
@@ -20,14 +20,14 @@ async function open(page, hash, opts) {
 const chip = (page, name) => page.locator(".tagchip", { hasText: new RegExp("^" + name + "$") }).locator("span").first();
 async function newPage(page, hash, title, tag = "PKI") {
   await open(page, hash);
-  await page.fill("#f-title", title); await chip(page, tag).click();
+  await page.fill("#f-title", title);
   await page.fill("#f-sum", "Create " + title); await page.fill("#f-body", `## ${title}\n\nBody.\n`);
   await page.locator("#saveBtn").click();
 }
 
 test("creates a project (a container, no content of its own)", async ({ page }) => {
   await open(page, "#/projects");
-  await expect(page.locator(".empty")).toContainText("No projects yet");
+  await expect(page.locator(".linklist")).toContainText("General");                  // the seed project that holds the welcome pages
   await page.fill("#np-title", "Lamassu CA");
   await expect(page.locator("#np-slug")).toHaveText("#/wiki/lamassu-ca");
   await page.fill("#np-desc", "Design of the CA");
@@ -39,12 +39,26 @@ test("creates a project (a container, no content of its own)", async ({ page }) 
   await expect(page.locator(".empty")).toContainText("This project is empty");
 });
 
+test("the header has a Create project button that opens the form; the menu has no loose Files or External links", async ({ page }) => {
+  await open(page, "#/");
+  await expect(page.locator("#newBtn")).toContainText("Create project");
+  await page.locator("#newBtn").click();
+  await expect(page).toHaveURL(/#\/projects\?new=1$/);
+  await expect(page.locator("#np-title")).toBeFocused();
+  await expect(page.locator("#sideNav a[data-nav=links], #sideNav a[data-nav=files]")).toHaveCount(0);
+  await page.evaluate(() => { location.hash = "#/wiki/lamassu-ca"; });
+  await expect(page.locator("#newBtn")).toContainText("Create article");
+  await expect(page.locator("#newBtn")).toHaveAttribute("href", "#/new?project=lamassu-ca");
+  await open(page, "#/", { permission: "read" });
+  await expect(page.locator("#newBtn")).toBeHidden();
+});
+
 test("adds a page to a project in one commit; its address is Project/Page", async ({ page }) => {
   await newPage(page, "#/new?project=lamassu-ca", "Design");
   await expect(page).toHaveURL(/#\/wiki\/lamassu-ca\/design$/);
   const c = repo.head();
   expect(c.message.split("\n")[0]).toBe("Create Design");
-  expect(c.files.has("pages/design/meta.json")).toBe(true);           // the page and the project tree change together
+  expect(c.files.has("projects/lamassu-ca/pages/design/meta.json")).toBe(true);           // the page and the project tree change together
   expect(items("lamassu-ca")).toEqual([{ type: "page", id: "design" }]);
   await expect(page.locator(".crumbs")).toContainText("Lamassu CA");
   await expect(page.locator(".infobox")).toContainText("Lamassu CA");
@@ -73,10 +87,9 @@ test("adds a link and a PDF to the project, under a page", async ({ page }) => {
   await open(page, "#/links?new=1&project=lamassu-ca&parent=design");
   await expect(page.locator(".addlink")).toContainText("added to the project Lamassu CA");
   await page.fill("#l-url", "https://example.org/ca-design"); await page.fill("#l-title", "CA design post");
-  await page.locator(".addlink .tagchip", { hasText: /^PKI$/ }).locator("span").first().click();
   await page.locator("#l-save").click();
   await expect(page).toHaveURL(/#\/wiki\/lamassu-ca\/design$/);
-  expect(repo.head().files.has("links/ca-design-post.json")).toBe(true);
+  expect(repo.head().files.has("projects/lamassu-ca/links/ca-design-post.json")).toBe(true);
 
   await page.goto("/research/#/files?project=lamassu-ca");
   await expect(page.locator("#upf")).toBeVisible();
@@ -101,36 +114,91 @@ test("the sidebar shows the project tree while reading inside it", async ({ page
   await expect(side).toBeHidden();
 });
 
-test("organize: reorder, outdent, indent and remove are single commits that only touch the project file", async ({ page }) => {
+test("organize: reorder, outdent and indent are single commits that only touch the project file", async ({ page }) => {
   await open(page, "#/wiki/lamassu-ca?organize=1");
   const before = repo.commits.length;
   const act = (op, id) => page.locator(`[data-op="${op}"][data-id="${id}"]`).click();
+  await expect(page.locator('[data-op="rm"]')).toHaveCount(0);                  // an item cannot leave a project except by moving to another one
   await act("down", "design");                                                  // design moves below ca-spec.pdf
   await expect.poll(() => items("lamassu-ca")[0].id).toBe("ca-spec.pdf");
   await act("out", "key-ceremony");                                             // becomes a sibling of design
   await expect.poll(() => items("lamassu-ca").map(i => i.id)).toEqual(["ca-spec.pdf", "design", "key-ceremony"]);
   await act("in", "key-ceremony");                                              // back under design
   await expect.poll(() => JSON.stringify(items("lamassu-ca")[1].children.map(i => i.id))).toContain("key-ceremony");
-  await act("rm", "ca-spec.pdf");
-  await expect.poll(() => items("lamassu-ca").map(i => i.id)).toEqual(["design"]);
-  expect(repo.commits.length).toBe(before + 4);
-  for (const c of repo.commits.slice(before)) expect([...c.changed]).toEqual(["projects/lamassu-ca.json"]);
-  expect(repo.head().message).toBe("Remove from project: Lamassu CA\n\nKnow-how-Project: lamassu-ca");
-  expect(repo.head().files.has("files/ca-spec.pdf")).toBe(true);                // the file itself is not deleted
+  expect(repo.commits.length).toBe(before + 3);
+  for (const c of repo.commits.slice(before)) expect([...c.changed]).toEqual(["projects/lamassu-ca/project.json"]);
+  expect(repo.head().message).toBe("Reorder project: Lamassu CA\n\nKnow-how-Project: lamassu-ca");
+  expect(repo.head().files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(true);
 });
 
-test("an item removed from a project can be added to another one", async ({ page }) => {
+test("an item can be moved to another project: its blobs are reused in one commit", async ({ page }) => {
   await open(page, "#/projects");
   await page.fill("#np-title", "Research"); await page.locator("#np-btn").click();
   await expect(page).toHaveURL(/#\/wiki\/research$/);
-  await page.locator(".addlink summary", { hasText: "Add existing items" }).click();
+  await page.locator(".addlink summary", { hasText: "Move items here" }).click();
   const opts = await page.locator("#ae-item option").allTextContents();
-  expect(opts).toContain("ca-spec.pdf");
-  expect(opts).not.toContain("Design");                                         // already in Lamassu CA
-  await page.selectOption("#ae-item", "file:ca-spec.pdf");
+  expect(opts).toContain("ca-spec.pdf (file)");
+  expect(opts).toContain("Design (page)");
+  const before = repo.commits.length, blobs = gh_blobs();
+  await page.selectOption("#ae-item", "lamassu-ca|file:ca-spec.pdf");
   await page.locator("#aef button[type=submit]").click();
   await expect(page.locator("#main .ptree a", { hasText: "ca-spec.pdf" })).toBeVisible();
+  expect(repo.commits.length).toBe(before + 1);
   expect(items("research")).toEqual([{ type: "file", id: "ca-spec.pdf" }]);
+  expect(items("lamassu-ca").map(i => i.id)).toEqual(["design"]);
+  const c = repo.head();
+  expect(c.files.has("projects/research/files/ca-spec.pdf")).toBe(true);
+  expect(c.files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(false);
+  expect([...c.changed].sort()).toEqual(["projects/lamassu-ca/files/ca-spec.pdf", "projects/lamassu-ca/project.json", "projects/research/files/ca-spec.pdf", "projects/research/project.json"]);
+  expect(blobs).toBe(gh_blobs());                                                // nothing was uploaded
+});
+const gh_blobs = () => (w.gh && w.gh.blobUploads) || 0;
+
+test("moving a page takes its sub-pages and keeps its content", async ({ page }) => {
+  await open(page, "#/wiki/research");
+  await page.locator(".addlink summary", { hasText: "Move items here" }).click();
+  await page.selectOption("#ae-item", "lamassu-ca|page:design");
+  await page.locator("#aef button[type=submit]").click();
+  await expect(page.locator("#main .ptree a", { hasText: "Key ceremony" })).toBeVisible();
+  expect(items("research").map(i => i.id)).toEqual(["ca-spec.pdf", "design"]);
+  expect(items("research")[1].children.map(i => i.id).sort()).toEqual(["ca-design-post", "key-ceremony"]);
+  expect(items("lamassu-ca")).toEqual([]);
+  const files = [...repo.head().files.keys()];
+  expect(files.filter(f => f.includes("/design/") || f.includes("key-ceremony") || f.includes("ca-design-post")).sort()).toEqual([
+    "projects/research/links/ca-design-post.json", "projects/research/pages/design/content.md", "projects/research/pages/design/meta.json",
+    "projects/research/pages/key-ceremony/content.md", "projects/research/pages/key-ceremony/meta.json"]);
+  await page.goto("/research/#/wiki/design");                                     // the short address finds it in its new project
+  await expect(page).toHaveURL(/#\/wiki\/research\/design$/);
+  await expect(page.locator("h1.title")).toContainText("Design");
+  // and everything goes back, so the next tests find the project as it was
+  await page.goto("/research/#/wiki/lamassu-ca");
+  await page.locator(".addlink summary", { hasText: "Move items here" }).click();
+  for (const key of ["research|page:design", "research|file:ca-spec.pdf"]) {
+    await page.selectOption("#ae-item", key);
+    await page.locator("#aef button[type=submit]").click();
+    await expect.poll(() => items("lamassu-ca").length).toBeGreaterThan(key.includes("design") ? 0 : 1);
+    await page.reload();
+    await page.locator(".addlink summary", { hasText: "Move items here" }).click().catch(() => {});
+  }
+  expect(items("lamassu-ca").map(i => i.id)).toEqual(["design", "ca-spec.pdf"]);
+  expect(items("research")).toEqual([]);
+});
+
+test("a link added without a project in the address asks for one; deleting it also leaves the structure", async ({ page }) => {
+  await open(page, "#/links?new=1");
+  await expect(page.locator("#l-proj option")).toHaveText(["General", "Lamassu CA", "Research"]);
+  await page.selectOption("#l-proj", "lamassu-ca");
+  await page.fill("#l-url", "https://example.org/temp"); await page.fill("#l-title", "Temp link");
+  await page.locator("#l-save").click();
+  await expect(page.locator(".linkcard")).toHaveCount(2);
+  expect(repo.head().files.has("projects/lamassu-ca/links/temp-link.json")).toBe(true);
+  expect(items("lamassu-ca").some(i => i.id === "temp-link")).toBe(true);
+  page.once("dialog", d => d.accept());
+  await page.locator('.linkcard[data-id="temp-link"] [data-del]').click();
+  await expect(page.locator(".linkcard")).toHaveCount(1);
+  expect(repo.head().files.has("projects/lamassu-ca/links/temp-link.json")).toBe(false);
+  expect([...repo.head().changed].sort()).toEqual(["projects/lamassu-ca/links/temp-link.json", "projects/lamassu-ca/project.json"]);
+  expect(items("lamassu-ca").some(i => i.id === "temp-link")).toBe(false);
 });
 
 test("addresses cannot clash between projects and articles", async ({ page }) => {
@@ -139,14 +207,20 @@ test("addresses cannot clash between projects and articles", async ({ page }) =>
   await page.fill("#np-title", "Welcome"); await page.locator("#np-btn").click();       // an article called welcome exists
   await expect(page.locator("#toast")).toContainText("already used");
   await open(page, "#/new");
-  await page.fill("#f-title", "Research"); await chip(page, "PKI").click();               // a project called research exists
+  await page.fill("#f-title", "Research");
   await page.fill("#f-sum", "x"); await page.fill("#f-body", "x"); await page.locator("#saveBtn").click();
   await expect(page.locator("#toast")).toContainText("already used");
   expect(repo.commits.length).toBe(before);
 });
 
-test("edit and delete a project; its items are kept", async ({ page }) => {
-  await open(page, "#/wiki/research");
+test("edit a project; only an empty project can be deleted", async ({ page }) => {
+  await open(page, "#/wiki/lamassu-ca");
+  await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+  const before = repo.commits.length;
+  await page.locator("#ep-del").click();
+  await expect(page.locator("#toast")).toContainText("only be deleted when it is empty");
+  expect(repo.commits.length).toBe(before);
+  await page.goto("/research/#/wiki/research");
   await page.locator(".addlink summary", { hasText: "Edit project" }).click();
   await page.fill("#ep-title", "Research notes"); await page.locator("#epf button[type=submit]").click();
   await expect(page.locator("h1.title")).toContainText("Research notes");
@@ -155,8 +229,8 @@ test("edit and delete a project; its items are kept", async ({ page }) => {
   await page.locator(".addlink summary", { hasText: "Edit project" }).click();
   await page.locator("#ep-del").click();
   await expect(page).toHaveURL(/#\/projects$/);
-  expect(repo.head().files.has("projects/research.json")).toBe(false);
-  expect(repo.head().files.has("files/ca-spec.pdf")).toBe(true);
+  expect(repo.head().files.has("projects/research/project.json")).toBe(false);
+  expect(repo.head().files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(true);
 });
 
 test("a reader sees projects but no controls", async ({ page }) => {
@@ -171,8 +245,11 @@ test("a reader sees projects but no controls", async ({ page }) => {
 
 test("the home page lists the projects", async ({ page }) => {
   await open(page, "#/");
-  await expect(page.locator(".mp-box h2", { hasText: "Projects" })).toBeVisible();
-  await expect(page.locator(".mp-box a", { hasText: "Lamassu CA" })).toHaveAttribute("href", "#/wiki/lamassu-ca");
+  await expect(page.locator(".home-projects h2", { hasText: "Projects" })).toBeVisible();
+  await expect(page.locator(".home-projects .linkcard a", { hasText: "Lamassu CA" })).toHaveAttribute("href", "#/wiki/lamassu-ca");
+  await expect(page.locator(".home-projects .linkcard a", { hasText: "General" })).toBeVisible();
+  const y = async sel => (await page.locator(sel).first().boundingBox()).y;
+  expect(await y(".home-projects")).toBeLessThan(await y(".mp-grid"));          // projects come first
 });
 
 test.describe("project tags and project mode", () => {
@@ -186,10 +263,10 @@ test.describe("project tags and project mode", () => {
     await expect(page.locator(".pr-tags .badge")).toHaveText(["PQC"]);
     // the article "PQC migration notes" is tagged PQC; once it sits in the tagged project it is no longer listed under PQC
     await page.goto("/research/#/tag/PQC");
-    await expect(page.locator("#main")).toContainText("PQC migration notes");                                  // still indexed: not in a project yet
+    await expect(page.locator("#main")).toContainText("PQC migration notes");                                  // still indexed: it is in the untagged General project
     await page.goto("/research/#/wiki/pqc-programme");
-    await page.locator(".addlink summary", { hasText: "Add existing items" }).click();
-    await page.selectOption("#ae-item", "page:pqc-migration-notes");
+    await page.locator(".addlink summary", { hasText: "Move items here" }).click();
+    await page.selectOption("#ae-item", "general|page:pqc-migration-notes");
     await page.locator("#aef button[type=submit]").click();
     await expect(page.locator("#main .ptree a", { hasText: "PQC migration notes" })).toBeVisible();
     await page.goto("/research/#/tag/PQC");
@@ -212,11 +289,6 @@ test.describe("project tags and project mode", () => {
     await page.goto("/research/#/tag/PQC");
     await expect(page.locator("#main")).toContainText("PQC migration notes");
     await expect(page.locator("#main h2", { hasText: "Projects tagged" })).toHaveCount(0);
-  });
-
-  test("a page inside an untagged project keeps being indexed by its own tags", async ({ page }) => {
-    await open(page, "#/tag/PKI");
-    await expect(page.locator("#main")).toContainText("Design");        // inside the untagged project "Lamassu CA"
   });
 
   test("inside a project the main menu steps aside: title, structure and contents", async ({ page }) => {
@@ -243,15 +315,11 @@ test.describe("project tags and project mode", () => {
   });
 
   test("the sidebar switches at once when a project item is selected, and for the project itself", async ({ page }) => {
-    await open(page, "#/wiki/welcome");
+    await open(page, "#/tags");
     await expect(page.locator("body")).not.toHaveClass(/proj-mode/);
     await page.evaluate(() => { location.hash = "#/wiki/lamassu-ca"; });
     await expect(page.locator("body")).toHaveClass(/proj-mode/);
     await expect(page.locator("#sideProjectT")).toHaveClass(/cur/);                     // the project itself is the current item
-    await page.locator(".addlink summary", { hasText: "Add existing items" }).click();       // ca-spec.pdf is loose again after its project was deleted
-    await page.selectOption("#ae-item", "file:ca-spec.pdf");
-    await page.locator("#aef button[type=submit]").click();
-    await expect(page.locator("#main .ptree a", { hasText: "ca-spec.pdf" })).toBeVisible();
     await page.evaluate(() => { location.hash = "#/file/ca-spec.pdf"; });
     await expect(page.locator("body")).toHaveClass(/proj-mode/);
     await expect(page.locator("#sideProject a.cur")).toHaveText("ca-spec.pdf");
@@ -295,7 +363,7 @@ test.describe("project home: quick access and introduction", () => {
     expect(await y(".proj-intro")).toBeLessThan(await y("h2.pr-h:has-text('Structure')"));
     // one commit, only the project file; the text is stored in the project
     expect(repo.commits.length).toBe(before + 1);
-    expect([...repo.head().changed]).toEqual(["projects/lamassu-ca.json"]);
+    expect([...repo.head().changed]).toEqual(["projects/lamassu-ca/project.json"]);
     expect(project("lamassu-ca").intro).toContain("## About this project");
   });
 
@@ -345,15 +413,11 @@ test.describe("project mode layout", () => {
 });
 
 test.describe("structure bar", () => {
-  const crypto = require("node:crypto");
   function longRepo() {
-    const r = seedFromTemplate(createRepo()), now = new Date().toISOString();
+    const r = seedFromTemplate(createRepo());
     const body = Array.from({ length: 14 }, (_, i) => `## Fase ${i} — Un apartado largo del documento\n\nTexto.\n\n### Subapartado ${i}.1\n\nTexto.\n\n### Subapartado ${i}.2\n\nTexto.\n`).join("\n");
-    const meta = JSON.parse(r.head().files.get("pages/welcome/meta.json"));
-    r.add("long\n\nKnow-how-Page: roadmap", { "pages/roadmap/content.md": body,
-      "pages/roadmap/meta.json": JSON.stringify({ ...meta, title: "Roadmap", size: Buffer.byteLength(body), sha256: crypto.createHash("sha256").update(body).digest("hex") }),
-      "projects/mt.json": JSON.stringify({ title: "RFC 00X - Multi-tenant", description: "", createdAt: now, createdBy: "ada", updatedAt: now, updatedBy: "ada",
-        items: [{ type: "page", id: "welcome" }, { type: "page", id: "roadmap" }] }) });
+    r.add("long\n\nKnow-how-Page: roadmap", { ...pageFiles("mt", "roadmap", { content: body, meta: { title: "Roadmap" } }),
+      "projects/mt/project.json": projectJson({ title: "RFC 00X - Multi-tenant", items: [{ type: "page", id: "roadmap" }] }) });
     return r;
   }
   test("the structure collapses to a rail, the choice is remembered, and the contents get the room", async ({ page }) => {

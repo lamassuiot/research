@@ -1,0 +1,19 @@
+{
+  "title": "General",
+  "description": "Everything that does not belong to a more specific project.",
+  "tags": [],
+  "items": [
+    {
+      "type": "page",
+      "id": "welcome"
+    },
+    {
+      "type": "page",
+      "id": "pqc-migration-notes"
+    }
+  ],
+  "createdAt": "2026-10-07T00:00:00.000Z",
+  "createdBy": "lamassu-research",
+  "updatedAt": "2026-10-07T00:00:00.000Z",
+  "updatedBy": "lamassu-research"
+}

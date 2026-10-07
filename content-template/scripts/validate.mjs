@@ -1,5 +1,11 @@
 // Validates the content repository layout. Usage: node scripts/validate.mjs [dir]   (Node >= 20, no dependencies)
 // Exit code 1 and a list of "path: message" lines when something is wrong.
+//
+// Layout: everything lives inside a project.
+//   projects/<id>/project.json
+//   projects/<id>/pages/<slug>/meta.json + content.md|html
+//   projects/<id>/links/<id>.json
+//   projects/<id>/files/<name>.pdf
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -22,6 +28,8 @@ export function validate(root) {
     try { return JSON.parse(fs.readFileSync(path.join(root, rel), "utf8")); }
     catch (e) { err(rel, e.code === "ENOENT" ? "file is missing" : "is not valid JSON"); return null; }
   };
+  const listDir = (rel) => { const full = path.join(root, rel); return fs.existsSync(full) ? fs.readdirSync(full) : []; };
+  const isDir = (rel) => fs.statSync(path.join(root, rel)).isDirectory();
 
   let tagList = [];
   const tj = readJson("tags.json");
@@ -34,100 +42,134 @@ export function validate(root) {
     }
   }
 
-  const pagesDir = path.join(root, "pages");
-  const slugs = fs.existsSync(pagesDir) ? fs.readdirSync(pagesDir) : [];
-  for (const slug of slugs) {
-    const dir = `pages/${slug}`;
-    if (!fs.statSync(path.join(pagesDir, slug)).isDirectory()) { err(dir, "only article folders are allowed in pages/"); continue; }
-    if (!SLUG_RE.test(slug)) { err(dir, "invalid slug (lowercase letters, digits and hyphens, up to 80 characters)"); continue; }
-    const m = readJson(`${dir}/meta.json`);
-    if (!m) continue;
-    const mp = `${dir}/meta.json`;
-    for (const k of REQUIRED_STR) if (typeof m[k] !== "string" || (!m[k] && k !== "abstract")) err(mp, `"${k}" must be a non-empty string`);
-    if (typeof m.title === "string" && m.title.length > 200) err(mp, "title is longer than 200 characters");
-    if (typeof m.abstract === "string" && m.abstract.length > 240) err(mp, "abstract is longer than 240 characters");
-    if (!STATUSES.includes(m.status)) err(mp, `status must be one of ${STATUSES.join(", ")}`);
-    if (!FORMATS.includes(m.format)) err(mp, `format must be one of ${FORMATS.join(", ")}`);
-    if (!Number.isInteger(m.revN) || m.revN < 1) err(mp, "revN must be an integer >= 1");
-    if (!Number.isInteger(m.size) || m.size < 0) err(mp, "size must be a non-negative integer");
-    if (m.category !== undefined) err(mp, "category is not used: use tags");
-    if (!Array.isArray(m.tags) || m.tags.length < 1 || m.tags.length > 20) err(mp, "tags must have between 1 and 20 entries");
-    else {
-      const seen = new Set();
-      for (const t of m.tags) {
-        if (!tagList.includes(t)) err(mp, `tag "${t}" is not listed in tags.json`);
-        if (seen.has(t)) err(mp, `duplicate tag "${t}"`);
-        seen.add(t);
-      }
-    }
-    const contents = fs.readdirSync(path.join(pagesDir, slug)).filter((f) => /^content\./.test(f));
-    if (contents.length !== 1) err(dir, `expected exactly one content file, found ${contents.length}`);
-    else if (FORMATS.includes(m.format) && contents[0] !== `content.${m.format}`) err(dir, `${contents[0]} does not match format "${m.format}"`);
-    else {
-      const buf = fs.readFileSync(path.join(pagesDir, slug, contents[0]));
-      if (m.size !== buf.length) err(mp, `size is ${m.size} but the content has ${buf.length} bytes`);
-      const sha = crypto.createHash("sha256").update(buf).digest("hex");
-      if (m.sha256 !== sha) err(mp, "sha256 does not match the content");
-    }
-  }
-  const linksDir = path.join(root, "links");
-  for (const name of fs.existsSync(linksDir) ? fs.readdirSync(linksDir) : []) {
-    const rel = `links/${name}`;
-    if (!LINK_FILE_RE.test(name) || !fs.statSync(path.join(linksDir, name)).isFile()) { err(rel, "invalid link file name (lowercase letters, digits and hyphens, ending in .json)"); continue; }
-    const l = readJson(rel);
-    if (!l) continue;
-    let ok = false;
-    try { const u = new URL(l.url); ok = (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password; } catch { /* not a URL */ }
-    if (!ok) err(rel, "url must be a full http(s) address without credentials");
-    if (typeof l.title !== "string" || !l.title.trim() || l.title.length > 200) err(rel, "title must be 1-200 characters");
-    if (l.description !== undefined && (typeof l.description !== "string" || l.description.length > 300)) err(rel, "description must be at most 300 characters");
-    if (!LINK_KINDS.includes(l.kind)) err(rel, `kind must be one of ${LINK_KINDS.join(", ")}`);
-    if (!Array.isArray(l.tags) || l.tags.length < 1 || l.tags.length > 20) err(rel, "tags must have between 1 and 20 entries");
-    else for (const t of l.tags) if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`);
-    for (const k of ["addedAt", "addedBy", "updatedAt", "updatedBy"]) if (typeof l[k] !== "string" || !l[k]) err(rel, `"${k}" must be a non-empty string`);
+  for (const old of ["pages", "links", "files"]) {
+    if (fs.existsSync(path.join(root, old))) err(old, `no longer used: everything lives inside a project (projects/<id>/${old}/)`);
   }
 
-  const projectsDir = path.join(root, "projects");
-  const pageSlugs = new Set(slugs);
-  const placedIn = new Map();                       // "type:id" -> project, an item belongs to at most one project
-  for (const name of fs.existsSync(projectsDir) ? fs.readdirSync(projectsDir) : []) {
-    const rel = `projects/${name}`;
-    if (!LINK_FILE_RE.test(name) || !fs.statSync(path.join(projectsDir, name)).isFile()) { err(rel, "invalid project file name (lowercase letters, digits and hyphens, ending in .json)"); continue; }
-    const id = name.slice(0, -5), pj = readJson(rel);
-    if (!pj) continue;
-    if (pageSlugs.has(id)) err(rel, `the address "${id}" is already used by an article`);
-    if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
-    if (pj.description !== undefined && (typeof pj.description !== "string" || pj.description.length > 300)) err(rel, "description must be at most 300 characters");
-    for (const k of ["createdAt", "createdBy", "updatedAt", "updatedBy"]) if (typeof pj[k] !== "string" || !pj[k]) err(rel, `"${k}" must be a non-empty string`);
-    if (pj.intro !== undefined && (typeof pj.intro !== "string" || pj.intro.length > 50000)) err(rel, "intro must be a Markdown string of at most 50000 characters");
-    if (pj.tags !== undefined) {                     // optional; a tagged project is indexed in the tags instead of its children
-      if (!Array.isArray(pj.tags) || pj.tags.length > 20) err(rel, "tags must be an array of at most 20 entries");
-      else { const seen = new Set(); for (const t of pj.tags) { if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`); if (seen.has(t)) err(rel, `duplicate tag "${t}"`); seen.add(t); } }
-    }
-    const walk = (list, depth, where) => {
-      if (!Array.isArray(list)) { err(rel, `${where} must be an array`); return; }
-      if (depth > MAX_TREE_DEPTH) { err(rel, `the tree is deeper than ${MAX_TREE_DEPTH} levels`); return; }
-      for (const it of list) {
-        if (!it || typeof it !== "object" || !["page", "link", "file"].includes(it.type) || typeof it.id !== "string" || !it.id) { err(rel, "every item needs a type (page, link or file) and an id"); continue; }
-        const key = `${it.type}:${it.id}`;
-        if (placedIn.has(key)) err(rel, `${key} is already in ${placedIn.get(key) === id ? "this project" : `the project "${placedIn.get(key)}"`}`);
-        else placedIn.set(key, id);
-        if (it.children !== undefined) { if (it.type !== "page") err(rel, `only pages can have children (${key})`); else walk(it.children, depth + 1, `children of ${it.id}`); }
+  const owner = { page: new Map(), link: new Map(), file: new Map() };   // item id -> project, ids are unique across projects
+  const claim = (type, id, project, rel) => {
+    if (owner[type].has(id)) err(rel, `the ${type} "${id}" also exists in the project "${owner[type].get(id)}"`);
+    else owner[type].set(id, project);
+  };
+
+  const projectIds = listDir("projects").filter((n) => {
+    const rel = `projects/${n}`;
+    if (!isDir(rel)) { err(rel, "only project folders are allowed in projects/"); return false; }
+    if (!SLUG_RE.test(n)) { err(rel, "invalid project address (lowercase letters, digits and hyphens, up to 80 characters)"); return false; }
+    return true;
+  });
+
+  for (const id of projectIds) {
+    const base = `projects/${id}`, rel = `${base}/project.json`;
+    const pj = readJson(rel);
+    for (const n of listDir(base)) if (!["project.json", "pages", "links", "files"].includes(n)) err(`${base}/${n}`, "unexpected entry in a project folder");
+    if (pj) {
+      if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
+      if (pj.description !== undefined && (typeof pj.description !== "string" || pj.description.length > 300)) err(rel, "description must be at most 300 characters");
+      for (const k of ["createdAt", "createdBy", "updatedAt", "updatedBy"]) if (typeof pj[k] !== "string" || !pj[k]) err(rel, `"${k}" must be a non-empty string`);
+      if (pj.intro !== undefined && (typeof pj.intro !== "string" || pj.intro.length > 50000)) err(rel, "intro must be a Markdown string of at most 50000 characters");
+      if (pj.tags !== undefined) {                     // optional; a tagged project is indexed in the tags instead of its children
+        if (!Array.isArray(pj.tags) || pj.tags.length > 20) err(rel, "tags must be an array of at most 20 entries");
+        else { const seen = new Set(); for (const t of pj.tags) { if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`); if (seen.has(t)) err(rel, `duplicate tag "${t}"`); seen.add(t); } }
       }
-    };
-    walk(pj.items, 1, "items");
+    }
+
+    /* pages */
+    const slugs = [];
+    for (const slug of listDir(`${base}/pages`)) {
+      const dir = `${base}/pages/${slug}`;
+      if (!isDir(dir)) { err(dir, "only article folders are allowed in pages/"); continue; }
+      if (!SLUG_RE.test(slug)) { err(dir, "invalid slug (lowercase letters, digits and hyphens, up to 80 characters)"); continue; }
+      slugs.push(slug); claim("page", slug, id, dir);
+      const mp = `${dir}/meta.json`, m = readJson(mp);
+      if (!m) continue;
+      for (const k of REQUIRED_STR) if (typeof m[k] !== "string" || (!m[k] && k !== "abstract")) err(mp, `"${k}" must be a non-empty string`);
+      if (typeof m.title === "string" && m.title.length > 200) err(mp, "title is longer than 200 characters");
+      if (typeof m.abstract === "string" && m.abstract.length > 240) err(mp, "abstract is longer than 240 characters");
+      if (!STATUSES.includes(m.status)) err(mp, `status must be one of ${STATUSES.join(", ")}`);
+      if (!FORMATS.includes(m.format)) err(mp, `format must be one of ${FORMATS.join(", ")}`);
+      if (!Number.isInteger(m.revN) || m.revN < 1) err(mp, "revN must be an integer >= 1");
+      if (!Number.isInteger(m.size) || m.size < 0) err(mp, "size must be a non-negative integer");
+      if (m.category !== undefined) err(mp, "category is not used: use tags");
+      if (!Array.isArray(m.tags) || m.tags.length > 20) err(mp, "tags must be an array of at most 20 entries");
+      else {
+        const seen = new Set();
+        for (const t of m.tags) {
+          if (!tagList.includes(t)) err(mp, `tag "${t}" is not listed in tags.json`);
+          if (seen.has(t)) err(mp, `duplicate tag "${t}"`);
+          seen.add(t);
+        }
+      }
+      const contents = listDir(dir).filter((f) => /^content\./.test(f));
+      if (contents.length !== 1) err(dir, `expected exactly one content file, found ${contents.length}`);
+      else if (FORMATS.includes(m.format) && contents[0] !== `content.${m.format}`) err(dir, `${contents[0]} does not match format "${m.format}"`);
+      else {
+        const buf = fs.readFileSync(path.join(root, dir, contents[0]));
+        if (m.size !== buf.length) err(mp, `size is ${m.size} but the content has ${buf.length} bytes`);
+        const sha = crypto.createHash("sha256").update(buf).digest("hex");
+        if (m.sha256 !== sha) err(mp, "sha256 does not match the content");
+      }
+    }
+
+    /* links */
+    const linkIds = [];
+    for (const name of listDir(`${base}/links`)) {
+      const lrel = `${base}/links/${name}`;
+      if (!LINK_FILE_RE.test(name) || !fs.statSync(path.join(root, lrel)).isFile()) { err(lrel, "invalid link file name (lowercase letters, digits and hyphens, ending in .json)"); continue; }
+      linkIds.push(name.slice(0, -5)); claim("link", name.slice(0, -5), id, lrel);
+      const l = readJson(lrel);
+      if (!l) continue;
+      let ok = false;
+      try { const u = new URL(l.url); ok = (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password; } catch { /* not a URL */ }
+      if (!ok) err(lrel, "url must be a full http(s) address without credentials");
+      if (typeof l.title !== "string" || !l.title.trim() || l.title.length > 200) err(lrel, "title must be 1-200 characters");
+      if (l.description !== undefined && (typeof l.description !== "string" || l.description.length > 300)) err(lrel, "description must be at most 300 characters");
+      if (!LINK_KINDS.includes(l.kind)) err(lrel, `kind must be one of ${LINK_KINDS.join(", ")}`);
+      for (const k of ["image", "icon"]) if (l[k] !== undefined) {              // optional preview data read by the Worker
+        let good = typeof l[k] === "string" && l[k].length <= 600;
+        try { const u = new URL(l[k]); good = good && (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password; } catch { good = false; }
+        if (!good) err(lrel, `${k} must be an http(s) address of at most 600 characters`);
+      }
+      if (l.siteName !== undefined && (typeof l.siteName !== "string" || !l.siteName.trim() || l.siteName.length > 80)) err(lrel, "siteName must be 1-80 characters");
+      if (!Array.isArray(l.tags) || l.tags.length > 20) err(lrel, "tags must be an array of at most 20 entries");
+      else for (const t of l.tags) if (!tagList.includes(t)) err(lrel, `tag "${t}" is not listed in tags.json`);
+      for (const k of ["addedAt", "addedBy", "updatedAt", "updatedBy"]) if (typeof l[k] !== "string" || !l[k]) err(lrel, `"${k}" must be a non-empty string`);
+    }
+
+    /* files */
+    const fileNames = [];
+    for (const name of listDir(`${base}/files`)) {
+      const frel = `${base}/files/${name}`, full = path.join(root, frel);
+      if (!fs.statSync(full).isFile()) { err(frel, "only PDF files are allowed in files/ (no folders)"); continue; }
+      if (!FILE_RE.test(name)) { err(frel, "invalid file name (lowercase letters, digits, dots, hyphens and underscores, ending in .pdf)"); continue; }
+      fileNames.push(name); claim("file", name, id, frel);
+      const size = fs.statSync(full).size;
+      if (size > MAX_FILE) err(frel, `is ${size} bytes; the limit is ${MAX_FILE}`);
+      const fd = fs.openSync(full, "r"), head = Buffer.alloc(5); fs.readSync(fd, head, 0, 5, 0); fs.closeSync(fd);
+      if (head.toString("latin1") !== "%PDF-") err(frel, "is not a PDF");
+    }
+
+    /* the structure: only items that live in this project, each at most once. Items missing from it are appended at the top level when read. */
+    if (pj) {
+      const have = { page: new Set(slugs), link: new Set(linkIds), file: new Set(fileNames) }, seen = new Set();
+      const walk = (list, depth, where) => {
+        if (!Array.isArray(list)) { err(rel, `${where} must be an array`); return; }
+        if (depth > MAX_TREE_DEPTH) { err(rel, `the tree is deeper than ${MAX_TREE_DEPTH} levels`); return; }
+        for (const it of list) {
+          if (!it || typeof it !== "object" || !["page", "link", "file"].includes(it.type) || typeof it.id !== "string" || !it.id) { err(rel, "every item needs a type (page, link or file) and an id"); continue; }
+          const key = `${it.type}:${it.id}`;
+          if (seen.has(key)) err(rel, `${key} appears twice in the structure`);
+          seen.add(key);
+          if (!have[it.type].has(it.id)) err(rel, `${key} is in the structure but not in this project's folder`);
+          if (it.children !== undefined) { if (it.type !== "page") err(rel, `only pages can have children (${key})`); else walk(it.children, depth + 1, `children of ${it.id}`); }
+        }
+      };
+      walk(pj.items, 1, "items");
+    }
   }
 
-  const filesDir = path.join(root, "files");
-  for (const name of fs.existsSync(filesDir) ? fs.readdirSync(filesDir) : []) {
-    const rel = `files/${name}`, full = path.join(filesDir, name);
-    if (!fs.statSync(full).isFile()) { err(rel, "only PDF files are allowed in files/ (no folders)"); continue; }
-    if (!FILE_RE.test(name)) { err(rel, "invalid file name (lowercase letters, digits, dots, hyphens and underscores, ending in .pdf)"); continue; }
-    const size = fs.statSync(full).size;
-    if (size > MAX_FILE) err(rel, `is ${size} bytes; the limit is ${MAX_FILE}`);
-    const fd = fs.openSync(full, "r"), head = Buffer.alloc(5); fs.readSync(fd, head, 0, 5, 0); fs.closeSync(fd);
-    if (head.toString("latin1") !== "%PDF-") err(rel, "is not a PDF");
-  }
+  /* a project address and an article slug share the #/wiki/ namespace */
+  for (const id of projectIds) if (owner.page.has(id)) err(`projects/${id}`, `the address "${id}" is already used by an article`);
   return errors;
 }
 

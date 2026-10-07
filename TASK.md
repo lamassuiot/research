@@ -107,6 +107,8 @@ lama-library/
 
 Es el mismo formato que ik-library, **sin `category`**. Cualquier herramienta (la app, `validate.mjs`, scripts) debe respetarlo.
 
+> **Actualización:** la disposición de carpetas de abajo es la original. Hoy todo vive dentro de un proyecto (`projects/<id>/pages/<slug>/…`, `projects/<id>/links/`, `projects/<id>/files/`, `projects/<id>/project.json`); el contrato vigente está en `content-template/README.md`. El script `scripts/migrate-to-project-folders.mjs` convierte un repo antiguo.
+
 ```
 research-content/
 ├── README.md

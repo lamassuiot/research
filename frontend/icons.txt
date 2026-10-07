@@ -17,6 +17,7 @@ delete
 description
 difference
 download
+drive_file_move
 edit
 edit_note
 error
@@ -58,6 +59,7 @@ table
 terminal
 title
 toc
+travel_explore
 tune
 upload
 upload_file

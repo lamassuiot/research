@@ -32,8 +32,8 @@ test("uploads a PDF: normalised name, one commit with trailers, shown in the vie
   await expect(page).toHaveURL(/#\/file\/tpm-2\.0-spec\.pdf$/);
   const c = repo.head();
   expect(c.author.login).toBe("ada");
-  expect(c.message).toBe(`Add the TPM 2.0 specification\n\nKnow-how-File: tpm-2.0-spec.pdf\nContent-SHA256: ${crypto.createHash("sha256").update(PDF1).digest("hex")}`);
-  expect(Buffer.compare(c.files.get("files/tpm-2.0-spec.pdf"), PDF1)).toBe(0);
+  expect(c.message).toBe(`Add the TPM 2.0 specification\n\nKnow-how-File: tpm-2.0-spec.pdf\nKnow-how-Project: general\nContent-SHA256: ${crypto.createHash("sha256").update(PDF1).digest("hex")}`);
+  expect(Buffer.compare(c.files.get("projects/general/files/tpm-2.0-spec.pdf"), PDF1)).toBe(0);
   expect(gh.blobUploads).toBe(1);
   await expect(page.locator(".pdfv-n")).toHaveText("3");
   await expect(page.locator(".pdfv-slot canvas")).not.toHaveCount(0);
@@ -68,11 +68,10 @@ test("a new version that loses the race on main retries; the old version stays i
 test("articles link to files, to a page of a file, and embed a preview", async ({ page }) => {
   await open(page, "#/new", { repo });
   await page.fill("#f-title", "TPM notes");
-  await page.locator(".tagchip", { hasText: /^PKI$/ }).locator("span").first().click();
   await page.fill("#f-sum", "Notes");
   await page.fill("#f-body", "See [[File:tpm-2.0-spec.pdf|the spec]] and [[File:TPM 2.0 Spec.pdf#page=3|section 3]] or [[File:missing.pdf]].\n\n![[File:tpm-2.0-spec.pdf]]\n");
   await page.locator("#saveBtn").click();
-  await expect(page).toHaveURL(/#\/wiki\/tpm-notes$/);
+  await expect(page).toHaveURL(/#\/wiki\/(general\/)?tpm-notes$/);
   await expect(page.locator("#prose a.file-link", { hasText: "the spec" })).toHaveAttribute("href", "#/file/tpm-2.0-spec.pdf");
   await expect(page.locator("#prose a.file-link", { hasText: "section 3" })).toHaveAttribute("href", "#/file/tpm-2.0-spec.pdf?page=3");
   await expect(page.locator("#prose a.file-link", { hasText: "missing.pdf" })).toHaveClass(/new/);
@@ -85,7 +84,7 @@ test("articles link to files, to a page of a file, and embed a preview", async (
 
 test("a page link opens the viewer on that page; zoom and navigation work", async ({ page }) => {
   // put the 3-page version back so there is a page 3
-  repo.add("Restore", { "files/tpm-2.0-spec.pdf": PDF1 }, { name: "Ada Lovelace", login: "ada" });
+  repo.add("Restore", { "projects/general/files/tpm-2.0-spec.pdf": PDF1 }, { name: "Ada Lovelace", login: "ada" });
   await open(page, "#/file/tpm-2.0-spec.pdf?page=3", { repo });
   await expect(page.locator(".pdfv-n")).toHaveText("3");
   await expect(page.locator(".pdfv-page input")).toHaveValue("3");

@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://api.github.com" crossorigin>
 <link rel="preconnect" href="https://research-auth.hsaizsierra.workers.dev" crossorigin>
 <!-- Fonts load without blocking the first paint. The icon font holds only the icons this page uses (about 8 KB instead of 395 KB). -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,drive_file_move,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,travel_explore,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script>try{var t=localStorage.getItem("kb.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/**
@@ -612,6 +612,13 @@ a.uc-main::after{content:"";position:absolute;inset:0;z-index:0}         /* the 
 .uc-big{font-size:56px;font-weight:800;line-height:1;letter-spacing:-.04em;color:hsl(var(--h) 55% var(--uc-ink));opacity:.9}
 .uc-media .ms.uc-big{font-size:52px;width:1em;height:1em;color:hsl(var(--h) 55% var(--uc-ink))}
 .uc-media::before{content:"";position:absolute;width:120px;height:120px;border-radius:50%;right:-40px;top:-44px;background:hsl(var(--h) 80% 60% / .16)}
+.uc-media.has-img{background-size:cover;background-position:center;background-repeat:no-repeat}
+.uc-media.has-img .uc-big,.uc-media.has-img::before{display:none}
+.uc-ico.has-icon{background:#fff;border:1px solid var(--rule)}
+.uc-ico img{width:16px;height:16px;object-fit:contain;display:block}
+.lp-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;margin-bottom:6px}
+.lprev{margin:0 0 8px;max-width:620px}
+.lp-use{display:inline-flex;align-items:center;gap:8px;font-size:14.5px;cursor:pointer}
 @media (max-width:560px){.uc-media{flex-basis:68px}.uc-big,.uc-media .ms.uc-big{font-size:32px}.uc-body{padding:12px 14px}}
 .pdf-card{margin:0}
 .pdf-card .uc-body{gap:6px}
@@ -700,7 +707,7 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
     <div class="top-right">
       <button class="icon-btn" id="themeBtn" type="button"><span class="ms" aria-hidden="true">dark_mode</span><span class="noicon">Theme</span></button>
       <span id="userBox"></span>
-      <a class="btn primary" href="#/new" id="newBtn"><span class="ms" aria-hidden="true">add</span><span class="btn-label">Create article</span></a>
+      <a class="btn primary" href="#/projects?new=1" id="newBtn"><span class="ms" aria-hidden="true">create_new_folder</span><span class="btn-label">Create project</span></a>
     </div>
   </div>
 </header>
@@ -710,11 +717,9 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
       <div class="side-h"><span class="eyebrow">Main menu</span><button class="icon-btn" id="hideMenu" title="Hide main menu" aria-label="Hide main menu" style="min-width:30px;height:30px"><span class="ms" aria-hidden="true">left_panel_close</span><span class="noicon">×</span></button></div>
       <ul id="sideNav">
         <li><a href="#/" data-nav="home"><span class="ms" aria-hidden="true">home</span>Main page</a></li>
+        <li><a href="#/projects" data-nav="projects"><span class="ms" aria-hidden="true">folder_open</span>Projects</a></li>
         <li><a href="#/all" data-nav="all"><span class="ms" aria-hidden="true">list</span>All articles</a></li>
         <li><a href="#/tags" data-nav="tags"><span class="ms" aria-hidden="true">sell</span>All tags</a></li>
-        <li><a href="#/projects" data-nav="projects"><span class="ms" aria-hidden="true">folder_open</span>Projects</a></li>
-        <li><a href="#/links" data-nav="links"><span class="ms" aria-hidden="true">link</span>External links</a></li>
-        <li><a href="#/files" data-nav="files"><span class="ms" aria-hidden="true">picture_as_pdf</span>Files</a></li>
         <li><a href="#/recent" data-nav="recent"><span class="ms" aria-hidden="true">history</span>Recent changes</a></li>
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
         <li><a href="#/help" data-nav="help"><span class="ms" aria-hidden="true">help</span>Help</a></li>
@@ -891,14 +896,22 @@ function b64(str){
   return btoa(bin);
 }
 const metaOf = text => { try{ const m = JSON.parse(text); return m && typeof m === "object" ? m : null; }catch{ return null; } };
-const publicMeta = (slug, m) => ({slug, title:m.title, tags:m.tags||[], status:m.status, format:m.format, abstract:m.abstract||"",
+const publicMeta = (slug, m, project) => ({slug, project, title:m.title, tags:m.tags||[], status:m.status, format:m.format, abstract:m.abstract||"",
   revN:m.revN, size:m.size, updatedAt:m.updatedAt, updatedBy:m.updatedBy, createdAt:m.createdAt, createdBy:m.createdBy});
 const BLOB = "... on Blob { text }";
 const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
 
-/* The private content repository on GitHub, read and written from the browser with the signed-in user's token. */
+/* The private content repository on GitHub, read and written from the browser with the signed-in user's token.
+   Everything lives inside a project:
+     projects/<id>/project.json                        the project and its structure (tree)
+     projects/<id>/pages/<slug>/meta.json + content.*  articles
+     projects/<id>/links/<id>.json                     external links
+     projects/<id>/files/<name>.pdf                    PDFs
+   Slugs, link ids and file names are unique across projects, so the app addresses an item by its id alone; `where` remembers the
+   project each one is in (filled by loadIndex and by our own writes). */
 class GitHubStore{
-  constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; this._art = new Map(); this._content = new Map(); this._contentChars = 0; }
+  constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; this._art = new Map(); this._content = new Map(); this._contentChars = 0;
+    this.where = {page:new Map(), link:new Map(), file:new Map()}; }
   get full(){ return this.owner + "/" + this.repo; }
   async gh(path, opt){
     opt = opt || {};
@@ -926,6 +939,17 @@ class GitHubStore{
   }
   v(extra){ return Object.assign({owner:this.owner, name:this.repo, ref:"refs/heads/" + this.branch}, extra); }
   slug(slug){ if(!SLUG_RE.test(slug)) throw Object.assign(new Error("Invalid article address"), {status:404}); return slug; }
+  /* ---- where things are */
+  projectOfItem(type, id, project){
+    const pid = project || this.where[type].get(id);
+    if(!pid || !PROJECT_ID_RE.test(pid)) throw Object.assign(new Error("Unknown " + type), {status:404});
+    return pid;
+  }
+  projectPath(id){ if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address"); return `projects/${id}/project.json`; }
+  pageDir(slug, project){ return `projects/${this.projectOfItem("page", this.slug(slug), project)}/pages/${slug}`; }
+  linkPath(id, project){ if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address"); return `projects/${this.projectOfItem("link", id, project)}/links/${id}.json`; }
+  filePath(name, project){ if(!FILE_RE.test(name)) throw new Error("Invalid file name"); return `projects/${this.projectOfItem("file", name, project)}/files/${name}`; }
+  needProject(place){ if(!place || !place.project) throw new Error("Choose a project first"); return this.projectPath(place.project) && place.project; }
 
   async me(){
     const [u, repo] = await Promise.all([this.gh("/user").then(r => r.json()), this.gh("/repos/" + this.full).then(r => r.json()).catch(e => e)]);
@@ -945,68 +969,67 @@ class GitHubStore{
   }
   async names(ids){ const o = {}; for(const id of ids) if(id) o[id] = id; return o; }
 
-  /* Everything the app lists, in two round trips: (1) the trees of pages/files/projects/links, with the small project and link
-     files inline; (2) the metas of all pages, in parallel chunks. */
+  /* Everything the app lists, in two round trips: (1) the folder structure of projects/ (names and sizes, no contents);
+     (2) the small JSON files (project.json, each link, each page's meta.json), in parallel chunks. */
   async loadIndex(){
-    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$pages:String!,$files:String!,$projects:String!,$links:String!){ repository(owner:$owner,name:$name){
-        pages: object(expression:$pages){ ... on Tree { entries { name type } } }
-        files: object(expression:$files){ ... on Tree { entries { name type object { ... on Blob { byteSize } } } } }
-        projects: object(expression:$projects){ ... on Tree { entries { name type object { ... on Blob { text } } } } }
-        links: object(expression:$links){ ... on Tree { entries { name type object { ... on Blob { text } } } } } } }`,
-      {owner:this.owner, name:this.repo, pages:this.branch + ":pages", files:this.branch + ":files", projects:this.branch + ":projects", links:this.branch + ":links"});
-    const r = d.repository || {}, entries = k => (r[k] && r[k].entries) || [];
-    const projects = entries("projects").filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => ({id:e.name.slice(0, -5), m:metaOf(e.object && e.object.text)}))
-      .filter(x => x.m && typeof x.m.title === "string").map(x => Object.assign({items:[]}, x.m, {id:x.id}));
-    const links = entries("links").filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => ({id:e.name.slice(0, -5), m:metaOf(e.object && e.object.text)}))
-      .filter(x => x.m && typeof x.m.url === "string").map(x => Object.assign({}, x.m, {id:x.id}));
-    const files = entries("files").filter(e => e.type === "blob" && FILE_RE.test(e.name)).map(e => ({name:e.name, size:(e.object && e.object.byteSize) || 0}));
-    const slugs = entries("pages").filter(e => e.type === "tree" && SLUG_RE.test(e.name)).map(e => e.name);
-    const chunks = []; for(let i = 0; i < slugs.length; i += 50) chunks.push(slugs.slice(i, i + 50));
-    const pages = (await Promise.all(chunks.map(async chunk => {
-      const vars = {owner:this.owner, name:this.repo};
-      chunk.forEach((sl, k) => vars["e" + k] = `${this.branch}:pages/${sl}/meta.json`);
-      const q = `query PageMetas($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
-      const rr = (await this.gql("PageMetas", q, vars)).repository || {};
-      return chunk.map((sl, k) => { const m = metaOf(rr["m" + k] && rr["m" + k].text); return m ? publicMeta(sl, m) : null; }).filter(Boolean);
-    }))).flat();
-    return {pages, files, projects, links};
-  }
-  async listPages(){
-    const d = await this.gql("ListPages", `query ListPages($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:this.branch + ":pages"});
-    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
-    const slugs = entries.filter(e => e.type === "tree" && SLUG_RE.test(e.name)).map(e => e.name);
-    const out = [];
-    for(let i = 0; i < slugs.length; i += 50){
-      const chunk = slugs.slice(i, i + 50), vars = {owner:this.owner, name:this.repo};
-      chunk.forEach((s, k) => vars["e" + k] = `${this.branch}:pages/${s}/meta.json`);
-      const q = `query PageMetas($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
-      const r = (await this.gql("PageMetas", q, vars)).repository || {};
-      chunk.forEach((s, k) => { const m = metaOf(r["m" + k] && r["m" + k].text); if(m) out.push(publicMeta(s, m)); });
+    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){
+        object(expression:$expr){ ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } } } } } } } }`,
+      {owner:this.owner, name:this.repo, expr:this.branch + ":projects"});
+    const kids = e => (e && e.object && e.object.entries) || [];
+    const projectIds = [], pageRefs = [], linkRefs = [], files = [];
+    for(const pe of kids({object:d.repository && d.repository.object})){
+      if(pe.type !== "tree" || !PROJECT_ID_RE.test(pe.name)) continue;
+      const sub = kids(pe), child = n => sub.find(x => x.name === n);
+      if(!child("project.json") || child("project.json").type !== "blob") continue;
+      projectIds.push(pe.name);
+      for(const s of kids(child("pages"))) if(s.type === "tree" && SLUG_RE.test(s.name)) pageRefs.push({project:pe.name, slug:s.name});
+      for(const s of kids(child("links"))) if(s.type === "blob" && LINK_FILE_RE.test(s.name)) linkRefs.push({project:pe.name, id:s.name.slice(0, -5)});
+      for(const s of kids(child("files"))) if(s.type === "blob" && FILE_RE.test(s.name)) files.push({name:s.name, size:(s.object && s.object.byteSize) || 0, project:pe.name});
     }
-    return out;
+    const wanted = [...projectIds.map(id => ({k:"project", id, path:`projects/${id}/project.json`})),
+      ...linkRefs.map(r => ({k:"link", id:r.id, project:r.project, path:`projects/${r.project}/links/${r.id}.json`})),
+      ...pageRefs.map(r => ({k:"page", id:r.slug, project:r.project, path:`projects/${r.project}/pages/${r.slug}/meta.json`}))];
+    const chunks = []; for(let i = 0; i < wanted.length; i += 60) chunks.push(wanted.slice(i, i + 60));
+    const got = (await Promise.all(chunks.map(async chunk => {
+      const vars = {owner:this.owner, name:this.repo};
+      chunk.forEach((w, k) => vars["e" + k] = `${this.branch}:${w.path}`);
+      const q = `query IndexBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+      const rr = (await this.gql("IndexBlobs", q, vars)).repository || {};
+      return chunk.map((w, k) => ({w, m:metaOf(rr["m" + k] && rr["m" + k].text)}));
+    }))).flat();
+    const projects = [], pages = [], links = [], where = {page:new Map(), link:new Map(), file:new Map()};
+    for(const {w, m} of got){
+      if(!m) continue;
+      if(w.k === "project"){ if(typeof m.title === "string") projects.push(Object.assign({items:[]}, m, {id:w.id})); }
+      else if(w.k === "link"){ if(typeof m.url === "string" && !where.link.has(w.id)){ where.link.set(w.id, w.project); links.push(Object.assign({}, m, {id:w.id, project:w.project})); } }
+      else if(!where.page.has(w.id)){ where.page.set(w.id, w.project); pages.push(publicMeta(w.id, m, w.project)); }
+    }
+    const known = new Set(projects.map(p => p.id));
+    const keep = files.filter(f => known.has(f.project) && !where.file.has(f.name) && where.file.set(f.name, f.project));
+    this.where = where;
+    return {pages:pages.filter(p => known.has(p.project)), files:keep, projects, links:links.filter(l => known.has(l.project))};
   }
   async getPageLight(slug){      // latest revision only (used by the search index)
-    this.slug(slug);
+    const dir = this.pageDir(slug);
     const d = await this.gql("GetPage", `query GetPage($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!){ repository(owner:$owner,name:$name){
         meta: object(expression:$metaExpr){ ${BLOB} }
         ref(qualifiedName:$ref){ target { ... on Commit { history(first:1, path:$path){ nodes { oid } } } } } } }`,
-      this.v({metaExpr:`${this.branch}:pages/${slug}/meta.json`, path:"pages/" + slug}));
+      this.v({metaExpr:`${this.branch}:${dir}/meta.json`, path:dir}));
     const r = d.repository || {}, m = metaOf(r.meta && r.meta.text);
     if(!m) return null;
     const node = r.ref && r.ref.target && r.ref.target.history && r.ref.target.history.nodes[0];
-    return Object.assign(publicMeta(slug, m), {rev:node ? node.oid : null});
+    return Object.assign(publicMeta(slug, m, this.where.page.get(slug)), {rev:node ? node.oid : null});
   }
   /* One query returns the page and its history; getPage, listRevs and getRev all read from it. Short-lived: it is dropped after our own commits. */
   _article(slug){
-    this.slug(slug);
+    const dir = this.pageDir(slug);
     const hit = this._art.get(slug);
     if(hit && Date.now() - hit.at < 20000) return hit.p;
     const p = this.gql("GetArticle", `query GetArticle($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!,$file:String!){ repository(owner:$owner,name:$name){
         meta: object(expression:$metaExpr){ ${BLOB} }
         ref(qualifiedName:$ref){ target { ... on Commit { history(first:100, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
           file(path:$file){ object { ${BLOB} } } } } } } } } }`,
-      this.v({metaExpr:`${this.branch}:pages/${slug}/meta.json`, path:"pages/" + slug, file:`pages/${slug}/meta.json`})).then(d => {
+      this.v({metaExpr:`${this.branch}:${dir}/meta.json`, path:dir, file:`${dir}/meta.json`})).then(d => {
       const r = d.repository || {}, nodes = (r.ref && r.ref.target && r.ref.target.history && r.ref.target.history.nodes) || [];
       // TODO: paginate beyond 100 revisions
       const revs = nodes.map(c => { const m = metaOf(c.file && c.file.object && c.file.object.text); return m && m.revN != null ? Object.assign({slug}, this.revOf(c, m)) : null; }).filter(Boolean);
@@ -1017,16 +1040,17 @@ class GitHubStore{
     return p;
   }
   async getPage(slug){
+    if(!this.where.page.has(slug)) return null;
     const a = await this._article(slug);
-    return a.meta ? Object.assign(publicMeta(slug, a.meta), {rev:a.revs[0] ? a.revs[0].id : null}) : null;
+    return a.meta ? Object.assign(publicMeta(slug, a.meta, this.where.page.get(slug)), {rev:a.revs[0] ? a.revs[0].id : null}) : null;
   }
-  async listRevs(slug){ return (await this._article(slug)).revs; }
+  async listRevs(slug){ return this.where.page.has(slug) ? (await this._article(slug)).revs : []; }
   /* Content of a revision is immutable (a commit id), so it is kept in memory for the session; at most ~24 MB. */
   async _readContent(slug, oid, format){
     const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
     if(hit !== undefined){ this._content.delete(key); this._content.set(key, hit); return hit; }
     let res;
-    try{ res = await this.gh(`/repos/${this.full}/contents/pages/${slug}/content.${format === "html" ? "html" : "md"}?ref=${oid}`, {headers:{Accept:"application/vnd.github.raw+json"}}); }
+    try{ res = await this.gh(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${oid}`, {headers:{Accept:"application/vnd.github.raw+json"}}); }
     catch(e){ if(e.status === 404) return null; throw e; }
     const text = await res.text();
     this._content.set(key, text); this._contentChars += text.length;
@@ -1034,8 +1058,7 @@ class GitHubStore{
     return text;
   }
   async getLatestContent(slug, format){    // for the search index: no commit id needed
-    this.slug(slug);
-    const res = await this.gh(`/repos/${this.full}/contents/pages/${slug}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
+    const res = await this.gh(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
     return res.text();
   }
   revOf(c, m){
@@ -1046,22 +1069,23 @@ class GitHubStore{
   }
   async getRev(slug, sha){
     this.slug(slug);
-    if(!SHA_RE.test(String(sha))) return null;
+    if(!SHA_RE.test(String(sha)) || !this.where.page.has(slug)) return null;
     const a = await this._article(slug), hit = a.revs.find(r => r.id === sha || r.id.startsWith(sha));
     if(hit){ const content = await this._readContent(slug, hit.id, hit.format); return content == null ? null : Object.assign({}, hit, {content}); }
     return this._getRevSlow(slug, sha);          // older than the 100 revisions of the history
   }
   async _getRevSlow(slug, sha){
+    const dir = this.pageDir(slug);
     const d = await this.gql("GetRev", `query GetRev($owner:String!,$name:String!,$sha:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
         commit: object(expression:$sha){ ... on Commit { oid authoredDate messageHeadline ${AUTHOR} } }
         meta: object(expression:$metaExpr){ ${BLOB} } } }`,
-      {owner:this.owner, name:this.repo, sha, metaExpr:`${sha}:pages/${slug}/meta.json`});
+      {owner:this.owner, name:this.repo, sha, metaExpr:`${sha}:${dir}/meta.json`});
     const r = d.repository || {}, m = metaOf(r.meta && r.meta.text);
     if(!r.commit || !m) return null;
     let res;
     try{
       // Raw REST read: GraphQL truncates large blobs and HTML reports can pass 400 KB.
-      res = await this.gh(`/repos/${this.full}/contents/pages/${slug}/content.${m.format === "html" ? "html" : "md"}?ref=${r.commit.oid}`, {headers:{Accept:"application/vnd.github.raw+json"}});
+      res = await this.gh(`/repos/${this.full}/contents/${dir}/content.${m.format === "html" ? "html" : "md"}?ref=${r.commit.oid}`, {headers:{Accept:"application/vnd.github.raw+json"}});
     }catch(e){ if(e.status === 404) return null; throw e; }
     return Object.assign({slug}, this.revOf(r.commit, m), {content:await res.text()});
   }
@@ -1069,17 +1093,21 @@ class GitHubStore{
     limit = limit || 60;
     const d = await this.gql("Recent", `query Recent($owner:String!,$name:String!,$ref:String!,$path:String!,$n:Int!){ repository(owner:$owner,name:$name){
         ref(qualifiedName:$ref){ target { ... on Commit { history(first:$n, path:$path){ nodes { oid authoredDate messageHeadline message ${AUTHOR} } } } } } } }`,
-      this.v({path:"pages", n:limit}));
+      this.v({path:"projects", n:limit}));
     const nodes = (d.repository && d.repository.ref && d.repository.ref.target && d.repository.ref.target.history && d.repository.ref.target.history.nodes) || [];
-    const items = nodes.map(c => { const m = /^Know-how-Page:\s*(\S+)\s*$/m.exec(c.message || ""); return m && SLUG_RE.test(m[1]) ? {c, slug:m[1]} : null; }).filter(Boolean);
+    const items = nodes.map(c => {
+      const m = /^Know-how-Page:\s*(\S+)\s*$/m.exec(c.message || ""), pj = /^Know-how-Project:\s*(\S+)\s*$/m.exec(c.message || "");
+      return m && SLUG_RE.test(m[1]) ? {c, slug:m[1], project:pj && PROJECT_ID_RE.test(pj[1]) ? pj[1] : this.where.page.get(m[1])} : null;
+    }).filter(Boolean);
     if(!items.length) return [];
     if(light) return items.map(x => ({id:x.c.oid, slug:x.slug, at:x.c.authoredDate, summary:x.c.messageHeadline, title:(S.pages.find(p => p.slug === x.slug) || {}).title || x.slug,
       by:(x.c.author && x.c.author.user && x.c.author.user.login) || (x.c.author && x.c.author.name) || null}));
+    const withMeta = items.filter(x => x.project);
     const vars = {owner:this.owner, name:this.repo};
-    items.forEach((x, k) => vars["e" + k] = `${x.c.oid}:pages/${x.slug}/meta.json`);
-    const q = `query RecentMetas($owner:String!,$name:String!${items.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${items.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
-    const r = (await this.gql("RecentMetas", q, vars)).repository || {};
-    return items.map((x, k) => { const m = metaOf(r["m" + k] && r["m" + k].text) || {}; return Object.assign(this.revOf(x.c, m), {slug:x.slug, title:m.title || x.slug}); });
+    withMeta.forEach((x, k) => vars["e" + k] = `${x.c.oid}:projects/${x.project}/pages/${x.slug}/meta.json`);
+    const q = `query RecentMetas($owner:String!,$name:String!${withMeta.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${withMeta.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+    const r = withMeta.length ? (await this.gql("RecentMetas", q, vars)).repository || {} : {};
+    return withMeta.map((x, k) => { const m = metaOf(r["m" + k] && r["m" + k].text) || {}; return Object.assign(this.revOf(x.c, m), {slug:x.slug, title:m.title || x.slug}); });
   }
   async save(slug, d, baseRevN, place){
     this.slug(slug);
@@ -1089,30 +1117,33 @@ class GitHubStore{
     const content = typeof d.content === "string" ? d.content : "";
     const tags = Array.isArray(d.tags) ? [...new Set(d.tags.map(t => cleanText(t, 40)).filter(Boolean))] : [];
     if(!title || !content.trim()) throw new Error("A title and some content are required");
-    if(!tags.length || tags.length > 20) throw new Error("Choose between 1 and 20 tags");
+    if(tags.length > 20) throw new Error("At most 20 tags");
+    const isNew = !this.where.page.has(slug), pid = isNew ? this.needProject(place) : this.where.page.get(slug), dir = this.pageDir(slug, pid);
     for(let attempt = 1; ; attempt++){
       const h = (await this.gql("SaveHead", `query SaveHead($owner:String!,$name:String!,$ref:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
           ref(qualifiedName:$ref){ target { oid } } meta: object(expression:$metaExpr){ ${BLOB} } } }`,
-        this.v({metaExpr:`${this.branch}:pages/${slug}/meta.json`}))).repository || {};
+        this.v({metaExpr:`${this.branch}:${dir}/meta.json`}))).repository || {};
       const headOid = h.ref && h.ref.target && h.ref.target.oid;
       if(!headOid) throw new Error("The content repository has no " + this.branch + " branch");
       const prev = metaOf(h.meta && h.meta.text);
+      if(isNew && prev) throw new Error("An article with this address already exists");
       if(tags.some(t => !S.tags.includes(t) && !(prev && (prev.tags||[]).includes(t)))) throw new Error("A selected tag is not listed in tags.json");
       const n = (prev ? prev.revN : 0) + 1, now = new Date().toISOString();
       const sha256 = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content)));
       const meta = {title:prev ? prev.title : title, tags, status, format, abstract, revN:n, size:new TextEncoder().encode(content).length, sha256,
         updatedAt:now, updatedBy:S.me.id, createdAt:prev ? prev.createdAt : now, createdBy:prev ? prev.createdBy : S.me.id};
-      const adds = [{path:`pages/${slug}/content.${format}`, contents:b64(content)}, {path:`pages/${slug}/meta.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
-      if(place && place.project && !prev){
+      const adds = [{path:`${dir}/content.${format}`, contents:b64(content)}, {path:`${dir}/meta.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
+      if(isNew){
         const pc = await this.placementChange({oid:headOid, read:paths => this.readAtHead(headOid, paths)}, place, {type:"page", id:slug});
         adds.push({path:pc.path, contents:pc.contents});
       }
       const input = {branch:{repositoryNameWithOwner:this.full, branchName:this.branch}, expectedHeadOid:headOid,
-        message:{headline:summary, body:`Know-how-Page: ${slug}\nKnow-how-Revision: ${n}\nKnow-how-Status: ${status}\nContent-SHA256: ${sha256}`},
+        message:{headline:summary, body:`Know-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: ${n}\nKnow-how-Status: ${status}\nContent-SHA256: ${sha256}`},
         fileChanges:{additions:adds,
-          deletions:prev && prev.format !== format ? [{path:`pages/${slug}/content.${prev.format}`}] : []}};
+          deletions:prev && prev.format !== format ? [{path:`${dir}/content.${prev.format}`}] : []}};
       try{
         const r = await this.gql("CreateCommit", `mutation CreateCommit($input: CreateCommitOnBranchInput!){ createCommitOnBranch(input:$input){ commit { oid } } }`, {input});
+        this.where.page.set(slug, pid);
         return {rev:r.createCommitOnBranch.commit.oid, n, conflict:baseRevN != null && (prev ? prev.revN : 0) !== Number(baseRevN)};
       }catch(e){
         const stale = /expectedHeadOid|point to/i.test(e.message || "");
@@ -1121,50 +1152,49 @@ class GitHubStore{
       }
     }
   }
-  /* ---- PDF files: files/<name>.pdf in the content repository */
-  async listFiles(){
-    const d = await this.gql("ListFiles", `query ListFiles($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } }`,
-      {owner:this.owner, name:this.repo, expr:this.branch + ":files"});
-    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
-    return entries.filter(e => e.type === "blob" && FILE_RE.test(e.name)).map(e => ({name:e.name, size:(e.object && e.object.byteSize) || 0}));
-  }
+  /* ---- PDF files: projects/<id>/files/<name>.pdf */
   async fileRevs(name){
-    if(!FILE_RE.test(name)) return [];
+    if(!FILE_RE.test(name) || !this.where.file.has(name)) return [];
+    const path = this.filePath(name);
     const d = await this.gql("FileRevs", `query FileRevs($owner:String!,$name:String!,$ref:String!,$path:String!){ repository(owner:$owner,name:$name){
         ref(qualifiedName:$ref){ target { ... on Commit { history(first:50, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
           file(path:$path){ object { ... on Blob { byteSize } } } } } } } } } }`,
-      this.v({path:"files/" + name}));
+      this.v({path}));
     const nodes = (d.repository && d.repository.ref && d.repository.ref.target && d.repository.ref.target.history && d.repository.ref.target.history.nodes) || [];
     return nodes.map(c => ({id:c.oid, at:c.authoredDate, summary:c.messageHeadline, by:(c.author && c.author.user && c.author.user.login) || (c.author && c.author.name) || null,
       size:c.file && c.file.object ? c.file.object.byteSize : null}));
   }
   async getFile(name, rev){
-    if(!FILE_RE.test(name)) return null;
+    if(!FILE_RE.test(name) || !this.where.file.has(name)) return null;
     if(rev && !SHA_RE.test(rev)) return null;
     try{
-      const r = await this.gh(`/repos/${this.full}/contents/files/${name}?ref=${rev || this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
+      const r = await this.gh(`/repos/${this.full}/contents/${this.filePath(name)}?ref=${rev || this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
       return await r.arrayBuffer();
     }catch(e){ if(e.status === 404) return null; throw e; }
   }
   /* Git Data API (blob → tree → commit → move main without forcing): handles files of tens of MB, unlike one GraphQL request. */
+  async gitPost(path, body, method){ return (await this.gh(`/repos/${this.full}/git/${path}`, {method:method || "POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})).json(); }
+  async gitHead(){
+    const head = (await (await this.gh(`/repos/${this.full}/git/ref/heads/${this.branch}`)).json()).object.sha;
+    return {head, base:(await (await this.gh(`/repos/${this.full}/git/commits/${head}`)).json()).tree.sha};
+  }
   async uploadFile(name, base64, sha256hex, summary, place){
     if(!FILE_RE.test(name)) throw new Error("Invalid file name");
-    const post = async (path, body, method) => (await this.gh(`/repos/${this.full}/git/${path}`, {method:method || "POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})).json();
-    const blob = await post("blobs", {content:base64, encoding:"base64"});
-    const message = `${cleanText(summary, 300) || "Upload " + name}\n\nKnow-how-File: ${name}\nContent-SHA256: ${sha256hex}`;
+    const isNew = !this.where.file.has(name), pid = isNew ? this.needProject(place) : this.where.file.get(name), path = this.filePath(name, pid);
+    const blob = await this.gitPost("blobs", {content:base64, encoding:"base64"});
+    const message = `${cleanText(summary, 300) || "Upload " + name}\n\nKnow-how-File: ${name}\nKnow-how-Project: ${pid}\nContent-SHA256: ${sha256hex}`;
     for(let attempt = 1; ; attempt++){
-      const head = (await (await this.gh(`/repos/${this.full}/git/ref/heads/${this.branch}`)).json()).object.sha;
-      const base = (await (await this.gh(`/repos/${this.full}/git/commits/${head}`)).json()).tree.sha;
-      const entries = [{path:"files/" + name, mode:"100644", type:"blob", sha:blob.sha}];
-      if(place && place.project && !S.placed.has("file:" + name)){
+      const {head, base} = await this.gitHead();
+      const entries = [{path, mode:"100644", type:"blob", sha:blob.sha}];
+      if(isNew){
         const pc = await this.placementChange({oid:head, read:paths => this.readAtHead(head, paths)}, place, {type:"file", id:name});
         entries.push({path:pc.path, mode:"100644", type:"blob", content:pc.text});
       }
-      const tree = await post("trees", {base_tree:base, tree:entries});
-      const commit = await post("commits", {message, tree:tree.sha, parents:[head]});
+      const tree = await this.gitPost("trees", {base_tree:base, tree:entries});
+      const commit = await this.gitPost("commits", {message, tree:tree.sha, parents:[head]});
       try{
-        await post(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
-        this._art.clear();
+        await this.gitPost(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
+        this._art.clear(); this.where.file.set(name, pid);
         return {rev:commit.sha};
       }catch(e){
         if(e.status !== 422 && e.status !== 409) throw e;   // 422 "Update is not a fast forward": main moved meanwhile
@@ -1172,25 +1202,9 @@ class GitHubStore{
       }
     }
   }
-  /* ---- external links: links/<id>.json (one file per link, so two people adding links never conflict) */
-  async listLinks(){
-    const d = await this.gql("ListLinks", `query ListLinks($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:this.branch + ":links"});
-    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
-    const ids = entries.filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => e.name.slice(0, -5));
-    const out = [];
-    for(let i = 0; i < ids.length; i += 50){
-      const chunk = ids.slice(i, i + 50), vars = {owner:this.owner, name:this.repo};
-      chunk.forEach((id, k) => vars["e" + k] = `${this.branch}:links/${id}.json`);
-      const q = `query LinkBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
-      const r = (await this.gql("LinkBlobs", q, vars)).repository || {};
-      chunk.forEach((id, k) => { const m = metaOf(r["m" + k] && r["m" + k].text); if(m && typeof m.url === "string") out.push(Object.assign({id}, m)); });
-    }
-    return out;
-  }
+  /* ---- external links: projects/<id>/links/<id>.json (one file per link, so two people adding links never conflict) */
   /* One commit on main with retries when main moved (same scheme as save()). */
   async commitChanges(headline, body, additions, deletions){   // additions: an array, or async head => ({additions, deletions}) | null
-
     for(let attempt = 1; ; attempt++){
       const h = (await this.gql("SaveHead", `query SaveHead($owner:String!,$name:String!,$ref:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
           ref(qualifiedName:$ref){ target { oid } } meta: object(expression:$metaExpr){ ${BLOB} } } }`,
@@ -1215,22 +1229,35 @@ class GitHubStore{
   }
   async saveLink(id, d, prev, place){
     if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
+    const pid = prev ? this.where.link.get(id) : this.needProject(place), path = this.linkPath(id, pid);
     const now = new Date().toISOString();
     const meta = {url:d.url, title:cleanText(d.title, 200), description:cleanText(d.description, 300), kind:LINK_KINDS.includes(d.kind) ? d.kind : "other",
       tags:[...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : S.me.id, updatedAt:now, updatedBy:S.me.id};
+    const okUrl = u => typeof u === "string" && u.length <= 600 && isHttpUrl(u);
+    if(okUrl(d.image)) meta.image = d.image;
+    if(okUrl(d.icon)) meta.icon = d.icon;
+    if(typeof d.siteName === "string" && d.siteName.trim()) meta.siteName = cleanText(d.siteName, 80);
     if(!meta.title || !isHttpUrl(meta.url)) throw new Error("A title and an http(s) address are required");
-    if(!meta.tags.length || meta.tags.length > 20) throw new Error("Choose between 1 and 20 tags");
+    if(meta.tags.length > 20) throw new Error("At most 20 tags");
     const host = new URL(meta.url).hostname;
-    return this.commitChanges(`${prev ? "Edit" : "Add"} link: ${meta.title}`.slice(0, 300), `Know-how-Link: ${id}\nLink-Host: ${host}`,
+    const r = await this.commitChanges(`${prev ? "Edit" : "Add"} link: ${meta.title}`.slice(0, 300), `Know-how-Link: ${id}\nKnow-how-Project: ${pid}\nLink-Host: ${host}`,
       async head => {
-        const additions = [{path:`links/${id}.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
-        if(place && place.project && !prev){ const pc = await this.placementChange(head, place, {type:"link", id}); additions.push({path:pc.path, contents:pc.contents}); }
+        const additions = [{path, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
+        if(!prev){ const pc = await this.placementChange(head, place, {type:"link", id}); additions.push({path:pc.path, contents:pc.contents}); }
         return {additions, deletions:[]};
       });
+    this.where.link.set(id, pid);
+    return r;
   }
   async deleteLink(id, title){
-    if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
-    return this.commitChanges(`Remove link: ${cleanText(title, 200) || id}`, `Know-how-Link: ${id}`, [], [{path:`links/${id}.json`}]);
+    const path = this.linkPath(id), pid = this.where.link.get(id), pp = this.projectPath(pid);
+    const r = await this.commitChanges(`Remove link: ${cleanText(title, 200) || id}`, `Know-how-Link: ${id}\nKnow-how-Project: ${pid}`, async head => {
+      const pj = metaOf((await head.read([pp]))[pp]), additions = [];
+      if(pj && Array.isArray(pj.items) && treeRemove(pj.items, "link", id)){ pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id; additions.push({path:pp, contents:b64(projectText(pj))}); }
+      return {additions, deletions:[{path}]};
+    });
+    this.where.link.delete(id);
+    return r;
   }
   /* ---- projects */
   async readAtHead(headOid, paths){
@@ -1240,24 +1267,9 @@ class GitHubStore{
     const r = (await this.gql("ReadFiles", q, vars)).repository || {};
     return Object.fromEntries(paths.map((p, k) => [p, r["m" + k] ? r["m" + k].text : null]));
   }
-  async listProjects(){
-    const d = await this.gql("ListProjects", `query ListProjects($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:this.branch + ":projects"});
-    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
-    const ids = entries.filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => e.name.slice(0, -5));
-    const out = [];
-    for(let i = 0; i < ids.length; i += 50){
-      const chunk = ids.slice(i, i + 50), vars = {owner:this.owner, name:this.repo};
-      chunk.forEach((id, k) => vars["e" + k] = `${this.branch}:projects/${id}.json`);
-      const q = `query ProjectBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
-      const r = (await this.gql("ProjectBlobs", q, vars)).repository || {};
-      chunk.forEach((id, k) => { const m = metaOf(r["m" + k] && r["m" + k].text); if(m && typeof m.title === "string") out.push(Object.assign({id, items:[]}, m)); });
-    }
-    return out;
-  }
   /* Adds an item to a project's tree inside a commit that is being built (returns the file change to include). */
   async placementChange(head, place, item){
-    const path = `projects/${place.project}.json`;
+    const path = this.projectPath(this.needProject(place));
     const pj = metaOf((await head.read([path]))[path]);
     if(!pj) throw new Error("That project no longer exists");
     pj.items = Array.isArray(pj.items) ? pj.items : [];
@@ -1266,10 +1278,9 @@ class GitHubStore{
     return {path, contents:b64(projectText(pj)), text:projectText(pj)};
   }
   async createProject(id, d){
-    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
+    const path = this.projectPath(id);
     const now = new Date().toISOString(), title = cleanText(d.title, 200);
     if(!title) throw new Error("A project needs a title");
-    const path = `projects/${id}.json`;
     const tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
       if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
@@ -1278,8 +1289,7 @@ class GitHubStore{
   }
   /* Read-modify-write of one project file inside the commit loop, so a concurrent change is never overwritten. mutate returns false for "nothing to do". */
   async updateProject(id, headline, mutate){
-    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
-    const path = `projects/${id}.json`;
+    const path = this.projectPath(id);
     return this.commitChanges(headline.slice(0, 300), `Know-how-Project: ${id}`, async head => {
       const pj = metaOf((await head.read([path]))[path]);
       if(!pj) throw new Error("That project no longer exists");
@@ -1292,9 +1302,56 @@ class GitHubStore{
   editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     if(typeof d.intro === "string"){ const intro = d.intro.replace(/\r\n/g, "\n").slice(0, MAX_INTRO); if(intro.trim()) pj.intro = intro; else delete pj.intro; } }); }
   updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
+  /* A project can only be deleted when it is empty: its pages, links and files would go with it. */
   async deleteProject(id, title){
-    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
-    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, [], [{path:`projects/${id}.json`}]);
+    const path = this.projectPath(id);
+    const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:`${this.branch}:projects/${id}`});
+    const names = ((d.repository && d.repository.object && d.repository.object.entries) || []).map(e => e.name).filter(n => n !== "project.json");
+    if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
+    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, [], [{path}]);
+  }
+  /* Moves an item (a page with its sub-pages, a link or a file) to another project in one commit. The blobs are reused by id, so nothing is downloaded or uploaded.
+     root is the item as the reader sees it in the source structure ({type, id, children?}); it lands under parentId (or at the top level) of the target. */
+  async moveItems(fromId, toId, root, parentId){
+    if(fromId === toId) throw new Error("It is already in that project");
+    const fp = this.projectPath(fromId), tp = this.projectPath(toId), moved = [];
+    treeWalk([root], it => moved.push({type:it.type, id:it.id}));
+    const at = (it, pid) => it.type === "page" ? `projects/${pid}/pages/${it.id}` : it.type === "link" ? `projects/${pid}/links/${it.id}.json` : `projects/${pid}/files/${it.id}`;
+    for(let attempt = 1; ; attempt++){
+      const {head, base} = await this.gitHead();
+      const vars = {owner:this.owner, name:this.repo};
+      moved.forEach((it, k) => vars["e" + k] = `${head}:${at(it, fromId)}`);
+      const q = `query MoveSources($owner:String!,$name:String!${moved.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${moved.map((_, k) => `m${k}: object(expression:$e${k}){ oid ... on Tree { entries { name type oid } } }`).join(" ")} } }`;
+      const src = (await this.gql("MoveSources", q, vars)).repository || {};
+      const tree = [];
+      moved.forEach((it, k) => {
+        const o = src["m" + k]; if(!o) throw new Error(`“${it.id}” is no longer in that project`);
+        const pairs = it.type === "page" ? (o.entries || []).filter(e => e.type === "blob").map(e => [`${at(it, fromId)}/${e.name}`, `${at(it, toId)}/${e.name}`, e.oid]) : [[at(it, fromId), at(it, toId), o.oid]];
+        for(const [from, to, sha] of pairs){ tree.push({path:to, mode:"100644", type:"blob", sha}, {path:from, mode:"100644", type:"blob", sha:null}); }
+      });
+      const texts = await this.readAtHead(head, [fp, tp]), from = metaOf(texts[fp]), to = metaOf(texts[tp]);
+      if(!from || !to) throw new Error("That project no longer exists");
+      from.items = Array.isArray(from.items) ? from.items : []; to.items = Array.isArray(to.items) ? to.items : [];
+      const now = new Date().toISOString();
+      treeRemove(from.items, root.type, root.id);
+      treeAdd(to.items, cloneJson(root), parentId);
+      if(treeDepth(to.items) > MAX_TREE_DEPTH) throw new Error("That would nest pages more than " + MAX_TREE_DEPTH + " levels deep");
+      for(const pj of [from, to]){ pj.updatedAt = now; pj.updatedBy = S.me.id; }
+      tree.push({path:fp, mode:"100644", type:"blob", content:projectText(from)}, {path:tp, mode:"100644", type:"blob", content:projectText(to)});
+      const t = await this.gitPost("trees", {base_tree:base, tree});
+      const message = `Move ${root.type} ${root.id} to ${to.title || toId}\n\nKnow-how-Move: ${moved.map(it => it.type + ":" + it.id).join(", ").slice(0, 500)}\nKnow-how-Project: ${toId}`;
+      const commit = await this.gitPost("commits", {message, tree:t.sha, parents:[head]});
+      try{
+        await this.gitPost(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
+        this._art.clear();
+        for(const it of moved) this.where[it.type].set(it.id, toId);
+        return {rev:commit.sha};
+      }catch(e){
+        if(e.status !== 422 && e.status !== 409) throw e;
+        if(attempt >= 3) throw new Error("Someone else saved at the same time; please retry");
+      }
+    }
   }
 }
 
@@ -1302,54 +1359,74 @@ class MemoryStore{
   constructor(){
     this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {}; this.links = {}; this.projects = {};
     const at = new Date().toISOString();
+    this.projects.general = {title:"General", description:"Everything that does not belong to a more specific project.", tags:[], items:[], createdAt:at, createdBy:"you", updatedAt:at, updatedBy:"you"};
     const seed = (slug, title, tags, abstract, content) => {
       const rid = slug + "~1";
       this.revs[rid] = {id:rid, slug, n:1, at, by:"you", summary:"Initial version", size:content.length, format:"md", status:"draft", title, tags, content, sha256:""};
-      this.pages[slug] = {slug, title, tags, status:"draft", format:"md", abstract, revN:1, rev:rid, size:content.length, updatedAt:at, updatedBy:"you", createdAt:at, createdBy:"you"};
+      this.pages[slug] = {slug, project:"general", title, tags, status:"draft", format:"md", abstract, revN:1, rev:rid, size:content.length, updatedAt:at, updatedBy:"you", createdAt:at, createdBy:"you"};
+      this.projects.general.items.push({type:"page", id:slug});
     };
     seed("welcome", "Welcome", ["Lamassu"], "How to use this wiki.", "## Welcome\n\nThis is the development build: data lives in this tab only.\n");
     seed("pqc-migration-notes", "PQC migration notes", ["PQC","Crypto Agility"], "Notes on moving a PKI to post-quantum algorithms.", "## Context\n\nSee also [[Welcome]].\n");
   }
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
-  async loadIndex(){ return {pages:await this.listPages(), files:await this.listFiles(), projects:await this.listProjects(), links:await this.listLinks()}; }
-  async listProjects(){ return Object.entries(this.projects).map(([id, p]) => Object.assign({id}, cloneJson(p))); }
+  async loadIndex(){
+    return {pages:Object.values(this.pages).map(p => Object.assign({}, p)), projects:Object.entries(this.projects).map(([id, p]) => Object.assign({id}, cloneJson(p))),
+      files:Object.keys(this.files).map(name => ({name, size:this.files[name][0].data.byteLength, project:this.files[name].project})),
+      links:Object.entries(this.links).map(([id, m]) => Object.assign({id}, m))};
+  }
+  needProject(place){ if(!place || !this.projects[place.project]) throw new Error("Choose a project first"); return place.project; }
   async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
   async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
     if(typeof d.intro === "string"){ if(d.intro.trim()) p.intro = d.intro.slice(0, MAX_INTRO); else delete p.intro; } p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async updateProjectItems(id, summary, mutate){ const p = this.projects[id]; if(!p) throw new Error("That project no longer exists"); mutate(p.items); p.updatedAt = new Date().toISOString(); return {rev:id}; }
-  async deleteProject(id){ delete this.projects[id]; return {rev:id}; }
-  placeInProject(place, item){ const p = place && this.projects[place.project]; if(p) treeAdd(p.items, item, place.parent); }
-  async listLinks(){ return Object.entries(this.links).map(([id, m]) => Object.assign({id}, m)); }
+  async deleteProject(id){
+    if(Object.values(this.pages).some(p => p.project === id) || Object.values(this.links).some(l => l.project === id) || Object.values(this.files).some(f => f.project === id))
+      throw new Error("The project still has pages, links or files: move them to another project first.");
+    delete this.projects[id]; return {rev:id};
+  }
+  placeInProject(place, item){ const p = this.projects[place.project]; if(p) treeAdd(p.items, item, place.parent); }
+  async moveItems(fromId, toId, root, parentId){
+    if(fromId === toId) throw new Error("It is already in that project");
+    const from = this.projects[fromId], to = this.projects[toId]; if(!from || !to) throw new Error("That project no longer exists");
+    treeRemove(from.items, root.type, root.id); treeAdd(to.items, cloneJson(root), parentId);
+    if(treeDepth(to.items) > MAX_TREE_DEPTH) throw new Error("That would nest pages more than " + MAX_TREE_DEPTH + " levels deep");
+    treeWalk([root], it => { const rec = it.type === "page" ? this.pages[it.id] : it.type === "link" ? this.links[it.id] : this.files[it.id]; if(rec) rec.project = toId; });
+    return {rev:toId};
+  }
   async saveLink(id, d, prev, place){
-    if(place && !prev) this.placeInProject(place, {type:"link", id});
+    const project = prev ? this.links[id].project : this.needProject(place);
+    if(!prev) this.placeInProject(place, {type:"link", id});
     const now = new Date().toISOString();
-    this.links[id] = {url:d.url, title:d.title, description:d.description || "", kind:d.kind || "other", tags:d.tags || [], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : "you", updatedAt:now, updatedBy:"you"};
+    this.links[id] = Object.assign({project, url:d.url, title:d.title, description:d.description || "", kind:d.kind || "other", tags:d.tags || [], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : "you", updatedAt:now, updatedBy:"you"},
+      d.image ? {image:d.image} : {}, d.icon ? {icon:d.icon} : {}, d.siteName ? {siteName:d.siteName} : {});
     return {rev:id};
   }
-  async deleteLink(id){ delete this.links[id]; return {rev:id}; }
-  async listFiles(){ return Object.keys(this.files).map(name => ({name, size:this.files[name][0].data.byteLength})); }
+  async deleteLink(id){ const l = this.links[id]; if(l && this.projects[l.project]) treeRemove(this.projects[l.project].items, "link", id); delete this.links[id]; return {rev:id}; }
   async fileRevs(name){ return (this.files[name] || []).map(v => ({id:v.id, at:v.at, by:"you", summary:v.summary, size:v.data.byteLength})); }
   async getFile(name, rev){ const v = (this.files[name] || []).find(x => !rev || x.id === rev); return v ? v.data.slice(0) : null; }
   async uploadFile(name, base64, sha256hex, summary, place){
-    if(place && !this.files[name]) this.placeInProject(place, {type:"file", id:name});
+    const isNew = !this.files[name];
+    if(isNew){ this.needProject(place); this.placeInProject(place, {type:"file", id:name}); }
     const bin = atob(base64), data = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
     const id = name + "~" + ((this.files[name] || []).length + 1);
-    (this.files[name] ||= []).unshift({id, at:new Date().toISOString(), summary:summary || "Upload " + name, data:data.buffer});
+    const list = (this.files[name] ||= Object.assign([], {project:place && place.project}));
+    list.unshift({id, at:new Date().toISOString(), summary:summary || "Upload " + name, data:data.buffer});
     return {rev:id};
   }
   async names(ids){ const o = {}; for(const id of ids) o[id] = id === "you" ? "You (this browser tab)" : id; return o; }
-  async listPages(){ return Object.values(this.pages); }
   async getPage(slug){ return this.pages[slug] || null; }
   async listRevs(slug){ return Object.values(this.revs).filter(r => r.slug === slug).sort((a,b) => b.n - a.n); }
   async getRev(slug, rev){ return this.revs[rev] || null; }
   async recent(limit = 60){ return Object.values(this.revs).sort((a,b) => b.at < a.at ? -1 : 1).slice(0, limit); }
   async save(slug, d, baseRevN, place){
     const page = this.pages[slug] || {};
-    if(place && !this.pages[slug]) this.placeInProject(place, {type:"page", id:slug}); const n = (page.revN||0) + 1; const rid = `${slug}~${n}`; const at = new Date().toISOString();
+    const project = this.pages[slug] ? page.project : this.needProject(place);
+    if(!this.pages[slug]) this.placeInProject(place, {type:"page", id:slug}); const n = (page.revN||0) + 1; const rid = `${slug}~${n}`; const at = new Date().toISOString();
     const size = utf8len(d.content);
     this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, size, format:d.format, status:d.status, title:d.title, tags:d.tags||[], content:d.content, sha256:await sha256(d.content)};
-    this.pages[slug] = {slug, title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
+    this.pages[slug] = {slug, project, title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
       revN:n, rev:rid, size, updatedAt:at, updatedBy:"you", createdAt:page.createdAt||at, createdBy:page.createdBy||"you"};
     return {rev:rid, n, conflict: baseRevN != null && (page.revN||0) !== baseRevN};
   }
@@ -1693,7 +1770,7 @@ function route(){
   if(!seg.length) return go(viewHome());
   switch(seg[0]){
     case "wiki":       return go(seg.length > 1 ? openWiki(seg.slice(1), params) : (location.replace("#/"), Promise.resolve()));
-    case "projects":   return go(viewProjects());
+    case "projects":   return go(viewProjects(params));
     case "edit":       return go(viewEdit(seg[1]));
     case "new":        return go(viewEdit(null, params));
     case "history":    return go(viewHistory(seg[1]));
@@ -1715,7 +1792,7 @@ function route(){
     default:           setMain(`<h1 class="title">Bad title</h1><div class="ambox warn"><span class="ms" aria-hidden="true">warning</span><p>There is no page or view called “${esc(seg[0])}”. <a href="#/">Return to the main page</a>.</p></div>`);
   }
 }
-function setMain(html){ const m=$("#main"); m.ondragover = m.ondragleave = m.ondrop = null; m.classList.remove("dropping"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); }
+function setMain(html){ const m=$("#main"); m.ondragover = m.ondragleave = m.ondrop = null; m.classList.remove("dropping"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); hydrateCardImages(m); }
 /* Views are async: if the reader navigated meanwhile, a late view must not paint over the new one.
    setMainFor throws STALE, which aborts the rest of that view; route() ignores it. */
 const STALE = Symbol("stale view");
@@ -1794,9 +1871,13 @@ async function viewHome(){
       <div><p class="eyebrow">Lamassu · Research</p>
       <h1>Welcome to ${SITE},</h1>
       <p>the research wiki of the Lamassu team: PKI, X.509, post-quantum cryptography and RFCs. Every edit is a revision you can compare, cite and roll back.</p></div>
-      <div class="stat"><b>${fmtNum(pages.length)}</b> articles · <b>${validated}</b> validated<br><b>${fmtNum(totalRevs)}</b> revisions in total</div>
+      <div class="stat"><b>${fmtNum(S.projects.length)}</b> projects · <b>${fmtNum(pages.length)}</b> articles · <b>${validated}</b> validated<br><b>${fmtNum(totalRevs)}</b> revisions in total</div>
     </section>
-    ${pages.length ? "" : `<div class="empty" style="margin-top:18px"><p><b>No articles yet.</b></p><p>Start with something the team explains often: a PKI design decision, notes on an RFC, or a post-quantum migration plan.</p>${S.me.canWrite?'<p><a class="btn primary" href="#/new">Write the first article</a></p>':""}</div>`}
+    <section class="home-projects"><h2 class="pr-h" style="margin-top:22px">Projects</h2>
+      ${S.projects.length ? `<ul class="linklist">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(projectCard).join("")}</ul>`
+        : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and PDFs.</p></div>`}
+      ${S.me.canWrite ? `<p style="margin:8px 0 0"><a class="btn small" href="#/projects"><span class="ms" aria-hidden="true">create_new_folder</span>New project</a></p>` : ""}</section>
+    ${pages.length || !S.projects.length ? "" : `<div class="empty" style="margin-top:18px"><p><b>No articles yet.</b></p><p>Open a project and add the first page: a PKI design decision, notes on an RFC, or a post-quantum migration plan.</p></div>`}
     ${pages.length ? `<div class="mp-grid">
       <div class="mp-col">
         ${featured ? `<section class="mp-box t-brand"><h2>${featured.status==="validated"?"Featured know-how":"Latest article"}</h2><div class="in">
@@ -1808,7 +1889,6 @@ async function viewHome(){
         </div></section>
       </div>
       <div class="mp-col">
-        ${projectsBoxHtml()}
         <section class="mp-box t-info"><h2>Recently updated</h2><div class="in"><ul>
           ${latest.map(r => `<li><a href="#/wiki/${r.slug}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>'}
         </ul><p style="margin:10px 0 0;font-size:15px"><a href="#/recent">All recent changes →</a></p></div></section>
@@ -2242,7 +2322,7 @@ async function viewEdit(slug, params){
     content: cur?.content ?? "## Context\n\nWhat problem does this know-how solve, and where did we learn it?\n\n## Procedure\n\n1. \n\n## Pitfalls\n\n- \n\n## References\n\n- \n"
   };
   const baseRevN = page?.revN ?? 0;
-  const wantProj = isNew && params?.get?.("project") && projectOf(params.get("project")) ? params.get("project") : "";
+  const wantProj = !isNew ? "" : params?.get?.("project") && projectOf(params.get("project")) ? params.get("project") : projectOf("general") ? "general" : (S.projects[0] || {}).id || "";
   const wantPar = isNew ? (params?.get?.("parent") || "") : "";
   const tagOpts = [...S.tags, ...d.tags.filter(t => !S.tags.includes(t))].map((t,i) => `<label class="tagchip"><input type="checkbox" name="tag" value="${esc(t)}" ${d.tags.includes(t)?"checked":""}><span>${esc(t)}</span>${S.tags.includes(t)?"":'<small> (not in tags.json)</small>'}</label>`).join("");
   const stOpts = STATUS_ORDER.map(s=>`<option value="${s}" ${s===d.status?"selected":""}>${STATUS[s].label}</option>`).join("");
@@ -2262,11 +2342,9 @@ async function viewEdit(slug, params){
         <div class="row">
           <div style="grid-column:span 3"><label for="f-abs">One-line abstract</label><input type="text" id="f-abs" value="${esc(d.abstract)}" maxlength="240" placeholder="What will a colleague learn from this article?"></div>
         </div>
-        <fieldset class="tagpick" id="f-tags"><legend>Tags <small class="muted">(at least one)</small></legend>
-          <div class="tagchips">${tagOpts || '<span class="muted">No tags are defined yet: add them to tags.json in the content repository.</span>'}</div>
-          <div class="hint err" id="tags-err" hidden>Choose at least one tag.</div></fieldset>
-        ${isNew && S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj"><option value="">(none)</option>${S.projects.map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select></div>
-          <div><label for="f-par">Parent page</label><select id="f-par"></select><div class="hint">The article is added to the project's tree and gets the address Project/Parent/Article.</div></div></div>` : ""}
+        ${isNew ? (S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select><div class="hint">Every article lives inside a project.</div></div>
+          <div><label for="f-par">Parent page</label><select id="f-par"></select><div class="hint">The article gets the address Project/Parent/Article.</div></div></div>`
+          : `<p class="hint err" style="margin-top:12px">There are no projects yet: <a href="#/projects">create a project</a> first, because every article lives inside one.</p>`) : ""}
       </fieldset>
       <div>
         <div class="ed-bar">
@@ -2369,10 +2447,9 @@ async function viewEdit(slug, params){
     if(!summary){ toast("Add an edit summary so others know what changed."); $("#f-sum").focus(); return; }
     if(!body.value.trim()){ toast("The article is empty."); body.focus(); return; }
     const target = slug || slugify(title);
+    if(isNew && !$("#f-proj")){ toast("Create a project first: every article lives inside one."); return; }
     if(isNew && (S.pages.some(p=>p.slug===target) || projectOf(target))){ toast("That address is already used by an article or a project. Pick another title."); return; }
-    const picked = $$("input[name=tag]:checked").map(x => x.value).slice(0,20);
-    $("#tags-err").hidden = picked.length > 0;
-    if(!picked.length){ toast("Choose at least one tag."); $("#f-tags").scrollIntoView({block:"center"}); return; }
+    const picked = page ? (page.tags || []).slice(0, 20) : [];          // articles are no longer tagged by hand: projects carry the tags
     const data = {title, status:$("#f-status").value, format:fmt, abstract:$("#f-abs").value.trim(),
       tags:picked, summary, content:body.value};
     if(!isNew && data.status===page.status && data.content===cur.content && data.abstract===page.abstract && data.tags.join()=== (page.tags||[]).join() && data.format===page.format){
@@ -2380,7 +2457,7 @@ async function viewEdit(slug, params){
     }
     const btn = $("#saveBtn"); const lbl = btn.lastElementChild; btn.disabled = true; lbl.textContent = "Publishing…";
     try{
-      const res = await S.store.save(target, data, isNew ? 0 : baseRevN, isNew && $("#f-proj") && $("#f-proj").value ? {project:$("#f-proj").value, parent:$("#f-par").value || null} : null);
+      const res = await S.store.save(target, data, isNew ? 0 : baseRevN, isNew ? {project:$("#f-proj").value, parent:$("#f-par").value || null} : null);
       invalidatePages();
       toast(res.conflict ? `Saved as revision ${res.n}. Someone else edited in between: check the history.` : `Saved revision ${res.n}.`, res.conflict?7000:3200);
       location.hash = "#/wiki/" + target;
@@ -2539,7 +2616,7 @@ function bindUploadForm(fixedName, done, place){
         const data = await file.arrayBuffer();
         if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
         const sha = hex(await crypto.subtle.digest("SHA-256", data));
-        await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || null);
+        await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || ($("#up-proj") ? {project:$("#up-proj").value, parent:null} : null));
         invalidatePages();
         done_.push(name);
       }
@@ -2564,7 +2641,7 @@ async function viewFiles(params){
     ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">picture_as_pdf</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="empty">No files yet.</div>`}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>
-      ${place ? `<p class="muted" style="margin:0 0 8px">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}${uploadForm(null)}` : ""}
+      ${place ? `<p class="muted" style="margin:0 0 8px">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}${!place ? (S.projects.length ? `<div class="row" style="margin:0 0 8px;max-width:360px"><div>${projectSelectHtml("up-proj", defaultProject())}<div class="hint">Every file lives inside a project.</div></div></div>` : `<p class="hint err">There are no projects yet: <a href="#/projects">create a project</a> first.</p>`) : ""}${uploadForm(null)}` : ""}
     ${footer()}`);
   const back = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : null;
   bindUploadForm(null, name => { if(back) location.hash = back; else if(name) location.hash = "#/file/" + enc(name); else { S.nav++; route(); } }, place);
@@ -2627,20 +2704,65 @@ const KIND_LABEL = {news:"News", blog:"Blog", paper:"Paper", video:"Video", docs
 function isHttpUrl(u){ try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") && !x.username && !x.password; }catch{ return false; } }
 const hostOf = u => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch{ return ""; } };
 async function refreshLinks(force){ await refreshPages(force); renderSideTree(); return S.links; }
+/* Link previews: the Worker reads the page (title, description, image, icon) when a link is added, and serves the image later.
+   Images are fetched with the reader's token and shown from memory (blob:), so no reader ever contacts the external site. */
+const previewOk = () => !CONFIG.devMemoryStore && !!AUTH.token && !!CONFIG.authWorkerUrl && !/REPLACE_ME/.test(CONFIG.authWorkerUrl);
+const workerFetch = (path, opt) => fetch(CONFIG.authWorkerUrl + path, Object.assign({}, opt, {headers:Object.assign({}, opt && opt.headers, {Authorization:"Bearer " + AUTH.token})}));
+async function fetchLinkPreview(url){
+  const r = await workerFetch("/preview", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({url})});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error({invalid_url:"that address cannot be previewed", unreachable:"the page could not be reached", not_a_page:"that is not a web page", unauthorized:"sign in again", forbidden:"you need write access"}[j.error] || ("error " + r.status));
+  return j;
+}
+const IMG_CACHE = new Map();
+function loadPreviewImage(url){
+  if(!previewOk() || !isHttpUrl(url)) return Promise.resolve(null);
+  let p = IMG_CACHE.get(url);
+  if(!p){
+    p = workerFetch("/img?u=" + encodeURIComponent(url)).then(r => r.ok ? r.blob() : null).then(b => b ? URL.createObjectURL(b) : null)
+      .then(src => src && new Promise(res => { const im = new Image(); im.onload = () => res(src); im.onerror = () => res(null); im.src = src; })).catch(() => null);
+    IMG_CACHE.set(url, p);
+  }
+  return p;
+}
+let imgObserver = null;
+function hydrateCardImages(root){          // lazily, when a card comes near the screen
+  if(!root || !previewOk()) return;
+  const els = root.querySelectorAll("[data-img],[data-icon]"); if(!els.length) return;
+  if(!imgObserver) imgObserver = new IntersectionObserver(es => es.forEach(e => {
+    if(!e.isIntersecting) return; imgObserver.unobserve(e.target);
+    const el = e.target, isImg = !!el.dataset.img;
+    loadPreviewImage(isImg ? el.dataset.img : el.dataset.icon).then(src => {
+      if(!src || !el.isConnected) return;
+      if(isImg){ el.style.backgroundImage = `url("${src}")`; el.classList.add("has-img"); }
+      else { el.classList.add("has-icon"); el.innerHTML = `<img alt="" src="${src}">`; }
+    });
+  }), {rootMargin:"300px"});
+  els.forEach(el => imgObserver.observe(el));
+}
+const cardIcon = (l, host) => `<span class="uc-ico"${l.icon ? ` data-icon="${esc(l.icon)}"` : ""} aria-hidden="true">${esc(siteInitial(host))}</span>`;
+const cardMedia = (l, host) => `<div class="uc-media"${l.image ? ` data-img="${esc(l.image)}"` : ""} aria-hidden="true"><span class="uc-big">${esc(siteInitial(host))}</span></div>`;
 const hostHue = h => [...String(h)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
 const siteInitial = h => (String(h).replace(/^www\./, "").match(/[a-z0-9]/i) || ["?"])[0].toUpperCase();
 function linkCard(l){
-  const host = hostOf(l.url), ini = siteInitial(host);
+  const host = hostOf(l.url), site = l.siteName || host;
   const tags = (l.tags || []).map(t => `<a class="tag" href="#/links?tag=${enc(t)}">${esc(t)}</a>`).join("");
   return `<li class="ucard linkcard" data-id="${esc(l.id)}" style="--h:${hostHue(host)}">
     <div class="uc-body">
       <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" class="uc-main lc-title"><span class="uc-t">${esc(l.title)}</span><span class="ms lc-ext" aria-hidden="true">open_in_new</span></a>
       ${l.description ? `<p class="uc-d">${esc(l.description)}</p>` : ""}
-      <div class="uc-src"><span class="uc-ico" aria-hidden="true">${esc(ini)}</span><span class="lc-host">${esc(host)}</span><span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div>
+      <div class="uc-src">${cardIcon(l, host)}<span class="lc-host" title="${esc(host)}">${esc(site)}</span><span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div>
       <div class="uc-meta">${tags}<span class="muted lc-by">added by ${personSpan(l.addedBy)}, ${fmtMW(l.addedAt)}</span>
         ${S.me.canWrite ? `<span class="lc-act"><a href="#/links?edit=${enc(l.id)}" data-edit="${esc(l.id)}">Edit</a> · <button type="button" class="linkish" data-del="${esc(l.id)}">Remove</button></span>` : ""}</div>
     </div>
-    <div class="uc-media" aria-hidden="true"><span class="uc-big">${esc(ini)}</span></div></li>`;
+    ${cardMedia(l, host)}</li>`;
+}
+/* the card as it will look, shown while a link is being added or edited */
+function previewCard(l){
+  const host = hostOf(l.url), site = l.siteName || host;
+  return `<div class="ucard" style="--h:${hostHue(host)}"><div class="uc-body"><span class="uc-t">${esc(l.title || l.url)}</span>
+    ${l.description ? `<p class="uc-d">${esc(l.description)}</p>` : ""}
+    <div class="uc-src">${cardIcon(l, host)}<span class="lc-host">${esc(site)}</span><span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div></div>${cardMedia(l, host)}</div>`;
 }
 async function viewLinks(params){
   const nav = S.nav;
@@ -2656,15 +2778,18 @@ async function viewLinks(params){
   const d = editing || {url:"", title:"", description:"", kind:"other", tags:tag && S.tags.includes(tag) ? [tag] : []};
   const tagOpts = [...S.tags, ...d.tags.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="ltag" value="${esc(t)}" ${d.tags.includes(t)?"checked":""}><span>${esc(t)}</span></label>`).join("");
   setMainFor(nav, `<h1 class="title">External links</h1><div class="tabs"><nav><a class="on">Links</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">News, blogs, papers and other pages worth keeping. Links open in a new tab; ${esc(SITE)} does not contact those sites.</p>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">News, blogs, papers and other pages worth keeping. Links open in a new tab. When you add one, a preview (title, description, image) is read by our authentication Worker; your browser, and your colleagues', never contact those sites.</p>
     ${S.me.canWrite ? `<details class="addlink" ${editing || params.get("new") ? "open" : ""}><summary class="btn small"><span class="ms" aria-hidden="true">add_link</span>${editing ? "Edit link" : "Add a link"}</summary>
       ${place ? `<p class="muted" style="margin:8px 0 0">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}
       <form class="form" id="lf" novalidate>
+        ${!editing && !place ? (S.projects.length ? `<div class="row"><div>${projectSelectHtml("l-proj", defaultProject())}<div class="hint">Every link lives inside a project.</div></div></div>` : `<p class="hint err">There are no projects yet: <a href="#/projects">create a project</a> first.</p>`) : ""}
         <div class="row"><div style="grid-column:span 2"><label for="l-url">Address</label><input type="url" id="l-url" value="${esc(d.url)}" placeholder="https://…" required spellcheck="false"></div>
           <div><label for="l-kind">Type</label><select id="l-kind">${LINK_KINDS.map(k => `<option value="${k}" ${k===d.kind?"selected":""}>${KIND_LABEL[k]}</option>`).join("")}</select></div></div>
+        <div class="row"><div style="grid-column:span 3"><div class="lp-bar"><span class="hint" id="l-status" role="status"></span><button type="button" class="btn small" id="l-fetch"><span class="ms" aria-hidden="true">travel_explore</span>Fetch preview</button></div>
+          <div id="l-prev" class="lprev" hidden></div>
+          <label class="lp-use" id="l-uselbl" hidden><input type="checkbox" id="l-useimg" checked> Show the page's image on the card</label></div></div>
         <div class="row"><div style="grid-column:span 3"><label for="l-title">Title</label><input type="text" id="l-title" value="${esc(d.title)}" maxlength="200" required></div></div>
         <div class="row"><div style="grid-column:span 3"><label for="l-desc">Why it matters <small class="muted">(optional)</small></label><input type="text" id="l-desc" value="${esc(d.description)}" maxlength="300"></div></div>
-        <fieldset class="tagpick"><legend>Tags <small class="muted">(at least one)</small></legend><div class="tagchips">${tagOpts || '<span class="muted">No tags defined yet.</span>'}</div></fieldset>
         <div class="actions"><button class="btn primary" id="l-save" type="submit"><span class="ms" aria-hidden="true">${editing ? "save" : "add_link"}</span><span>${editing ? "Save changes" : "Add link"}</span></button>
           ${editing ? '<a class="btn" href="#/links">Cancel</a>' : ""}</div>
       </form></details>` : ""}
@@ -2683,19 +2808,52 @@ async function viewLinks(params){
     try{ await S.store.deleteLink(l.id, l.title); invalidatePages(); toast("Link removed."); route(); }catch(err){ b.disabled = false; toast(err.message || String(err), 7000); }
   });
   const f = $("#lf"); if(!f) return;
+  let pv = {image:editing && editing.image || "", icon:editing && editing.icon || "", siteName:editing && editing.siteName || ""}, lastUrl = editing ? editing.url : "";
+  const drawPreview = () => {
+    const box = $("#l-prev"), url = $("#l-url").value.trim();
+    if(!isHttpUrl(url)){ box.hidden = true; $("#l-uselbl").hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = previewCard({url, title:$("#l-title").value.trim(), description:$("#l-desc").value.trim(), kind:$("#l-kind").value, siteName:pv.siteName, icon:pv.icon, image:$("#l-useimg").checked ? pv.image : ""});
+    hydrateCardImages(box);
+    $("#l-uselbl").hidden = !pv.image;
+  };
+  const getPreview = async () => {
+    const url = $("#l-url").value.trim(), st = $("#l-status");
+    if(!isHttpUrl(url) || !previewOk()){ drawPreview(); return; }
+    const href = new URL(url).href; if(href === lastUrl && pv.siteName) return;
+    lastUrl = href; st.textContent = "Fetching a preview…";
+    try{
+      const d = await fetchLinkPreview(href);
+      if($("#l-url").value.trim() !== url) return;                                  // the address changed meanwhile
+      if(!$("#l-title").value.trim() && d.title) $("#l-title").value = d.title;
+      if(!$("#l-desc").value.trim() && d.description) $("#l-desc").value = d.description;
+      pv = {image:d.image || "", icon:d.icon || "", siteName:d.siteName || ""};
+      st.textContent = "";
+    }catch(err){ pv = {image:"", icon:"", siteName:""}; st.textContent = `No preview (${err.message}). Fill in the fields by hand.`; }
+    drawPreview();
+  };
+  $("#l-url").onchange = getPreview;
+  $("#l-url").onpaste = () => setTimeout(getPreview, 0);
+  $("#l-fetch").onclick = () => { lastUrl = ""; getPreview(); };
+  for(const id of ["#l-title", "#l-desc", "#l-kind", "#l-useimg"]) $(id).addEventListener("input", drawPreview);
+  $("#l-kind").addEventListener("change", drawPreview);
+  $("#l-fetch").hidden = !previewOk();
+  drawPreview();
   f.onsubmit = async e => {
     e.preventDefault();
-    const url = $("#l-url").value.trim(), title = $("#l-title").value.trim(), tags = $$("input[name=ltag]:checked").map(x => x.value);
+    const url = $("#l-url").value.trim(), title = $("#l-title").value.trim(), tags = editing ? (editing.tags || []) : [];
     if(!isHttpUrl(url)){ toast("Enter a full http(s) address, without a user name or password."); $("#l-url").focus(); return; }
     if(!title){ toast("Give the link a title."); $("#l-title").focus(); return; }
-    if(!tags.length){ toast("Choose at least one tag."); return; }
     const href = new URL(url).href, dup = links.find(l => new URL(l.url).href === href && (!editing || l.id !== editing.id));
     if(dup){ toast(`Already added as “${dup.title}”.`, 6000); return; }
     let id = editing ? editing.id : slugify(title).slice(0, 70).replace(/-+$/, ""); if(!LINK_ID_RE.test(id)) id = "link-" + Date.now().toString(36);
     if(!editing){ const base = id; for(let n = 2; links.some(l => l.id === id); n++) id = base + "-" + n; }
+    const target = editing ? null : place || ($("#l-proj") ? {project:$("#l-proj").value, parent:null} : null);
+    if(!editing && !target){ toast("Create a project first: every link lives inside one."); return; }
     const btn = $("#l-save"); btn.disabled = true;
     try{
-      await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags}, editing, place);
+      await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags,
+        image:$("#l-useimg").checked ? pv.image : "", icon:pv.icon, siteName:pv.siteName}, editing, target);
       invalidatePages();
       toast(editing ? "Link saved." : "Link added.");
       const dest = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : "#/links" + (tag ? "?tag=" + enc(tag) : "");
@@ -2705,8 +2863,20 @@ async function viewLinks(params){
 }
 
 /* ---------------------------------------------------------------- projects: URLs, tree rendering and views */
+/* Which project each page, link and file is in is physical (its folder). The tree only orders and nests them, so it is completed
+   in memory: things it names that are not in this project are dropped; things in the project that it forgot go at the end. */
+function ownerMap(type){ return new Map((type === "page" ? S.pages : type === "link" ? S.links : S.files).map(x => [type === "page" ? x.slug : type === "link" ? x.id : x.name, x.project])); }
+function completeTree(prId, items){
+  const own = {page:ownerMap("page"), link:ownerMap("link"), file:ownerMap("file")};
+  treePrune(items, it => own[it.type] && own[it.type].get(it.id) === prId);
+  const have = new Set(); treeWalk(items, it => have.add(it.type + ":" + it.id));
+  const add = (type, list, key, label) => list.filter(x => x.project === prId && !have.has(type + ":" + key(x))).sort((a, b) => label(a).localeCompare(label(b))).forEach(x => items.push({type, id:key(x)}));
+  add("page", S.pages, x => x.slug, x => x.title); add("link", S.links, x => x.id, x => x.title); add("file", S.files, x => x.name, x => x.name);
+  return items;
+}
 function indexProjects(){
   S.loc = new Map(); S.placed = new Set(); S.itemProject = new Map(); S.inTagged = new Set();
+  for(const pr of S.projects) pr.items = completeTree(pr.id, Array.isArray(pr.items) ? pr.items : []);
   for(const pr of S.projects){
     const tagged = (pr.tags || []).length > 0;
     treeWalk(pr.items || [], (it, chain) => {
@@ -2728,6 +2898,9 @@ function tagCounts(){
 }
 const tagChipsHtml = (name, selected) => [...S.tags, ...selected.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="${name}" value="${esc(t)}" ${selected.includes(t) ? "checked" : ""}><span>${esc(t)}</span></label>`).join("");
 const projectOf = id => S.projects.find(p => p.id === id);
+const defaultProject = () => projectOf("general") ? "general" : (S.projects[0] || {}).id || "";
+/* every new page, link or file must be placed in a project: when the address does not say which, the form asks */
+const projectSelectHtml = (id, selected) => `<label for="${id}">Project</label><select id="${id}">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === selected ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select>`;
 const pagePath = slug => { const l = S.loc.get(slug); return l ? [l.project].concat(l.chain) : [slug]; };
 const wikiHref = slug => "#/wiki/" + pagePath(slug).map(enc).join("/");
 const countItems = pr => { const c = {page:0, link:0, file:0}; treeWalk(pr.items || [], it => { c[it.type]++; }); return c; };
@@ -2736,7 +2909,7 @@ function itemInfo(it){
   if(it.type === "link"){ const l = S.links.find(x => x.id === it.id); return l && {label:l.title, href:l.url, external:true, icon:"link", sub:hostOf(l.url)}; }
   const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:"picture_as_pdf", sub:fmtBytes(f.size)};
 }
-const CTL = [["up","arrow_upward","↑","Move up"], ["down","arrow_downward","↓","Move down"], ["out","format_indent_decrease","←","Move out of its parent"], ["in","format_indent_increase","→","Make a sub-page of the item above"], ["rm","close","✕","Remove from the project"]];
+const CTL = [["up","arrow_upward","↑","Move up"], ["down","arrow_downward","↓","Move down"], ["out","format_indent_decrease","←","Move out of its parent"], ["in","format_indent_increase","→","Make a sub-page of the item above"]];
 function treeList(items, o){
   o = o || {};
   const rows = (items || []).map(it => {
@@ -2768,6 +2941,10 @@ function renderSideTree(){
   const head = $("#sideProjHead"), box = $("#sideProject"); if(!box) return;
   const ctx = projectContext();
   document.body.classList.toggle("proj-mode", !!(ctx && ctx.pr));
+  const nb = $("#newBtn");                                   // "Create project" everywhere, "Create article" inside a project
+  nb.href = ctx && ctx.pr ? "#/new?project=" + enc(ctx.pr.id) : "#/projects?new=1";
+  nb.querySelector(".ms").textContent = ctx && ctx.pr ? "add" : "create_new_folder";
+  nb.querySelector(".btn-label").textContent = ctx && ctx.pr ? "Create article" : "Create project";
   if(!ctx || !ctx.pr){ head.hidden = box.hidden = true; syncSide(); return; }
   const {pr, cur} = ctx;
   head.hidden = box.hidden = false;
@@ -2800,12 +2977,12 @@ const projectBadges = pr => (pr.tags || []).map(t => `<a class="badge secondary"
 function quickCard(it){
   const info = itemInfo(it); if(!info) return "";
   if(it.type === "link"){
-    const l = S.links.find(x => x.id === it.id), host = hostOf(l.url), ini = siteInitial(host);
+    const l = S.links.find(x => x.id === it.id), host = hostOf(l.url);
     return `<a class="ucard qa-card" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" style="--h:${hostHue(host)}">
       <span class="uc-body"><span class="uc-t qa-t">${esc(l.title)}<span class="ms lc-ext" aria-hidden="true">open_in_new</span></span>
         ${l.description ? `<span class="uc-d">${esc(l.description)}</span>` : ""}
-        <span class="uc-src"><span class="uc-ico" aria-hidden="true">${esc(ini)}</span><span class="qa-s">${esc(host)}</span><span class="badge secondary">${esc(KIND_LABEL[l.kind] || "Other")}</span></span></span>
-      <span class="uc-media" aria-hidden="true"><span class="uc-big">${esc(ini)}</span></span></a>`;
+        <span class="uc-src">${cardIcon(l, host)}<span class="qa-s" title="${esc(host)}">${esc(l.siteName || host)}</span><span class="badge secondary">${esc(KIND_LABEL[l.kind] || "Other")}</span></span></span>
+      ${cardMedia(l, host)}</a>`;
   }
   const f = S.files.find(x => x.name === it.id);
   return `<a class="ucard qa-card" href="#/file/${enc(f.name)}" style="--h:4">
@@ -2825,15 +3002,14 @@ function projectCard(p){
       <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></div>
     <div class="uc-media" aria-hidden="true"><span class="ms uc-big">folder_open</span></div></li>`;
 }
-const projectsBoxHtml = () => S.projects.length ? `<section class="mp-box t-slate"><h2>Projects</h2><div class="in"><ul>${S.projects.slice().sort((a,b) => a.title.localeCompare(b.title)).map(p => { const c = countItems(p); return `<li><a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a> <span class="muted" style="font-size:14px">— ${c.page} page${c.page === 1 ? "" : "s"}</span></li>`; }).join("")}</ul><p style="margin:10px 0 0;font-size:15px"><a href="#/projects">All projects →</a></p></div></section>` : "";
 
-async function viewProjects(){
+async function viewProjects(params){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading projects…</div>');
   await refreshPages();
   const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
   setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">A project groups pages (with sub-pages), external links and PDF files. Its structure is kept in one file, so moving or reordering things never changes the items themselves.</p>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">Everything lives inside a project: its pages (with sub-pages), external links and PDF files are stored in the project's own folder, and its structure file only decides their order and nesting.</p>
     ${list.length ? `<ul class="linklist">${list.map(projectCard).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">New project</h2><form class="form" id="npf" novalidate>
       <div class="row"><div style="grid-column:span 3"><label for="np-title">Title</label><input type="text" id="np-title" maxlength="200" required><div class="hint">Address: <span class="mono" id="np-slug"></span></div></div></div>
@@ -2842,6 +3018,7 @@ async function viewProjects(){
       <div class="actions"><button class="btn primary" id="np-btn" type="submit"><span class="ms" aria-hidden="true">create_new_folder</span><span>Create project</span></button></div></form>` : ""}
     ${footer()}`);
   const t = $("#np-title"); if(!t) return;
+  if(params && params.get("new")) t.focus();
   t.oninput = () => { $("#np-slug").textContent = "#/wiki/" + (slugify(t.value) || "…"); };
   $("#npf").onsubmit = async e => {
     e.preventDefault();
@@ -2862,11 +3039,10 @@ async function viewProject(id, params){
   if(!pr){ setMainFor(nav, `<h1 class="title">${esc(id)}</h1>${ambox("slate","info","<p>This project does not exist.</p>")}${footer()}`); return; }
   const organize = params.get("organize") === "1" && S.me.canWrite;
   const c = countItems(pr), q = enc(id);
-  const loose = {
-    page: S.pages.filter(p => !S.placed.has("page:" + p.slug)).sort((a, b) => a.title.localeCompare(b.title)),
-    link: S.links.filter(l => !S.placed.has("link:" + l.id)).sort((a, b) => a.title.localeCompare(b.title)),
-    file: S.files.filter(f => !S.placed.has("file:" + f.name)).sort((a, b) => a.name.localeCompare(b.name)),
-  };
+  const elsewhere = S.projects.filter(p => p.id !== id).sort((a, b) => a.title.localeCompare(b.title)).map(p => {
+    const opts = []; treeWalk(p.items || [], (it, chain) => { const info = itemInfo(it); if(info) opts.push({value:`${p.id}|${it.type}:${it.id}`, label:"— ".repeat(chain.length) + info.label, type:it.type}); });
+    return {p, opts};
+  }).filter(g => g.opts.length);
   const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
   const tree = treeList(pr.items, {organize});
   setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
@@ -2880,17 +3056,15 @@ async function viewProject(id, params){
     ${quickAccessHtml(pr)}
     ${pr.intro ? `<section class="proj-intro"><div class="prose" id="proj-intro">${renderMarkdown(pr.intro).innerHTML}</div></section>`
       : S.me.canWrite ? `<p class="muted" style="margin:0 0 14px;font-size:15px">No introduction yet: add one (Markdown) with <i>Edit project</i> below.</p>` : ""}
-    ${organize ? ambox("slate","info","<p>Use the arrows to reorder, <b>→</b> to make an item a sub-page of the page above it, <b>←</b> to move it back out, and <b>✕</b> to take it out of the project (the item itself is not deleted).</p>") : ""}
+    ${organize ? ambox("slate","info","<p>Use the arrows to reorder, <b>→</b> to make an item a sub-page of the page above it and <b>←</b> to move it back out. To bring items from another project here, use <i>Move items here</i> below.</p>") : ""}
     <h2 class="pr-h">Structure</h2>
     ${tree || '<div class="empty">This project is empty.</div>'}
-    ${S.me.canWrite && (loose.page.length + loose.link.length + loose.file.length) ? `<details class="addlink" style="margin-top:18px"><summary class="btn small"><span class="ms" aria-hidden="true">playlist_add</span>Add existing items</summary>
+    ${S.me.canWrite && elsewhere.length ? `<details class="addlink" style="margin-top:18px"><summary class="btn small"><span class="ms" aria-hidden="true">drive_file_move</span>Move items here</summary>
       <form class="form" id="aef" novalidate><div class="row"><div style="grid-column:span 2"><label for="ae-item">Item</label><select id="ae-item">
-        ${loose.page.length ? `<optgroup label="Pages">${loose.page.map(p => `<option value="page:${esc(p.slug)}">${esc(p.title)}</option>`).join("")}</optgroup>` : ""}
-        ${loose.link.length ? `<optgroup label="External links">${loose.link.map(l => `<option value="link:${esc(l.id)}">${esc(l.title)}</option>`).join("")}</optgroup>` : ""}
-        ${loose.file.length ? `<optgroup label="Files">${loose.file.map(f => `<option value="file:${esc(f.name)}">${esc(f.name)}</option>`).join("")}</optgroup>` : ""}</select>
-        <div class="hint">Only items that are not in another project are listed.</div></div>
+        ${elsewhere.map(g => `<optgroup label="${esc(g.p.title)}">${g.opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)} (${o.type})</option>`).join("")}</optgroup>`).join("")}</select>
+        <div class="hint">A page takes its sub-pages with it. Its earlier revisions stay in git, but its history here starts at the move.</div></div>
         <div><label for="ae-par">Under</label><select id="ae-par"><option value="">(top level)</option>${parents.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("")}</select></div></div>
-        <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">add</span><span>Add to project</span></button></div></form></details>` : ""}
+        <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">drive_file_move</span><span>Move to this project</span></button></div></form></details>` : ""}
     ${S.me.canWrite ? `<details class="addlink" style="margin-top:10px"><summary class="btn small"><span class="ms" aria-hidden="true">edit</span>Edit project</summary>
       <form class="form" id="epf" novalidate><div class="row"><div style="grid-column:span 3"><label for="ep-title">Title</label><input type="text" id="ep-title" maxlength="200" value="${esc(pr.title)}"></div></div>
         <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
@@ -2902,21 +3076,27 @@ async function viewProject(id, params){
     ${footer()}`);
   if($("#proj-intro")) hydrateEmbeds($("#proj-intro"));
   const run = async (summary, fn, done) => {
-    try{ await S.store.updateProjectItems(id, summary, fn); invalidatePages(); if(done) done(); else route(); }
+    try{ await S.store.updateProjectItems(id, summary, items => { completeTree(id, items); return fn(items); }); invalidatePages(); if(done) done(); else route(); }
     catch(err){ console.error(err); toast(err.message || String(err), 7000); }
   };
   $$(".pt-ctl [data-op]").forEach(b => b.onclick = () => {
-    const {op, type, id: item} = b.dataset, f = {up:i => treeMove(i, type, item, -1), down:i => treeMove(i, type, item, 1), out:i => treeOutdent(i, type, item), in:i => treeIndent(i, type, item), rm:i => treeRemove(i, type, item)}[op];
-    b.disabled = true; run(`${op === "rm" ? "Remove from" : "Reorder"} project: ${pr.title}`, i => f(i), null);
+    const {op, type, id: item} = b.dataset, f = {up:i => treeMove(i, type, item, -1), down:i => treeMove(i, type, item, 1), out:i => treeOutdent(i, type, item), in:i => treeIndent(i, type, item)}[op];
+    b.disabled = true; run(`Reorder project: ${pr.title}`, i => f(i), null);
   });
-  const ae = $("#aef"); if(ae) ae.onsubmit = e => {
-    e.preventDefault(); const [type, ...rest] = $("#ae-item").value.split(":"), item = rest.join(":");
-    run(`Add to project: ${pr.title}`, i => treeAdd(i, {type, id:item}, $("#ae-par").value || null), null);
+  const ae = $("#aef"); if(ae) ae.onsubmit = async e => {
+    e.preventDefault();
+    const [from, key] = $("#ae-item").value.split("|"), [type, ...rest] = key.split(":"), item = rest.join(":");
+    const src = projectOf(from), found = src && treeFind(src.items || [], type, item);
+    if(!found){ toast("That item is no longer there. Reload and try again.", 6000); return; }
+    const btn = ae.querySelector("button[type=submit]"); btn.disabled = true;
+    try{ await S.store.moveItems(from, id, cloneJson(found.item), $("#ae-par").value || null); invalidatePages(); toast("Moved to " + pr.title + "."); route(); }
+    catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
   };
   const ep = $("#epf"); if(ep){
     ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
-      if(!confirm(`Delete the project “${pr.title}”? Its pages, links and files are kept; they just stop being grouped.`)) return;
+      if(c.page + c.link + c.file){ toast("Move this project's pages, links and files to another project first: a project can only be deleted when it is empty.", 8000); return; }
+      if(!confirm(`Delete the empty project “${pr.title}”?`)) return;
       try{ await S.store.deleteProject(id, pr.title); invalidatePages(); toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
     };
   }
@@ -2956,10 +3136,14 @@ async function viewAutomation(){
 
 ## Layout
 \`\`\`
-tags.json                      {"tags": ["Lamassu", "PKI", ...]}
-pages/<slug>/meta.json         title, tags, status, format, abstract, revN, size, sha256, ...
-pages/<slug>/content.md        (or content.html, as meta.format says)
+tags.json                                       {"tags": ["Lamassu", "PKI", ...]}
+projects/<id>/project.json                      title, description, tags, intro, items (order and nesting)
+projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, size, sha256, ...
+projects/<id>/pages/<slug>/content.md           (or content.html, as meta.format says)
+projects/<id>/links/<id>.json                   an external link
+projects/<id>/files/<name>.pdf                  a PDF
 \`\`\`
+- Everything lives inside a project. Slugs, link ids and file names are unique across all projects.
 - \`slug\`: lowercase letters, digits and hyphens, up to 80 characters.
 - \`tags\`: one to twenty entries, all present in \`tags.json\`.
 - \`revN\` goes up by one with every save; \`sha256\` and \`size\` are those of the content (UTF-8).
@@ -2967,9 +3151,10 @@ pages/<slug>/content.md        (or content.html, as meta.format says)
 ## With git
 \`\`\`
 git clone https://github.com/${repo}.git && cd ${CONFIG.contentRepo}
-# edit pages/my-article/meta.json and content.md, then:
-git add pages/my-article
+# edit projects/general/pages/my-article/meta.json and content.md, then:
+git add projects/general/pages/my-article
 git commit -m "Update PQC notes" -m "Know-how-Page: my-article
+Know-how-Project: general
 Know-how-Revision: 4
 Know-how-Status: draft
 Content-SHA256: <sha256 of the content>"

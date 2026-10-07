@@ -7,7 +7,8 @@ const crypto = require("node:crypto");
 
 const OWNER = "lamassuiot", REPO = "research-content";
 const WORKER = "https://auth.test";
-const TEMPLATE = path.resolve(__dirname, "..", "..", "content-template");
+// LR_TEMPLATE points the simulated repository at another content template (a folder with tags.json and pages/)
+const TEMPLATE = process.env.LR_TEMPLATE ? path.resolve(process.env.LR_TEMPLATE) : path.resolve(__dirname, "..", "..", "content-template");
 const sha1 = s => crypto.createHash("sha1").update(s).digest("hex");
 const b64u = buf => Buffer.from(buf).toString("base64url");
 
@@ -47,11 +48,21 @@ function createRepo() {
 }
 function seedFromTemplate(repo) {
   repo.add("Add tags", { "tags.json": fs.readFileSync(path.join(TEMPLATE, "tags.json"), "utf8") });
-  for (const slug of fs.readdirSync(path.join(TEMPLATE, "pages"))) {
-    const dir = path.join(TEMPLATE, "pages", slug), changes = {};
-    for (const f of fs.readdirSync(dir)) changes[`pages/${slug}/${f}`] = fs.readFileSync(path.join(dir, f), "utf8");
-    const meta = JSON.parse(changes[`pages/${slug}/meta.json`]);
-    repo.add(`Initial version\n\nKnow-how-Page: ${slug}\nKnow-how-Revision: 1\nKnow-how-Status: ${meta.status}\nContent-SHA256: ${meta.sha256}`, changes);
+  // everything lives in projects/<id>/: project.json first (one commit), then one commit per page
+  const projectsDir = path.join(TEMPLATE, "projects");
+  if (!fs.existsSync(projectsDir)) return repo;
+  const projects = fs.readdirSync(projectsDir).filter(id => fs.statSync(path.join(projectsDir, id)).isDirectory());
+  const base = {};
+  for (const pid of projects) base[`projects/${pid}/project.json`] = fs.readFileSync(path.join(projectsDir, pid, "project.json"), "utf8");
+  repo.add("Add projects", base);
+  for (const pid of projects) {
+    const pagesDir = path.join(projectsDir, pid, "pages");
+    for (const slug of fs.existsSync(pagesDir) ? fs.readdirSync(pagesDir) : []) {
+      const dir = path.join(pagesDir, slug), changes = {};
+      for (const f of fs.readdirSync(dir)) changes[`projects/${pid}/pages/${slug}/${f}`] = fs.readFileSync(path.join(dir, f), "utf8");
+      const meta = JSON.parse(changes[`projects/${pid}/pages/${slug}/meta.json`]);
+      repo.add(`Initial version\n\nKnow-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: 1\nKnow-how-Status: ${meta.status}\nContent-SHA256: ${meta.sha256}`, changes);
+    }
   }
   return repo;
 }
@@ -60,7 +71,7 @@ function seedFromTemplate(repo) {
 async function installFakeGitHub(page, opts = {}) {
   const repo = opts.repo || seedFromTemplate(createRepo());
   const user = opts.user || { login: "ada", name: "Ada Lovelace" };
-  const state = { repo, requests: [], unexpected: [], revokes: [], authorizes: [], codes: new Map(), tokens: new Set(), tokenCount: 0,
+  const state = { repo, previewCalls: [], imgCalls: [], requests: [], unexpected: [], revokes: [], authorizes: [], codes: new Map(), tokens: new Set(), tokenCount: 0,
     userAt: null, raced: false, commitsBy: login => repo.commits.filter(c => c.author.login === login) };
   state.expireAll = () => state.tokens.clear();
   const perms = { admin: { admin: true, maintain: true, push: true, triage: true, pull: true }, write: { admin: false, maintain: false, push: true, triage: true, pull: true },
@@ -110,6 +121,18 @@ async function installFakeGitHub(page, opts = {}) {
         const token = `tok-${c.login}-${++state.tokenCount}`; state.tokens.add(token);
         return json(route, 200, { access_token: token, expires_in: opts.expiresIn ?? 28800 });
       }
+      if (url.pathname === "/preview" || url.pathname === "/img") {
+        const tok = (req.headers()["authorization"] || "").replace(/^Bearer /, "");
+        if (!state.tokens.has(tok)) return json(route, 401, { error: "unauthorized" });
+        if (url.pathname === "/preview") {
+          const u = (req.postDataJSON() || {}).url; state.previewCalls.push(u);
+          const d = (opts.previews || {})[u];
+          return d ? json(route, 200, d) : json(route, 502, { error: "unreachable" });
+        }
+        const target = url.searchParams.get("u"); state.imgCalls.push({ url: target, auth: req.headers()["authorization"] });
+        const img = (opts.images || {})[target];
+        return img ? route.fulfill({ status: 200, headers: { ...CORS, "content-type": "image/png" }, body: img }) : route.fulfill({ status: 502, headers: CORS });
+      }
       if (url.pathname === "/revoke") { state.revokes.push(body.access_token); state.tokens.delete(body.access_token); return route.fulfill({ status: 204, headers: CORS }); }
       return json(route, 404, { error: "not_found" });
     }
@@ -139,6 +162,8 @@ async function installFakeGitHub(page, opts = {}) {
   const author = c => ({ name: c.author.name, user: { login: c.author.login, avatarUrl: `https://avatars.githubusercontent.com/u/${c.author.login}?s=64` } });
   const node = c => ({ oid: c.oid, authoredDate: c.date, messageHeadline: c.message.split("\n")[0], message: c.message, author: author(c) });
   const blob = text => text == null ? null : { text };
+  const blobSha = v => sha1("blob:" + Buffer.from(v).toString("base64"));
+  const findBlob = sha => { for (const v of repo.head().files.values()) if (blobSha(v) === sha) return v; return undefined; };
   const metas = vars => Object.fromEntries(Object.keys(vars).filter(k => /^e\d+$/.test(k)).map(k => ["m" + k.slice(1), blob(repo.read(vars[k]))]));
 
   /* Git Data API: blobs, trees and commits are staged here until a ref update makes them a commit of the repo */
@@ -168,7 +193,7 @@ async function installFakeGitHub(page, opts = {}) {
       const t = staged.trees.get(c.tree);
       if (t.base_tree !== "tree-of-" + c.parents[0]) return json(route, 422, { message: "tree does not belong to the parent" });
       const changes = {};
-      for (const e of t.tree) changes[e.path] = e.sha ? staged.blobs.get(e.sha) : e.content;
+      for (const e of t.tree) changes[e.path] = e.sha === null ? null : e.sha ? (staged.blobs.get(e.sha) ?? findBlob(e.sha)) : e.content;   // sha null deletes; a sha reuses a blob that is already in the repository
       const nc = repo.add(c.message, changes, { name: user.name, login: user.login });
       return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: nc.oid } });
     }
@@ -184,33 +209,40 @@ async function installFakeGitHub(page, opts = {}) {
     let data;
     switch (op) {
       case "Index": {
-        const f = [...repo.head().files.entries()], dir = (d, ext) => f.filter(([p]) => new RegExp(`^${d}/[^/]+$`).test(p));
-        const tree = (expr, withText) => { const d = expr.split(":")[1], es = dir(d); return es.length ? { entries: es.map(([p, v]) => ({ name: p.slice(d.length + 1), type: "blob",
-          object: withText === "size" ? { byteSize: Buffer.byteLength(v) } : { text: String(v) } })) } : null; };
-        const pageNames = [...new Set(f.map(([p]) => p).filter(p => p.startsWith("pages/")).map(p => p.split("/")[1]))];
-        data = { repository: { pages: pageNames.length ? { entries: pageNames.map(name => ({ name, type: "tree" })) } : null,
-          files: tree(v.files, "size"), projects: tree(v.projects, "text"), links: tree(v.links, "text") } }; break;
+        const files = repo.head().files, byProject = {};
+        for (const p of files.keys()) { const m = p.match(/^projects\/([^/]+)\/(.+)$/); if (m) (byProject[m[1]] ||= []).push(m[2]); }
+        const entries = Object.entries(byProject).map(([pid, rest]) => {
+          const top = {};
+          for (const r of rest) {
+            const parts = r.split("/");
+            if (parts.length === 1) { top[parts[0]] = { name: parts[0], type: "blob", object: {} }; continue; }
+            const d = (top[parts[0]] ||= { name: parts[0], type: "tree", object: { entries: [] } }), second = parts[1];
+            if (!d.object.entries.find(e => e.name === second))
+              d.object.entries.push(parts.length === 2 ? { name: second, type: "blob", object: { byteSize: Buffer.byteLength(files.get(`projects/${pid}/${r}`)) } } : { name: second, type: "tree", object: {} });
+          }
+          return { name: pid, type: "tree", object: { entries: Object.values(top) } };
+        });
+        data = { repository: { object: entries.length ? { entries } : null } }; break;
+      }
+      case "ProjectEntries": {
+        const prefix = v.expr.split(":")[1] + "/", names = new Map();
+        for (const p of repo.head().files.keys()) if (p.startsWith(prefix)) { const r = p.slice(prefix.length).split("/"); names.set(r[0], r.length > 1 ? "tree" : "blob"); }
+        data = { repository: { object: names.size ? { entries: [...names].map(([name, type]) => ({ name, type })) } : null } }; break;
+      }
+      case "MoveSources": {
+        const out = {};
+        for (const k of Object.keys(v).filter(k => /^e\d+$/.test(k))) {
+          const [rev, p] = [v[k].slice(0, v[k].indexOf(":")), v[k].slice(v[k].indexOf(":") + 1)], c = repo.find(rev);
+          if (c && c.files.has(p)) { out["m" + k.slice(1)] = { oid: blobSha(c.files.get(p)) }; continue; }
+          const kids = c ? [...c.files.keys()].filter(f => f.startsWith(p + "/") && !f.slice(p.length + 1).includes("/")) : [];
+          out["m" + k.slice(1)] = kids.length ? { oid: "tree-" + p, entries: kids.map(f => ({ name: f.slice(p.length + 1), type: "blob", oid: blobSha(c.files.get(f)) })) } : null;
+        }
+        data = { repository: out }; break;
       }
       case "GetArticle": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) } }; break;
-      case "ListFiles": {
-        const files = [...repo.head().files.entries()].filter(([f]) => /^files\/[^/]+$/.test(f));
-        data = { repository: { object: files.length ? { entries: files.map(([f, v]) => ({ name: f.slice(6), type: "blob", object: { byteSize: Buffer.byteLength(v) } })) } : null } }; break;
-      }
       case "FileRevs": data = { repository: ref(repo.history(v.path, 50).map(c => ({ ...node(c), file: c.files.has(v.path) ? { object: { byteSize: Buffer.byteLength(c.files.get(v.path)) } } : null }))) }; break;
       case "Tags": data = { repository: { object: blob(repo.read(v.expr)) } }; break;
-      case "ListPages": {
-        const names = [...new Set([...repo.head().files.keys()].filter(f => f.startsWith("pages/")).map(f => f.split("/")[1]))];
-        data = { repository: { object: { entries: names.map(name => ({ name, type: "tree" })) } } }; break;
-      }
-      case "ListLinks": {
-        const names = [...repo.head().files.keys()].filter(f => /^links\/[^/]+$/.test(f)).map(f => f.slice(6));
-        data = { repository: { object: names.length ? { entries: names.map(name => ({ name, type: "blob" })) } : null } }; break;
-      }
-      case "ListProjects": {
-        const names = [...repo.head().files.keys()].filter(f => /^projects\/[^/]+$/.test(f)).map(f => f.slice(9));
-        data = { repository: { object: names.length ? { entries: names.map(name => ({ name, type: "blob" })) } : null } }; break;
-      }
-      case "PageMetas": case "RecentMetas": case "LinkBlobs": case "ProjectBlobs": case "ReadFiles": data = { repository: metas(v) }; break;
+      case "IndexBlobs": case "RecentMetas": case "ReadFiles": data = { repository: metas(v) }; break;
       case "GetPage": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path, 1).map(c => ({ oid: c.oid }))) } }; break;
       case "ListRevs": data = { repository: ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) }; break;
       case "GetRev": { const c = repo.find(v.sha); data = { repository: { commit: c ? node(c) : null, meta: blob(repo.read(v.metaExpr)) } }; break; }
@@ -236,4 +268,20 @@ async function installFakeGitHub(page, opts = {}) {
   return state;
 }
 
-module.exports = { installFakeGitHub, createRepo, seedFromTemplate, OWNER, REPO, WORKER };
+/* A project.json for tests: projectJson({title, items, ...}) */
+function projectJson(over) {
+  const at = "2026-10-07T00:00:00.000Z";
+  return JSON.stringify({ title: "P", description: "", tags: [], items: [], createdAt: at, createdBy: "ada", updatedAt: at, updatedBy: "ada", ...over }, null, 2) + "\n";
+}
+/* An article for tests, as the files of one page folder: pageFiles("p", "slug", {title, content, ...meta}) */
+function pageFiles(project, slug, o = {}) {
+  const content = o.content ?? "## Section\n\nSome text.\n", format = o.format || "md", at = "2026-10-07T00:00:00.000Z";
+  const meta = { title: slug, tags: ["PQC"], status: "draft", format, abstract: "", revN: 1, size: Buffer.byteLength(content), sha256: crypto.createHash("sha256").update(content).digest("hex"),
+    updatedAt: at, updatedBy: "ada", createdAt: at, createdBy: "ada", ...(o.meta || {}) };
+  return { [`projects/${project}/pages/${slug}/content.${format}`]: content, [`projects/${project}/pages/${slug}/meta.json`]: JSON.stringify(meta, null, 2) + "\n" };
+}
+
+module.exports = { installFakeGitHub, createRepo, seedFromTemplate, projectJson, pageFiles, OWNER, REPO, WORKER };
+
+// a 1x1 PNG, used as the "image" of previewed links in tests
+module.exports.PNG_PIXEL = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");

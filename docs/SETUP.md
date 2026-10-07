@@ -7,7 +7,7 @@ Resultado: la wiki en `https://www.lamassu.io/research/`, con login de GitHub y 
 ## 1. Repositorios
 - [ ] Crear **`lamassuiot/research`** (público): contiene el código de la app (este repositorio). El nombre fija la ruta `/research` de GitHub Pages.
 - [ ] Crear **`lamassuiot/research-content`** (privado): contiene los artículos.
-- [ ] En `research-content`, hacer el primer commit en `main` con el contenido de `content-template/` de este repositorio (`tags.json`, `pages/`, `scripts/`, `.github/`, `README.md`). La rama `main` tiene que existir antes de usar la app.
+- [ ] En `research-content`, hacer el primer commit en `main` con el contenido de `content-template/` de este repositorio (`tags.json`, `projects/`, `scripts/`, `.github/`, `README.md`). La rama `main` tiene que existir antes de usar la app.
 
 ## 2. Protección y teams
 - [ ] Ruleset en `research-content` sobre `main`: **bloquear force-push y borrado de la rama**. **No** exigir pull request: la wiki hace commits directos.

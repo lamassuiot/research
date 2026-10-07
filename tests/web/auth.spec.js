@@ -7,7 +7,7 @@ let w;
 test.beforeEach(({ page }) => { w = watch(page); });
 test.afterEach(() => w.check());
 
-async function open(page, opts, hash = "#/wiki/welcome") {
+async function open(page, opts, hash = "#/wiki/general/welcome") {
   w.gh = await installFakeGitHub(page, opts);
   await page.goto("/research/" + hash);
   return w.gh;
@@ -24,14 +24,14 @@ test("redirects to GitHub with state and PKCE (no scope), comes back to the same
   expect(a.code_challenge_method).toBe("S256");
   expect(a.hasScope).toBe(false);
   expect(a.redirect_uri).toBe("http://127.0.0.1:8301/research/");
-  expect(page.url()).toBe("http://127.0.0.1:8301/research/#/wiki/welcome");
+  expect(page.url()).toBe("http://127.0.0.1:8301/research/#/wiki/general/welcome");
   expect(page.url()).not.toContain("code=");
 });
 
 test("nothing is requested or painted before sign-in completes", async ({ page }) => {
   let release; const hold = new Promise(r => { release = r; });
   w.gh = await installFakeGitHub(page, { holdWorker: hold });
-  await page.goto("/research/#/wiki/welcome");
+  await page.goto("/research/#/wiki/general/welcome");
   await expect(page.locator("#gate")).toBeVisible();
   await expect(page.locator("#gateT")).toHaveText("Signing in with GitHub");
   await expect(page.locator("#gateBar")).toBeVisible();                 // indeterminate progress bar...
