@@ -514,6 +514,29 @@ body.gated .gate{display:flex}
 .tagchip input:checked + span{background:var(--link);border-color:var(--link);color:#fff}
 .tagchip input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
 .hint.err{color:var(--err)}
+/* ---------- projects ---------- */
+#sideProject{margin-top:14px}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;font-size:14.5px;color:var(--ink-3)}
+.crumbs .sep{color:var(--ink-4)}
+ul.ptree{list-style:none;margin:6px 0 0;padding:0}
+ul.ptree ul.ptree{margin:2px 0 0 14px;padding-left:12px;border-left:1px solid var(--rule)}
+.ptree li{margin:0}
+.pt-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px;min-width:0}
+.pt-row:hover{background:var(--surface)}
+.pt-row .ms{font-size:19px;color:var(--ink-3);flex:none}
+.pt-row .pt-l{font-weight:500;overflow-wrap:anywhere}
+.pt-row .pt-l.cur{color:var(--ink);font-weight:700}
+.pt-sub{color:var(--ink-3);font-size:13px;margin-left:2px}
+.pt-ctl{margin-left:auto;display:inline-flex;gap:2px;flex:none}
+.pt-ctl .sc-icon{border-color:var(--rule)}
+.pt-picture_as_pdf .ms,.pt-file .ms{color:var(--err)}
+.ptree.compact{margin:0;padding:0 0 4px}
+.ptree.compact .pt-row{padding:3px 8px;font-size:15px;gap:6px}
+.ptree.compact .pt-row .ms{font-size:16px}
+.ptree.compact ul.ptree{margin-left:10px;padding-left:8px}
+.pt-add{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.subpages{margin:22px 0 0;clear:both}
+.subpages h2{font-size:20px;font-weight:700;margin:0 0 6px}
 /* ---------- external links ---------- */
 .linklist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
 .linkcard{border:1px solid var(--rule);border-radius:12px;padding:10px 14px;background:var(--paper)}
@@ -579,12 +602,14 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
         <li><a href="#/" data-nav="home"><span class="ms" aria-hidden="true">home</span>Main page</a></li>
         <li><a href="#/all" data-nav="all"><span class="ms" aria-hidden="true">list</span>All articles</a></li>
         <li><a href="#/tags" data-nav="tags"><span class="ms" aria-hidden="true">sell</span>All tags</a></li>
+        <li><a href="#/projects" data-nav="projects"><span class="ms" aria-hidden="true">folder_open</span>Projects</a></li>
         <li><a href="#/links" data-nav="links"><span class="ms" aria-hidden="true">link</span>External links</a></li>
         <li><a href="#/files" data-nav="files"><span class="ms" aria-hidden="true">picture_as_pdf</span>Files</a></li>
         <li><a href="#/recent" data-nav="recent"><span class="ms" aria-hidden="true">history</span>Recent changes</a></li>
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
         <li><a href="#/help" data-nav="help"><span class="ms" aria-hidden="true">help</span>Help</a></li>
       </ul>
+      <div id="sideProject" hidden><div class="side-h"><span class="eyebrow" id="sideProjectT">Project</span></div><ul id="sideTree" class="ptree compact"></ul></div>
       <div class="side-h"><span class="eyebrow">Tags</span></div>
       <ul id="sideTags"></ul>
       <div class="side-h"><span class="eyebrow">Maturity</span></div>
@@ -676,6 +701,70 @@ async function sha256(s){
   try{ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""); }
   catch{ return ""; }
 }
+
+/* ---------------------------------------------------------------- projects: a project is a container whose structure is one JSON tree
+   projects/<id>.json = {title, description, items:[{type:"page"|"link"|"file", id, children?:[...]}], createdAt, createdBy, updatedAt, updatedBy}
+   Only pages can have children (sub-pages). An item belongs to at most one project. Order = array order. */
+const PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+const MAX_TREE_DEPTH = 8;
+function treeFind(items, type, id, parent){
+  for(let i = 0; i < items.length; i++){
+    const it = items[i];
+    if(it.type === type && it.id === id) return {item:it, list:items, index:i, parent:parent || null};
+    if(it.children){ const r = treeFind(it.children, type, id, it); if(r) return r; }
+  }
+  return null;
+}
+function treeWalk(items, fn, chain){
+  chain = chain || [];
+  for(const it of items){
+    fn(it, chain);
+    if(it.children) treeWalk(it.children, fn, it.type === "page" ? chain.concat(it.id) : chain);
+  }
+}
+const treeDepth = items => (items || []).reduce((m, it) => Math.max(m, 1 + treeDepth(it.children)), 0);
+function treeAdd(items, item, parentId){
+  if(treeFind(items, item.type, item.id)) return;                       // already placed
+  const r = parentId ? treeFind(items, "page", parentId) : null;
+  if(r){
+    (r.item.children ||= []).push(item);
+    if(treeDepth(items) <= MAX_TREE_DEPTH) return;
+    treeRemove(items, item.type, item.id);                              // too deep: keep it at the top level instead
+  }
+  items.push(item);
+}
+function treeRemove(items, type, id){
+  const r = treeFind(items, type, id); if(!r) return false;
+  r.list.splice(r.index, 1); if(r.parent && !r.parent.children.length) delete r.parent.children; return true;
+}
+function treeMove(items, type, id, dir){
+  const r = treeFind(items, type, id); if(!r) return false;
+  const j = r.index + dir; if(j < 0 || j >= r.list.length) return false;
+  [r.list[r.index], r.list[j]] = [r.list[j], r.list[r.index]]; return true;
+}
+function treeIndent(items, type, id){      // becomes the last child of the previous sibling, if that is a page
+  const r = treeFind(items, type, id); if(!r || r.index === 0) return false;
+  const prev = r.list[r.index - 1]; if(prev.type !== "page") return false;
+  const before = cloneJson(items);
+  r.list.splice(r.index, 1); (prev.children ||= []).push(r.item);
+  if(treeDepth(items) > MAX_TREE_DEPTH){ items.splice(0, items.length, ...before); return false; }
+  return true;
+}
+function treeOutdent(items, type, id){     // becomes the next sibling of its parent page
+  const r = treeFind(items, type, id); if(!r || !r.parent) return false;
+  const pr = treeFind(items, "page", r.parent.id);
+  r.list.splice(r.index, 1); if(!r.list.length) delete r.parent.children;
+  pr.list.splice(pr.index + 1, 0, r.item); return true;
+}
+function treePrune(items, exists){       // drops items whose page/link/file no longer exists
+  for(let i = items.length - 1; i >= 0; i--){
+    const it = items[i];
+    if(!exists(it)){ items.splice(i, 1); continue; }
+    if(it.children){ treePrune(it.children, exists); if(!it.children.length) delete it.children; }
+  }
+}
+const cloneJson = x => JSON.parse(JSON.stringify(x));
+const projectText = pj => JSON.stringify(pj, null, 2) + "\n";
 
 /* ---------------------------------------------------------------- stores */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
@@ -816,7 +905,7 @@ class GitHubStore{
     const r = (await this.gql("RecentMetas", q, vars)).repository || {};
     return items.map((x, k) => { const m = metaOf(r["m" + k] && r["m" + k].text) || {}; return Object.assign(this.revOf(x.c, m), {slug:x.slug, title:m.title || x.slug}); });
   }
-  async save(slug, d, baseRevN){
+  async save(slug, d, baseRevN, place){
     this.slug(slug);
     const title = cleanText(d.title, 200), abstract = cleanText(d.abstract, 240), summary = cleanText(d.summary, 300) || "Edit";
     const status = ["draft","reviewed","validated","deprecated"].includes(d.status) ? d.status : "draft";
@@ -837,9 +926,14 @@ class GitHubStore{
       const sha256 = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content)));
       const meta = {title:prev ? prev.title : title, tags, status, format, abstract, revN:n, size:new TextEncoder().encode(content).length, sha256,
         updatedAt:now, updatedBy:S.me.id, createdAt:prev ? prev.createdAt : now, createdBy:prev ? prev.createdBy : S.me.id};
+      const adds = [{path:`pages/${slug}/content.${format}`, contents:b64(content)}, {path:`pages/${slug}/meta.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
+      if(place && place.project && !prev){
+        const pc = await this.placementChange({oid:headOid, read:paths => this.readAtHead(headOid, paths)}, place, {type:"page", id:slug});
+        adds.push({path:pc.path, contents:pc.contents});
+      }
       const input = {branch:{repositoryNameWithOwner:this.full, branchName:this.branch}, expectedHeadOid:headOid,
         message:{headline:summary, body:`Know-how-Page: ${slug}\nKnow-how-Revision: ${n}\nKnow-how-Status: ${status}\nContent-SHA256: ${sha256}`},
-        fileChanges:{additions:[{path:`pages/${slug}/content.${format}`, contents:b64(content)}, {path:`pages/${slug}/meta.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}],
+        fileChanges:{additions:adds,
           deletions:prev && prev.format !== format ? [{path:`pages/${slug}/content.${prev.format}`}] : []}};
       try{
         const r = await this.gql("CreateCommit", `mutation CreateCommit($input: CreateCommitOnBranchInput!){ createCommitOnBranch(input:$input){ commit { oid } } }`, {input});
@@ -877,7 +971,7 @@ class GitHubStore{
     }catch(e){ if(e.status === 404) return null; throw e; }
   }
   /* Git Data API (blob → tree → commit → move main without forcing): handles files of tens of MB, unlike one GraphQL request. */
-  async uploadFile(name, base64, sha256hex, summary){
+  async uploadFile(name, base64, sha256hex, summary, place){
     if(!FILE_RE.test(name)) throw new Error("Invalid file name");
     const post = async (path, body, method) => (await this.gh(`/repos/${this.full}/git/${path}`, {method:method || "POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})).json();
     const blob = await post("blobs", {content:base64, encoding:"base64"});
@@ -885,7 +979,12 @@ class GitHubStore{
     for(let attempt = 1; ; attempt++){
       const head = (await (await this.gh(`/repos/${this.full}/git/ref/heads/${this.branch}`)).json()).object.sha;
       const base = (await (await this.gh(`/repos/${this.full}/git/commits/${head}`)).json()).tree.sha;
-      const tree = await post("trees", {base_tree:base, tree:[{path:"files/" + name, mode:"100644", type:"blob", sha:blob.sha}]});
+      const entries = [{path:"files/" + name, mode:"100644", type:"blob", sha:blob.sha}];
+      if(place && place.project && !S.placed.has("file:" + name)){
+        const pc = await this.placementChange({oid:head, read:paths => this.readAtHead(head, paths)}, place, {type:"file", id:name});
+        entries.push({path:pc.path, mode:"100644", type:"blob", content:pc.text});
+      }
+      const tree = await post("trees", {base_tree:base, tree:entries});
       const commit = await post("commits", {message, tree:tree.sha, parents:[head]});
       try{
         await post(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
@@ -913,15 +1012,21 @@ class GitHubStore{
     return out;
   }
   /* One commit on main with retries when main moved (same scheme as save()). */
-  async commitChanges(headline, body, additions, deletions){
+  async commitChanges(headline, body, additions, deletions){   // additions: an array, or async head => ({additions, deletions}) | null
+
     for(let attempt = 1; ; attempt++){
       const h = (await this.gql("SaveHead", `query SaveHead($owner:String!,$name:String!,$ref:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
           ref(qualifiedName:$ref){ target { oid } } meta: object(expression:$metaExpr){ ${BLOB} } } }`,
         this.v({metaExpr:`${this.branch}:tags.json`}))).repository || {};
       const headOid = h.ref && h.ref.target && h.ref.target.oid;
       if(!headOid) throw new Error("The content repository has no " + this.branch + " branch");
+      let ch = {additions, deletions};
+      if(typeof additions === "function"){
+        ch = await additions({oid:headOid, read:paths => this.readAtHead(headOid, paths)});
+        if(!ch) return {rev:null};
+      }
       const input = {branch:{repositoryNameWithOwner:this.full, branchName:this.branch}, expectedHeadOid:headOid, message:{headline, body},
-        fileChanges:{additions, deletions}};
+        fileChanges:{additions:ch.additions, deletions:ch.deletions}};
       try{
         const r = await this.gql("CreateCommit", `mutation CreateCommit($input: CreateCommitOnBranchInput!){ createCommitOnBranch(input:$input){ commit { oid } } }`, {input});
         return {rev:r.createCommitOnBranch.commit.oid};
@@ -931,7 +1036,7 @@ class GitHubStore{
       }
     }
   }
-  async saveLink(id, d, prev){
+  async saveLink(id, d, prev, place){
     if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
     const now = new Date().toISOString();
     const meta = {url:d.url, title:cleanText(d.title, 200), description:cleanText(d.description, 300), kind:LINK_KINDS.includes(d.kind) ? d.kind : "other",
@@ -940,17 +1045,83 @@ class GitHubStore{
     if(!meta.tags.length || meta.tags.length > 20) throw new Error("Choose between 1 and 20 tags");
     const host = new URL(meta.url).hostname;
     return this.commitChanges(`${prev ? "Edit" : "Add"} link: ${meta.title}`.slice(0, 300), `Know-how-Link: ${id}\nLink-Host: ${host}`,
-      [{path:`links/${id}.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}], []);
+      async head => {
+        const additions = [{path:`links/${id}.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
+        if(place && place.project && !prev){ const pc = await this.placementChange(head, place, {type:"link", id}); additions.push({path:pc.path, contents:pc.contents}); }
+        return {additions, deletions:[]};
+      });
   }
   async deleteLink(id, title){
     if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
     return this.commitChanges(`Remove link: ${cleanText(title, 200) || id}`, `Know-how-Link: ${id}`, [], [{path:`links/${id}.json`}]);
   }
+  /* ---- projects */
+  async readAtHead(headOid, paths){
+    const vars = {owner:this.owner, name:this.repo};
+    paths.forEach((p, k) => vars["e" + k] = `${headOid}:${p}`);
+    const q = `query ReadFiles($owner:String!,$name:String!${paths.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${paths.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+    const r = (await this.gql("ReadFiles", q, vars)).repository || {};
+    return Object.fromEntries(paths.map((p, k) => [p, r["m" + k] ? r["m" + k].text : null]));
+  }
+  async listProjects(){
+    const d = await this.gql("ListProjects", `query ListProjects($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:this.branch + ":projects"});
+    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
+    const ids = entries.filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => e.name.slice(0, -5));
+    const out = [];
+    for(let i = 0; i < ids.length; i += 50){
+      const chunk = ids.slice(i, i + 50), vars = {owner:this.owner, name:this.repo};
+      chunk.forEach((id, k) => vars["e" + k] = `${this.branch}:projects/${id}.json`);
+      const q = `query ProjectBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+      const r = (await this.gql("ProjectBlobs", q, vars)).repository || {};
+      chunk.forEach((id, k) => { const m = metaOf(r["m" + k] && r["m" + k].text); if(m && typeof m.title === "string") out.push(Object.assign({id, items:[]}, m)); });
+    }
+    return out;
+  }
+  /* Adds an item to a project's tree inside a commit that is being built (returns the file change to include). */
+  async placementChange(head, place, item){
+    const path = `projects/${place.project}.json`;
+    const pj = metaOf((await head.read([path]))[path]);
+    if(!pj) throw new Error("That project no longer exists");
+    pj.items = Array.isArray(pj.items) ? pj.items : [];
+    treeAdd(pj.items, item, place.parent);
+    pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
+    return {path, contents:b64(projectText(pj)), text:projectText(pj)};
+  }
+  async createProject(id, d){
+    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
+    const now = new Date().toISOString(), title = cleanText(d.title, 200);
+    if(!title) throw new Error("A project needs a title");
+    const path = `projects/${id}.json`;
+    return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
+      if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
+      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
+    });
+  }
+  /* Read-modify-write of one project file inside the commit loop, so a concurrent change is never overwritten. mutate returns false for "nothing to do". */
+  async updateProject(id, headline, mutate){
+    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
+    const path = `projects/${id}.json`;
+    return this.commitChanges(headline.slice(0, 300), `Know-how-Project: ${id}`, async head => {
+      const pj = metaOf((await head.read([path]))[path]);
+      if(!pj) throw new Error("That project no longer exists");
+      pj.items = Array.isArray(pj.items) ? pj.items : [];
+      if(mutate(pj) === false) return null;
+      pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
+      return {additions:[{path, contents:b64(projectText(pj))}], deletions:[]};
+    });
+  }
+  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); }); }
+  updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
+  async deleteProject(id, title){
+    if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address");
+    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, [], [{path:`projects/${id}.json`}]);
+  }
 }
 
 class MemoryStore{
   constructor(){
-    this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {}; this.links = {};
+    this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {}; this.links = {}; this.projects = {};
     const at = new Date().toISOString();
     const seed = (slug, title, tags, abstract, content) => {
       const rid = slug + "~1";
@@ -962,8 +1133,15 @@ class MemoryStore{
   }
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
+  async listProjects(){ return Object.entries(this.projects).map(([id, p]) => Object.assign({id}, cloneJson(p))); }
+  async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
+  async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.updatedAt = new Date().toISOString(); return {rev:id}; }
+  async updateProjectItems(id, summary, mutate){ const p = this.projects[id]; if(!p) throw new Error("That project no longer exists"); mutate(p.items); p.updatedAt = new Date().toISOString(); return {rev:id}; }
+  async deleteProject(id){ delete this.projects[id]; return {rev:id}; }
+  placeInProject(place, item){ const p = place && this.projects[place.project]; if(p) treeAdd(p.items, item, place.parent); }
   async listLinks(){ return Object.entries(this.links).map(([id, m]) => Object.assign({id}, m)); }
-  async saveLink(id, d, prev){
+  async saveLink(id, d, prev, place){
+    if(place && !prev) this.placeInProject(place, {type:"link", id});
     const now = new Date().toISOString();
     this.links[id] = {url:d.url, title:d.title, description:d.description || "", kind:d.kind || "other", tags:d.tags || [], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : "you", updatedAt:now, updatedBy:"you"};
     return {rev:id};
@@ -972,7 +1150,8 @@ class MemoryStore{
   async listFiles(){ return Object.keys(this.files).map(name => ({name, size:this.files[name][0].data.byteLength})); }
   async fileRevs(name){ return (this.files[name] || []).map(v => ({id:v.id, at:v.at, by:"you", summary:v.summary, size:v.data.byteLength})); }
   async getFile(name, rev){ const v = (this.files[name] || []).find(x => !rev || x.id === rev); return v ? v.data.slice(0) : null; }
-  async uploadFile(name, base64, sha256hex, summary){
+  async uploadFile(name, base64, sha256hex, summary, place){
+    if(place && !this.files[name]) this.placeInProject(place, {type:"file", id:name});
     const bin = atob(base64), data = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
     const id = name + "~" + ((this.files[name] || []).length + 1);
     (this.files[name] ||= []).unshift({id, at:new Date().toISOString(), summary:summary || "Upload " + name, data:data.buffer});
@@ -984,8 +1163,9 @@ class MemoryStore{
   async listRevs(slug){ return Object.values(this.revs).filter(r => r.slug === slug).sort((a,b) => b.n - a.n); }
   async getRev(slug, rev){ return this.revs[rev] || null; }
   async recent(limit = 60){ return Object.values(this.revs).sort((a,b) => b.at < a.at ? -1 : 1).slice(0, limit); }
-  async save(slug, d, baseRevN){
-    const page = this.pages[slug] || {}; const n = (page.revN||0) + 1; const rid = `${slug}~${n}`; const at = new Date().toISOString();
+  async save(slug, d, baseRevN, place){
+    const page = this.pages[slug] || {};
+    if(place && !this.pages[slug]) this.placeInProject(place, {type:"page", id:slug}); const n = (page.revN||0) + 1; const rid = `${slug}~${n}`; const at = new Date().toISOString();
     const size = utf8len(d.content);
     this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, size, format:d.format, status:d.status, title:d.title, tags:d.tags||[], content:d.content, sha256:await sha256(d.content)};
     this.pages[slug] = {slug, title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
@@ -1088,12 +1268,15 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { projects:[], loc:new Map(), placed:new Set(), avatars:{}, editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
 const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
   if(!force && Date.now() - S.pagesAt < 4000) return S.pages;
-  try{ const [pages, files] = await Promise.all([S.store.listPages(), S.store.listFiles().catch(e => { console.warn(e); return S.files; })]); S.pages = pages; S.files = files; S.pagesAt = Date.now(); }catch(e){ console.error(e); }
+  try{
+    const [pages, files, projects] = await Promise.all([S.store.listPages(), S.store.listFiles().catch(e => { console.warn(e); return S.files; }), S.store.listProjects().catch(e => { console.warn(e); return S.projects; })]);
+    S.pages = pages; S.files = files; S.projects = projects; S.pagesAt = Date.now(); indexProjects();
+  }catch(e){ console.error(e); }
   renderSide();
   return S.pages;
 }
@@ -1140,7 +1323,7 @@ function renderSide(){
   for(const p of S.pages) for(const t of (p.tags||[])) tc[t]=(tc[t]||0)+1;
   $("#sideTags").innerHTML = allTags().map(t => `<li><a href="#/tag/${enc(t)}" data-nav="tag/${esc(enc(t))}">${esc(t)}<span class="count">${tc[t]||0}</span></a></li>`).join("");
   $("#sideStatus").innerHTML = STATUS_ORDER.map(s => `<li><a href="#/status/${s}" data-nav="status/${s}"><span class="pill sm ${s}" style="min-width:0;padding:3px 3px" aria-hidden="true"></span>${STATUS[s].label}<span class="count">${sc[s]||0}</span></a></li>`).join("");
-  markNav();
+  markNav(); renderSideTree();
 }
 function markNav(){
   const h = location.hash.replace(/^#\/?/,"").split("?")[0];
@@ -1306,14 +1489,15 @@ function route(){
   const path = qi >= 0 ? raw.slice(0, qi) : raw;
   const params = new URLSearchParams(qi >= 0 ? raw.slice(qi+1) : "");
   const seg = path.split("/").filter(Boolean).map(s => { try{ return decodeURIComponent(s); }catch{ return s; } });
-  S.nav++; S.editing = null; closePdfs();
+  S.nav++; S.editing = null; closePdfs(); renderSideTree();
   closeDrawer(); setSideToc(null); markNav();
   activeFrame = null; document.body.classList.remove("wide");
   const m = $("#main");
   const go = (p) => p.catch(err => { if(err === STALE) return; console.error(err); m.innerHTML = `<div class="ambox err"><span class="ms" aria-hidden="true">error</span><p><b>Something went wrong.</b> ${esc(err.message||err)}</p></div>`; });
   if(!seg.length) return go(viewHome());
   switch(seg[0]){
-    case "wiki":       return go(viewArticle(seg[1], params.get("rev")));
+    case "wiki":       return go(seg.length > 1 ? openWiki(seg.slice(1), params) : (location.replace("#/"), Promise.resolve()));
+    case "projects":   return go(viewProjects());
     case "edit":       return go(viewEdit(seg[1]));
     case "new":        return go(viewEdit(null, params));
     case "history":    return go(viewHistory(seg[1]));
@@ -1322,7 +1506,7 @@ function route(){
     case "access":     return go(viewAccess());
     case "automation": return go(viewAutomation());
     case "links":      return go(viewLinks(params));
-    case "files":      return go(viewFiles());
+    case "files":      return go(viewFiles(params));
     case "file":       return go(viewFile(seg[1], params));
     case "recent":     return go(viewRecent());
     case "search":     return go(viewSearch(params.get("q")||""));
@@ -1427,6 +1611,7 @@ async function viewHome(){
         </div></section>
       </div>
       <div class="mp-col">
+        ${projectsBoxHtml()}
         <section class="mp-box t-info"><h2>Recently updated</h2><div class="in"><ul>
           ${latest.map(r => `<li><a href="#/wiki/${r.slug}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>'}
         </ul><p style="margin:10px 0 0;font-size:15px"><a href="#/recent">All recent changes →</a></p></div></section>
@@ -1495,6 +1680,7 @@ async function viewArticle(slug, revId){
   const meta = isOld ? rev : page;
   const status = meta.status || page.status;
   const prevRev = revs.find(r => r.n === rev.n - 1);
+  const subs = await subpagesHtml(slug), inProject = S.loc.get(slug) && projectOf(S.loc.get(slug).project);
   const stack = people.slice(0, 6).map(id => `<span class="sc-av" title="${esc(nameOf(id))} · ${edits[id]} edit${edits[id] === 1 ? "" : "s"}">${avatarHtml(id)}</span>`).join("")
     + (people.length > 6 ? `<span class="sc-av more" title="${people.length - 6} more">+${people.length - 6}</span>` : "");
   const info = `
@@ -1502,6 +1688,7 @@ async function viewArticle(slug, revId){
       ${page.format==="html"?"":`<div class="sc-cap">${esc(page.title)}</div>`}
       <dl class="sc-list">
         <div class="sc-row"><dt>Maturity</dt><dd>${statusBadge(status)}</dd></div>
+        ${inProject ? `<div class="sc-row"><dt>Project</dt><dd><a class="badge secondary" href="#/wiki/${enc(inProject.id)}"><span class="ms" aria-hidden="true" style="font-size:15px">folder_open</span>${esc(inProject.title)}</a></dd></div>` : ""}
         <div class="sc-row"><dt>Tags</dt><dd class="sc-tags">${(page.tags||[]).map(t=>`<a class="badge secondary" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || '<span class="muted">—</span>'}</dd></div>
         <div class="sc-row"><dt>Author</dt><dd>${personChip(page.createdBy, page.createdAt ? "created " + timeAgo(page.createdAt) : "")}</dd></div>
         ${people.length > 1 ? `<div class="sc-row"><dt>Contributors</dt><dd><span class="sc-stack" aria-label="${people.length} contributors">${stack}</span><small class="sc-sub">${people.length} people · ${revs.length || page.revN} edits</small></dd></div>` : ""}
@@ -1518,7 +1705,7 @@ async function viewArticle(slug, revId){
   const cats = `<div class="catlinks"><a href="#/tags">Tags</a>: ${tagsHtml||"—"}
     <span class="sep">·</span><a href="#/status/${esc(status)}">Maturity</a>: <a href="#/status/${esc(status)}">${esc(statusLabel(status))}</a></div>`;
   const foot = footer([`This page was last edited on ${fmtDay(page.updatedAt||rev.at)}, at ${fmtTime(page.updatedAt||rev.at)}, by ${personSpan(page.updatedBy)} (revision ${page.revN}).`]);
-  const head = `<div class="title-row"><h1 class="title">${esc(meta.title||page.title)}</h1>
+  const head = `${crumbsHtml(slug)}<div class="title-row"><h1 class="title">${esc(meta.title||page.title)}</h1>
       <div class="indicators"><button class="btn small toc-btn" id="tocBtn" type="button"><span class="ms" aria-hidden="true">toc</span>Contents</button>${pill(status)}</div></div>
     ${tabs(slug,"read",true,page)}<div class="maturity ${status}" title="Maturity: ${esc(statusLabel(status))}"></div>
     <div class="sitesub">From ${SITE}, the Lamassu research wiki</div>${oldNote}${statusNote}`;
@@ -1527,14 +1714,14 @@ async function viewArticle(slug, revId){
       <div class="report-bar"><span>Rich report (HTML), rendered in an isolated sandbox: its scripts cannot reach this wiki or your session.</span>
       <button class="btn small" id="widen" aria-pressed="false"><span class="ms" aria-hidden="true">width_full</span>Full width</button></div>
       <iframe class="report-frame" id="rf" title="${esc(page.title)}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
-      ${cats}${foot}`);
+      ${subs}${cats}${foot}`);
     const f = $("#rf"); activeFrame = f; f.srcdoc = frameDoc(rev.content);
     $("#widen").onclick = e => { const on = document.body.classList.toggle("wide"); e.currentTarget.setAttribute("aria-pressed", on); };
     setSideToc(reportToc(rev.content), id => f.contentWindow && f.contentWindow.postMessage({kbGo:id}, "*"));
   } else {
     const body = renderMarkdown(rev.content);
     const items = tocItems(body);
-    setMainFor(nav, `${head}${info}<div class="prose" id="prose">${body.innerHTML}</div>${cats}${foot}`);
+    setMainFor(nav, `${head}${info}<div class="prose" id="prose">${body.innerHTML}</div>${subs}${cats}${foot}`);
     hydrateEmbeds($("#prose"));
     setSideToc(items, id => document.getElementById(id)?.scrollIntoView({behavior:"smooth"}));
     if(items.length){
@@ -1787,6 +1974,9 @@ Articles are written in **Markdown** (GitHub flavour: tables, fenced code blocks
 
 Always fill in the **edit summary**: it is the commit message other engineers will read in the history.
 
+## Projects
+A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
+
 ## External links
 The **External links** page keeps news, blogs, papers and videos worth remembering, each with a title, a short note and tags. Links open in a new tab and also appear on the page of each of their tags. Anyone who can edit can add, change or remove links (the repository history keeps every change). To link from inside an article, just use normal Markdown: \`[text](https://…)\`.
 
@@ -1848,6 +2038,8 @@ async function viewEdit(slug, params){
     content: cur?.content ?? "## Context\n\nWhat problem does this know-how solve, and where did we learn it?\n\n## Procedure\n\n1. \n\n## Pitfalls\n\n- \n\n## References\n\n- \n"
   };
   const baseRevN = page?.revN ?? 0;
+  const wantProj = isNew && params?.get?.("project") && projectOf(params.get("project")) ? params.get("project") : "";
+  const wantPar = isNew ? (params?.get?.("parent") || "") : "";
   const tagOpts = [...S.tags, ...d.tags.filter(t => !S.tags.includes(t))].map((t,i) => `<label class="tagchip"><input type="checkbox" name="tag" value="${esc(t)}" ${d.tags.includes(t)?"checked":""}><span>${esc(t)}</span>${S.tags.includes(t)?"":'<small> (not in tags.json)</small>'}</label>`).join("");
   const stOpts = STATUS_ORDER.map(s=>`<option value="${s}" ${s===d.status?"selected":""}>${STATUS[s].label}</option>`).join("");
   const TB = [["bold","format_bold","B","Bold"],["italic","format_italic","I","Italic"],["h2","title","H","Section heading"],["wlink","link","[[ ]]","Link to an article"],
@@ -1869,6 +2061,8 @@ async function viewEdit(slug, params){
         <fieldset class="tagpick" id="f-tags"><legend>Tags <small class="muted">(at least one)</small></legend>
           <div class="tagchips">${tagOpts || '<span class="muted">No tags are defined yet: add them to tags.json in the content repository.</span>'}</div>
           <div class="hint err" id="tags-err" hidden>Choose at least one tag.</div></fieldset>
+        ${isNew && S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj"><option value="">(none)</option>${S.projects.map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select></div>
+          <div><label for="f-par">Parent page</label><select id="f-par"></select><div class="hint">The article is added to the project's tree and gets the address Project/Parent/Article.</div></div></div>` : ""}
       </fieldset>
       <div>
         <div class="ed-bar">
@@ -1957,6 +2151,13 @@ async function viewEdit(slug, params){
     mountDiff($("#chd"), model, isNarrow() ? "inl" : "sxs");
     pv.scrollIntoView({behavior:"smooth"});
   };
+  const fillParents = () => {
+    const sel = $("#f-par"); if(!sel) return;
+    const pr = projectOf($("#f-proj").value), opts = ['<option value="">(top level)</option>'];
+    if(pr) treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) opts.push(`<option value="${esc(it.id)}">${esc("— ".repeat(chain.length) + itemInfo(it).label)}</option>`); });
+    sel.innerHTML = opts.join(""); sel.disabled = !pr; if(pr && wantPar) sel.value = wantPar;
+  };
+  if($("#f-proj")){ $("#f-proj").onchange = () => { fillParents(); }; fillParents(); }
   $("#ef").onsubmit = async e => {
     e.preventDefault();
     const title = $("#f-title").value.trim(); const summary = $("#f-sum").value.trim();
@@ -1964,7 +2165,7 @@ async function viewEdit(slug, params){
     if(!summary){ toast("Add an edit summary so others know what changed."); $("#f-sum").focus(); return; }
     if(!body.value.trim()){ toast("The article is empty."); body.focus(); return; }
     const target = slug || slugify(title);
-    if(isNew && S.pages.some(p=>p.slug===target)){ toast("An article with that address already exists. Pick another title."); return; }
+    if(isNew && (S.pages.some(p=>p.slug===target) || projectOf(target))){ toast("That address is already used by an article or a project. Pick another title."); return; }
     const picked = $$("input[name=tag]:checked").map(x => x.value).slice(0,20);
     $("#tags-err").hidden = picked.length > 0;
     if(!picked.length){ toast("Choose at least one tag."); $("#f-tags").scrollIntoView({block:"center"}); return; }
@@ -1975,7 +2176,7 @@ async function viewEdit(slug, params){
     }
     const btn = $("#saveBtn"); const lbl = btn.lastElementChild; btn.disabled = true; lbl.textContent = "Publishing…";
     try{
-      const res = await S.store.save(target, data, isNew ? 0 : baseRevN);
+      const res = await S.store.save(target, data, isNew ? 0 : baseRevN, isNew && $("#f-proj") && $("#f-proj").value ? {project:$("#f-proj").value, parent:$("#f-par").value || null} : null);
       S.pagesAt = 0;
       toast(res.conflict ? `Saved as revision ${res.n}. Someone else edited in between: check the history.` : `Saved revision ${res.n}.`, res.conflict?7000:3200);
       location.hash = "#/wiki/" + target;
@@ -2088,7 +2289,7 @@ function uploadForm(fixedName){
     <div class="actions"><button class="btn primary" id="up-btn" type="submit"><span class="ms" aria-hidden="true">upload</span><span>${fixedName ? "Upload new version" : "Upload"}</span></button><span class="hint" id="up-status" role="status"></span></div>
   </form>`;
 }
-function bindUploadForm(fixedName, done){
+function bindUploadForm(fixedName, done, place){
   const f = $("#upf"); if(!f) return;
   const nameEl = $("#up-name"), fileEl = $("#up-file"), st = $("#up-status");
   const syncSyntax = () => { if($("#up-syntax")) $("#up-syntax").textContent = `[[File:${nameEl.value || "…"}]]`; };
@@ -2134,7 +2335,8 @@ function bindUploadForm(fixedName, done){
         const data = await file.arrayBuffer();
         if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
         const sha = hex(await crypto.subtle.digest("SHA-256", data));
-        await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim());
+        await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || null);
+        S.pagesAt = 0;
         done_.push(name);
       }
       st.textContent = ""; toast(done_.length > 1 ? `Uploaded ${done_.length} files.` : `Uploaded ${done_[0]}.`);
@@ -2147,18 +2349,21 @@ function bindUploadForm(fixedName, done){
   };
 }
 
-async function viewFiles(){
+async function viewFiles(params){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading files…</div>');
   await refreshPages(true);
   const files = S.files.slice().sort((a,b) => a.name.localeCompare(b.name));
+  const place = params && params.get("project") && projectOf(params.get("project")) ? {project:params.get("project"), parent:params.get("parent") || null} : null;
   setMainFor(nav, `<h1 class="title">Files</h1><div class="tabs"><nav><a class="on">Files</a></nav><nav></nav></div><div class="maturity"></div>
     <p class="muted" style="margin:0 0 12px;font-size:16px">PDF manuals, specifications and papers kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
     ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">picture_as_pdf</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="empty">No files yet.</div>`}
-    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>${uploadForm(null)}` : ""}
+    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>
+      ${place ? `<p class="muted" style="margin:0 0 8px">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}${uploadForm(null)}` : ""}
     ${footer()}`);
-  bindUploadForm(null, name => { if(name) location.hash = "#/file/" + enc(name); else { S.nav++; route(); } });
+  const back = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : null;
+  bindUploadForm(null, name => { if(back) location.hash = back; else if(name) location.hash = "#/file/" + enc(name); else { S.nav++; route(); } }, place);
 }
 
 async function viewFile(name, params){
@@ -2215,7 +2420,7 @@ const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
 const KIND_LABEL = {news:"News", blog:"Blog", paper:"Paper", video:"Video", docs:"Docs", other:"Other"};
 function isHttpUrl(u){ try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") && !x.username && !x.password; }catch{ return false; } }
 const hostOf = u => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch{ return ""; } };
-async function refreshLinks(){ try{ S.links = await S.store.listLinks(); }catch(e){ console.warn(e); } return S.links; }
+async function refreshLinks(){ try{ S.links = await S.store.listLinks(); }catch(e){ console.warn(e); } renderSideTree(); return S.links; }
 function linkCard(l){
   const tags = (l.tags || []).map(t => `<a class="tag" href="#/links?tag=${enc(t)}">${esc(t)}</a>`).join("");
   return `<li class="linkcard" data-id="${esc(l.id)}">
@@ -2234,6 +2439,7 @@ async function viewLinks(params){
   await resolveNames(links.map(l => l.addedBy));
   const tag = params.get("tag") || "", kind = params.get("kind") || "", q = (params.get("q") || "").toLowerCase();
   const editing = params.get("edit") ? links.find(l => l.id === params.get("edit")) : null;
+  const place = !editing && params.get("project") && projectOf(params.get("project")) ? {project:params.get("project"), parent:params.get("parent") || null} : null;
   const shown = links.filter(l => (!tag || (l.tags||[]).includes(tag)) && (!kind || l.kind === kind)
     && (!q || [l.title, l.description, l.url, ...(l.tags||[])].join(" ").toLowerCase().includes(q)));
   const d = editing || {url:"", title:"", description:"", kind:"other", tags:tag && S.tags.includes(tag) ? [tag] : []};
@@ -2241,6 +2447,7 @@ async function viewLinks(params){
   setMainFor(nav, `<h1 class="title">External links</h1><div class="tabs"><nav><a class="on">Links</a></nav><nav></nav></div><div class="maturity"></div>
     <p class="muted" style="margin:0 0 12px;font-size:16px">News, blogs, papers and other pages worth keeping. Links open in a new tab; ${esc(SITE)} does not contact those sites.</p>
     ${S.me.canWrite ? `<details class="addlink" ${editing || params.get("new") ? "open" : ""}><summary class="btn small"><span class="ms" aria-hidden="true">add_link</span>${editing ? "Edit link" : "Add a link"}</summary>
+      ${place ? `<p class="muted" style="margin:8px 0 0">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}
       <form class="form" id="lf" novalidate>
         <div class="row"><div style="grid-column:span 2"><label for="l-url">Address</label><input type="url" id="l-url" value="${esc(d.url)}" placeholder="https://…" required spellcheck="false"></div>
           <div><label for="l-kind">Type</label><select id="l-kind">${LINK_KINDS.map(k => `<option value="${k}" ${k===d.kind?"selected":""}>${KIND_LABEL[k]}</option>`).join("")}</select></div></div>
@@ -2277,11 +2484,177 @@ async function viewLinks(params){
     if(!editing){ const base = id; for(let n = 2; links.some(l => l.id === id); n++) id = base + "-" + n; }
     const btn = $("#l-save"); btn.disabled = true;
     try{
-      await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags}, editing);
+      await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags}, editing, place);
+      S.pagesAt = 0;
       toast(editing ? "Link saved." : "Link added.");
-      const dest = "#/links" + (tag ? "?tag=" + enc(tag) : ""); if(location.hash === dest) route(); else location.hash = dest;
+      const dest = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : "#/links" + (tag ? "?tag=" + enc(tag) : "");
+      if(location.hash === dest) route(); else location.hash = dest;
     }catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
   };
+}
+
+/* ---------------------------------------------------------------- projects: URLs, tree rendering and views */
+function indexProjects(){
+  S.loc = new Map(); S.placed = new Set();
+  for(const pr of S.projects) treeWalk(pr.items || [], (it, chain) => {
+    S.placed.add(it.type + ":" + it.id);
+    if(it.type === "page") S.loc.set(it.id, {project:pr.id, chain:chain.concat(it.id)});
+  });
+}
+const projectOf = id => S.projects.find(p => p.id === id);
+const pagePath = slug => { const l = S.loc.get(slug); return l ? [l.project].concat(l.chain) : [slug]; };
+const wikiHref = slug => "#/wiki/" + pagePath(slug).map(enc).join("/");
+const countItems = pr => { const c = {page:0, link:0, file:0}; treeWalk(pr.items || [], it => { c[it.type]++; }); return c; };
+function itemInfo(it){
+  if(it.type === "page"){ const p = S.pages.find(x => x.slug === it.id); return p && {label:p.title, href:wikiHref(p.slug), icon:"description", sub:statusLabel(p.status)}; }
+  if(it.type === "link"){ const l = S.links.find(x => x.id === it.id); return l && {label:l.title, href:l.url, external:true, icon:"link", sub:hostOf(l.url)}; }
+  const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:"picture_as_pdf", sub:fmtBytes(f.size)};
+}
+const CTL = [["up","arrow_upward","↑","Move up"], ["down","arrow_downward","↓","Move down"], ["out","format_indent_decrease","←","Move out of its parent"], ["in","format_indent_increase","→","Make a sub-page of the item above"], ["rm","close","✕","Remove from the project"]];
+function treeList(items, o){
+  o = o || {};
+  const rows = (items || []).map(it => {
+    const info = itemInfo(it); if(!info) return "";          // dangling reference: ignored
+    const cur = o.cur && it.type === "page" && it.id === o.cur ? " cur" : "";
+    const link = `<a class="pt-l${cur}" href="${esc(info.href)}"${info.external ? ' target="_blank" rel="noopener noreferrer nofollow"' : ""}>${esc(info.label)}</a>`;
+    const ctl = o.organize ? `<span class="pt-ctl">${CTL.map(([op, ic, tx, lab]) => `<button type="button" class="sc-icon" data-op="${op}" data-type="${it.type}" data-id="${esc(it.id)}" title="${lab}" aria-label="${lab}: ${esc(info.label)}"><span class="ms" aria-hidden="true">${ic}</span><span class="noicon">${tx}</span></button>`).join("")}</span>` : "";
+    const sub = o.compact ? "" : `<span class="pt-sub">${esc(info.sub || "")}</span>`;
+    return `<li class="pt-${it.type}"><span class="pt-row"><span class="ms" aria-hidden="true">${info.icon}</span>${link}${sub}${ctl}</span>${it.children ? treeList(it.children, o) : ""}</li>`;
+  }).join("");
+  return rows ? `<ul class="ptree${o.compact ? " compact" : ""}">${rows}</ul>` : "";
+}
+/* sidebar: the tree of the project being read */
+function renderSideTree(){
+  const box = $("#sideProject"); if(!box) return;
+  const seg = location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean).map(s => { try{ return decodeURIComponent(s); }catch{ return s; } });
+  let pr = null, cur = null;
+  if(seg[0] === "wiki" && seg.length > 1){ pr = projectOf(seg[1]); cur = seg[seg.length - 1]; }
+  else if(seg[0] === "wiki" && seg.length === 1) pr = null;
+  if(!pr && (seg[0] === "edit" || seg[0] === "history" || seg[0] === "diff" || seg[0] === "info") && seg[1] && S.loc.has(seg[1])){ pr = projectOf(S.loc.get(seg[1]).project); cur = seg[1]; }
+  if(!pr){ box.hidden = true; return; }
+  box.hidden = false;
+  $("#sideProjectT").innerHTML = `<a href="#/wiki/${enc(pr.id)}">${esc(pr.title)}</a>`;
+  $("#sideTree").innerHTML = treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
+  $("#sideTree").className = "ptree compact";
+}
+function crumbsHtml(slug){
+  const l = S.loc.get(slug); if(!l) return "";
+  const pr = projectOf(l.project); if(!pr) return "";
+  const parts = [`<a href="#/projects">Projects</a>`, `<a href="#/wiki/${enc(pr.id)}">${esc(pr.title)}</a>`];
+  const chain = l.chain.slice(0, -1);
+  chain.forEach((s, i) => { const p = S.pages.find(x => x.slug === s); if(p) parts.push(`<a href="#/wiki/${[pr.id, ...chain.slice(0, i + 1)].map(enc).join("/")}">${esc(p.title)}</a>`); });
+  return `<nav class="crumbs" aria-label="Breadcrumb">${parts.join('<span class="sep" aria-hidden="true">›</span>')}</nav>`;
+}
+/* what hangs below an article: sub-pages, links and files, plus shortcuts to add more */
+async function subpagesHtml(slug){
+  const l = S.loc.get(slug); if(!l) return "";
+  const pr = projectOf(l.project), r = pr && treeFind(pr.items || [], "page", slug); if(!r) return "";
+  await refreshLinks();
+  const list = treeList(r.item.children || [], {});
+  const add = S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">note_add</span>Add sub-page</a>
+      <a class="btn small" href="#/links?new=1&project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
+      <a class="btn small" href="#/files?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : "";
+  if(!list && !add) return "";
+  return `<section class="subpages"><h2>In this page</h2>${list || '<p class="muted" style="margin:0 0 8px">No sub-pages yet.</p>'}${add}</section>`;
+}
+const projectsBoxHtml = () => S.projects.length ? `<section class="mp-box t-slate"><h2>Projects</h2><div class="in"><ul>${S.projects.slice().sort((a,b) => a.title.localeCompare(b.title)).map(p => { const c = countItems(p); return `<li><a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a> <span class="muted" style="font-size:14px">— ${c.page} page${c.page === 1 ? "" : "s"}</span></li>`; }).join("")}</ul><p style="margin:10px 0 0;font-size:15px"><a href="#/projects">All projects →</a></p></div></section>` : "";
+
+async function viewProjects(){
+  const nav = S.nav;
+  setMainFor(nav, '<div class="loading">Loading projects…</div>');
+  await refreshPages(true);
+  const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
+  setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">A project groups pages (with sub-pages), external links and PDF files. Its structure is kept in one file, so moving or reordering things never changes the items themselves.</p>
+    ${list.length ? `<ul class="linklist">${list.map(p => { const c = countItems(p); return `<li class="linkcard"><div class="lc-h"><a class="lc-title" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></div>
+        ${p.description ? `<p class="lc-d">${esc(p.description)}</p>` : ""}<div class="lc-f muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</div></li>`; }).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
+    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">New project</h2><form class="form" id="npf" novalidate>
+      <div class="row"><div style="grid-column:span 3"><label for="np-title">Title</label><input type="text" id="np-title" maxlength="200" required><div class="hint">Address: <span class="mono" id="np-slug"></span></div></div></div>
+      <div class="row"><div style="grid-column:span 3"><label for="np-desc">Description <small class="muted">(optional)</small></label><input type="text" id="np-desc" maxlength="300"></div></div>
+      <div class="actions"><button class="btn primary" id="np-btn" type="submit"><span class="ms" aria-hidden="true">create_new_folder</span><span>Create project</span></button></div></form>` : ""}
+    ${footer()}`);
+  const t = $("#np-title"); if(!t) return;
+  t.oninput = () => { $("#np-slug").textContent = "#/wiki/" + (slugify(t.value) || "…"); };
+  $("#npf").onsubmit = async e => {
+    e.preventDefault();
+    const title = t.value.trim(); if(!title){ toast("Give the project a title."); t.focus(); return; }
+    const id = slugify(title);
+    if(S.projects.some(p => p.id === id) || S.pages.some(p => p.slug === id)){ toast("That address is already used by a project or an article. Pick another title.", 6000); return; }
+    const btn = $("#np-btn"); btn.disabled = true;
+    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim()}); S.pagesAt = 0; toast("Project created."); location.hash = "#/wiki/" + enc(id); }
+    catch(err){ btn.disabled = false; toast(err.message || String(err), 7000); }
+  };
+}
+
+async function viewProject(id, params){
+  const nav = S.nav;
+  setMainFor(nav, '<div class="loading">Loading project…</div>');
+  await refreshPages(); await refreshLinks();
+  const pr = projectOf(id);
+  if(!pr){ setMainFor(nav, `<h1 class="title">${esc(id)}</h1>${ambox("slate","info","<p>This project does not exist.</p>")}${footer()}`); return; }
+  const organize = params.get("organize") === "1" && S.me.canWrite;
+  const c = countItems(pr), q = enc(id);
+  const loose = {
+    page: S.pages.filter(p => !S.placed.has("page:" + p.slug)).sort((a, b) => a.title.localeCompare(b.title)),
+    link: S.links.filter(l => !S.placed.has("link:" + l.id)).sort((a, b) => a.title.localeCompare(b.title)),
+    file: S.files.filter(f => !S.placed.has("file:" + f.name)).sort((a, b) => a.name.localeCompare(b.name)),
+  };
+  const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
+  const tree = treeList(pr.items, {organize});
+  setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
+    <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?organize=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">swap_vert</span>${organize ? "Done organizing" : "Organize"}</a>` : ""}</nav></div><div class="maturity"></div>
+    ${pr.description ? `<p style="margin:0 0 12px">${esc(pr.description)}</p>` : ""}
+    <p class="muted" style="margin:0 0 10px;font-size:15px">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${pr.updatedAt ? ` · updated ${timeAgo(pr.updatedAt)}` : ""}</p>
+    ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
+      <a class="btn small" href="#/links?new=1&project=${q}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
+      <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : ""}
+    ${organize ? ambox("slate","info","<p>Use the arrows to reorder, <b>→</b> to make an item a sub-page of the page above it, <b>←</b> to move it back out, and <b>✕</b> to take it out of the project (the item itself is not deleted).</p>") : ""}
+    ${tree || '<div class="empty">This project is empty.</div>'}
+    ${S.me.canWrite && (loose.page.length + loose.link.length + loose.file.length) ? `<details class="addlink" style="margin-top:18px"><summary class="btn small"><span class="ms" aria-hidden="true">playlist_add</span>Add existing items</summary>
+      <form class="form" id="aef" novalidate><div class="row"><div style="grid-column:span 2"><label for="ae-item">Item</label><select id="ae-item">
+        ${loose.page.length ? `<optgroup label="Pages">${loose.page.map(p => `<option value="page:${esc(p.slug)}">${esc(p.title)}</option>`).join("")}</optgroup>` : ""}
+        ${loose.link.length ? `<optgroup label="External links">${loose.link.map(l => `<option value="link:${esc(l.id)}">${esc(l.title)}</option>`).join("")}</optgroup>` : ""}
+        ${loose.file.length ? `<optgroup label="Files">${loose.file.map(f => `<option value="file:${esc(f.name)}">${esc(f.name)}</option>`).join("")}</optgroup>` : ""}</select>
+        <div class="hint">Only items that are not in another project are listed.</div></div>
+        <div><label for="ae-par">Under</label><select id="ae-par"><option value="">(top level)</option>${parents.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("")}</select></div></div>
+        <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">add</span><span>Add to project</span></button></div></form></details>` : ""}
+    ${S.me.canWrite ? `<details class="addlink" style="margin-top:10px"><summary class="btn small"><span class="ms" aria-hidden="true">edit</span>Edit project</summary>
+      <form class="form" id="epf" novalidate><div class="row"><div style="grid-column:span 3"><label for="ep-title">Title</label><input type="text" id="ep-title" maxlength="200" value="${esc(pr.title)}"></div></div>
+        <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
+        <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
+          <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form></details>` : ""}
+    ${footer()}`);
+  const run = async (summary, fn, done) => {
+    try{ await S.store.updateProjectItems(id, summary, fn); S.pagesAt = 0; if(done) done(); else route(); }
+    catch(err){ console.error(err); toast(err.message || String(err), 7000); }
+  };
+  $$(".pt-ctl [data-op]").forEach(b => b.onclick = () => {
+    const {op, type, id: item} = b.dataset, f = {up:i => treeMove(i, type, item, -1), down:i => treeMove(i, type, item, 1), out:i => treeOutdent(i, type, item), in:i => treeIndent(i, type, item), rm:i => treeRemove(i, type, item)}[op];
+    b.disabled = true; run(`${op === "rm" ? "Remove from" : "Reorder"} project: ${pr.title}`, i => f(i), null);
+  });
+  const ae = $("#aef"); if(ae) ae.onsubmit = e => {
+    e.preventDefault(); const [type, ...rest] = $("#ae-item").value.split(":"), item = rest.join(":");
+    run(`Add to project: ${pr.title}`, i => treeAdd(i, {type, id:item}, $("#ae-par").value || null), null);
+  };
+  const ep = $("#epf"); if(ep){
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim()}); S.pagesAt = 0; toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
+    $("#ep-del").onclick = async () => {
+      if(!confirm(`Delete the project “${pr.title}”? Its pages, links and files are kept; they just stop being grouped.`)) return;
+      try{ await S.store.deleteProject(id, pr.title); S.pagesAt = 0; toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
+    };
+  }
+}
+/* Opens #/wiki/<project>[/<page>...]: a project, or an article whose address is made canonical (Project/Parent/Page) */
+async function openWiki(path, params){
+  const nav = S.nav;
+  await refreshPages();
+  if(nav !== S.nav) throw STALE;
+  if(path.length === 1 && projectOf(path[0])) return viewProject(path[0], params);
+  const slug = path[path.length - 1], want = pagePath(slug).join("/");
+  if(S.pages.some(p => p.slug === slug) && path.join("/") !== want){
+    const q = params.toString(); location.replace("#/wiki/" + pagePath(slug).map(enc).join("/") + (q ? "?" + q : "")); return;
+  }
+  return viewArticle(slug, params.get("rev"));
 }
 
 /* ---------------------------------------------------------------- access and automation */

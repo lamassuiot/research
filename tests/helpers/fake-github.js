@@ -168,7 +168,7 @@ async function installFakeGitHub(page, opts = {}) {
       const t = staged.trees.get(c.tree);
       if (t.base_tree !== "tree-of-" + c.parents[0]) return json(route, 422, { message: "tree does not belong to the parent" });
       const changes = {};
-      for (const e of t.tree) changes[e.path] = staged.blobs.get(e.sha);
+      for (const e of t.tree) changes[e.path] = e.sha ? staged.blobs.get(e.sha) : e.content;
       const nc = repo.add(c.message, changes, { name: user.name, login: user.login });
       return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: nc.oid } });
     }
@@ -197,7 +197,11 @@ async function installFakeGitHub(page, opts = {}) {
         const names = [...repo.head().files.keys()].filter(f => /^links\/[^/]+$/.test(f)).map(f => f.slice(6));
         data = { repository: { object: names.length ? { entries: names.map(name => ({ name, type: "blob" })) } : null } }; break;
       }
-      case "PageMetas": case "RecentMetas": case "LinkBlobs": data = { repository: metas(v) }; break;
+      case "ListProjects": {
+        const names = [...repo.head().files.keys()].filter(f => /^projects\/[^/]+$/.test(f)).map(f => f.slice(9));
+        data = { repository: { object: names.length ? { entries: names.map(name => ({ name, type: "blob" })) } : null } }; break;
+      }
+      case "PageMetas": case "RecentMetas": case "LinkBlobs": case "ProjectBlobs": case "ReadFiles": data = { repository: metas(v) }; break;
       case "GetPage": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path, 1).map(c => ({ oid: c.oid }))) } }; break;
       case "ListRevs": data = { repository: ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) }; break;
       case "GetRev": { const c = repo.find(v.sha); data = { repository: { commit: c ? node(c) : null, meta: blob(repo.read(v.metaExpr)) } }; break; }

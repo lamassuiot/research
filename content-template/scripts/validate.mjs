@@ -10,6 +10,7 @@ const STATUSES = ["draft", "reviewed", "validated", "deprecated"];
 const FORMATS = ["md", "html"];
 const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
 const MAX_FILE = 50 * 1024 * 1024;
+const MAX_TREE_DEPTH = 8;
 const LINK_FILE_RE = /^[a-z0-9][a-z0-9-]{0,79}\.json$/;
 const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
 const REQUIRED_STR = ["title", "abstract", "updatedAt", "updatedBy", "createdAt", "createdBy", "sha256"];
@@ -84,6 +85,32 @@ export function validate(root) {
     if (!Array.isArray(l.tags) || l.tags.length < 1 || l.tags.length > 20) err(rel, "tags must have between 1 and 20 entries");
     else for (const t of l.tags) if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`);
     for (const k of ["addedAt", "addedBy", "updatedAt", "updatedBy"]) if (typeof l[k] !== "string" || !l[k]) err(rel, `"${k}" must be a non-empty string`);
+  }
+
+  const projectsDir = path.join(root, "projects");
+  const pageSlugs = new Set(slugs);
+  const placedIn = new Map();                       // "type:id" -> project, an item belongs to at most one project
+  for (const name of fs.existsSync(projectsDir) ? fs.readdirSync(projectsDir) : []) {
+    const rel = `projects/${name}`;
+    if (!LINK_FILE_RE.test(name) || !fs.statSync(path.join(projectsDir, name)).isFile()) { err(rel, "invalid project file name (lowercase letters, digits and hyphens, ending in .json)"); continue; }
+    const id = name.slice(0, -5), pj = readJson(rel);
+    if (!pj) continue;
+    if (pageSlugs.has(id)) err(rel, `the address "${id}" is already used by an article`);
+    if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
+    if (pj.description !== undefined && (typeof pj.description !== "string" || pj.description.length > 300)) err(rel, "description must be at most 300 characters");
+    for (const k of ["createdAt", "createdBy", "updatedAt", "updatedBy"]) if (typeof pj[k] !== "string" || !pj[k]) err(rel, `"${k}" must be a non-empty string`);
+    const walk = (list, depth, where) => {
+      if (!Array.isArray(list)) { err(rel, `${where} must be an array`); return; }
+      if (depth > MAX_TREE_DEPTH) { err(rel, `the tree is deeper than ${MAX_TREE_DEPTH} levels`); return; }
+      for (const it of list) {
+        if (!it || typeof it !== "object" || !["page", "link", "file"].includes(it.type) || typeof it.id !== "string" || !it.id) { err(rel, "every item needs a type (page, link or file) and an id"); continue; }
+        const key = `${it.type}:${it.id}`;
+        if (placedIn.has(key)) err(rel, `${key} is already in ${placedIn.get(key) === id ? "this project" : `the project "${placedIn.get(key)}"`}`);
+        else placedIn.set(key, id);
+        if (it.children !== undefined) { if (it.type !== "page") err(rel, `only pages can have children (${key})`); else walk(it.children, depth + 1, `children of ${it.id}`); }
+      }
+    };
+    walk(pj.items, 1, "items");
   }
 
   const filesDir = path.join(root, "files");

@@ -111,3 +111,30 @@ test("a bad link file name fails", () => {
   const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "links")); fs.writeFileSync(path.join(d, "links", "Bad Name.json"), "{}"); }));
   assert.ok(errs.some((e) => e.startsWith("links/Bad Name.json: invalid link file name")), errs.join("\n"));
 });
+
+const proj = (items, extra = {}) => ({ title: "P", description: "", items, createdAt: "2026-10-07T00:00:00.000Z", createdBy: "ada", updatedAt: "2026-10-07T00:00:00.000Z", updatedBy: "ada", ...extra });
+const withProjects = (map) => (d) => { fs.mkdirSync(path.join(d, "projects")); for (const [id, p] of Object.entries(map)) fs.writeFileSync(path.join(d, "projects", id + ".json"), JSON.stringify(p, null, 2) + "\n"); };
+test("a valid project with nested sub-pages passes", () => {
+  const items = [{ type: "page", id: "welcome", children: [{ type: "page", id: "pqc-migration-notes" }] }, { type: "link", id: "x" }, { type: "file", id: "a.pdf" }];
+  assert.deepEqual(validate(fixture(withProjects({ lamassu: proj(items) }))), []);
+});
+test("a project cannot share an address with an article", () => {
+  const errs = validate(fixture(withProjects({ welcome: proj([]) })));
+  assert.ok(errs.some((e) => e.includes('"welcome" is already used by an article')), errs.join("\n"));
+});
+test("an item cannot be in two projects, nor twice in one", () => {
+  const errs = validate(fixture(withProjects({ a: proj([{ type: "page", id: "welcome" }]), b: proj([{ type: "page", id: "welcome" }, { type: "link", id: "l" }, { type: "link", id: "l" }]) })));
+  assert.ok(errs.some((e) => e.includes('page:welcome is already in the project "a"')), errs.join("\n"));
+  assert.ok(errs.some((e) => e.includes("link:l is already in this project")), errs.join("\n"));
+});
+test("only pages can have children; unknown types and a too deep tree fail", () => {
+  assert.ok(validate(fixture(withProjects({ a: proj([{ type: "link", id: "l", children: [{ type: "page", id: "welcome" }] }]) }))).some((e) => e.includes("only pages can have children")));
+  assert.ok(validate(fixture(withProjects({ a: proj([{ type: "note", id: "n" }]) }))).some((e) => e.includes("every item needs a type")));
+  let deep = [{ type: "page", id: "p0" }]; for (let i = 1; i < 10; i++) deep = [{ type: "page", id: "p" + i, children: deep }];
+  assert.ok(validate(fixture(withProjects({ a: proj(deep) }))).some((e) => e.includes("deeper than 8 levels")));
+});
+test("a project without a title or with a bad file name fails", () => {
+  assert.ok(validate(fixture(withProjects({ a: proj([], { title: "" }) }))).some((e) => e.includes("title must be 1-200 characters")));
+  const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "projects")); fs.writeFileSync(path.join(d, "projects", "Bad Name.json"), "{}"); }));
+  assert.ok(errs.some((e) => e.startsWith("projects/Bad Name.json: invalid project file name")), errs.join("\n"));
+});
