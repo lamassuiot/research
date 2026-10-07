@@ -102,7 +102,7 @@ test.describe("editor", () => {
     await page.fill("#f-body", html);
     await page.fill("#f-sum", "Add the report");
     await page.locator("#saveBtn").click();
-    await expect(page).toHaveURL(/#\/wiki\/big-report$/);
+    await expect(page).toHaveURL(/#\/wiki\/general\/big-report$/);
     expect(repo.head().files.get("projects/general/pages/big-report/content.html")).toBe(html);
     expect(Buffer.byteLength(html)).toBeGreaterThan(400000);
     const sandbox = await page.locator("#rf").getAttribute("sandbox");
