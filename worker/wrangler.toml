@@ -1,0 +1,11 @@
+name = "research-auth"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://www.lamassu.io"
+REDIRECT_URI = "https://www.lamassu.io/research/"
+GITHUB_CLIENT_ID = "REPLACE_ME"
+
+# The client secret is NOT stored here. Set it once with:
+#   npx wrangler secret put GITHUB_CLIENT_SECRET

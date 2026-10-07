@@ -6,7 +6,7 @@
   "scripts": {
     "build": "python3 frontend/build.py && python3 frontend/build.py --dev",
     "test": "npm run test:unit && npm run test:web",
-    "test:unit": "node --test worker/test/ content-template/scripts/",
+    "test:unit": "node --test \"worker/test/*.test.js\" \"content-template/scripts/*.test.mjs\"",
     "test:web": "python3 frontend/build.py --config tests/config.test.json --out public/index.test.html && playwright test",
     "test:web:install": "playwright install chromium"
   },
