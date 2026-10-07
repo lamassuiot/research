@@ -169,14 +169,14 @@ h1.title .ns{font-weight:400;color:var(--ink-3)}
 .toc-btn{display:none}
 .tabs{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--rule);gap:12px;flex-wrap:wrap}
 .tabs nav{display:flex;gap:4px;align-items:flex-end}
-.tabs a,.tabs summary{display:flex;align-items:center;gap:4px;padding:8px 10px 9px;font-size:16px;color:var(--link);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;list-style:none}
+.tabs a,.tabs summary{display:flex;align-items:center;gap:4px;padding:8px 10px 9px;white-space:nowrap;font-size:16px;color:var(--link);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;list-style:none}
 .tabs summary::-webkit-details-marker{display:none}
 .tabs a.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:500}
 .tabs a:hover,.tabs summary:hover{text-decoration:none;color:var(--ink);border-bottom-color:var(--rule-2)}
 .tabs a.on:hover{border-bottom-color:var(--ink)}
 .tabs .ms{font-size:20px}
 .dd{position:relative}
-.dd-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:25;min-width:230px;background:var(--paper);border:1px solid var(--rule);border-radius:16px;
+.dd-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:25;min-width:230px;max-width:calc(100vw - 24px);background:var(--paper);border:1px solid var(--rule);border-radius:16px;
   box-shadow:0 24px 80px var(--shadow-modal);padding:8px}
 .dd-menu .eyebrow{padding:6px 10px 4px}
 .dd-menu a,.dd-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:0;background:none;border-radius:10px;color:var(--ink-2);font-size:16px;text-align:left;cursor:pointer}
@@ -372,14 +372,22 @@ h2.day{font-size:17px;font-weight:700;margin:20px 0 6px;letter-spacing:-.01em;bo
 .chgbar .chg-n{min-width:3.6em;text-align:center;font-variant-numeric:tabular-nums}
 .chgbar button{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:32px;height:32px;padding:0 6px;border:0;border-radius:999px;background:transparent;color:inherit;cursor:pointer;font:inherit}
 .chgbar button:hover:not(:disabled){background:var(--surface-2)} .chgbar button:disabled{opacity:.35;cursor:default}
-.chgbar .chg-l{display:inline-flex;align-items:center;gap:5px;color:var(--ink-3)}
-@media (max-width:640px){.chgbar .chg-l b{display:none}}
+.chgbar .chg-l{display:inline-flex;align-items:center;gap:5px;color:var(--ink-3);white-space:nowrap}
+@media (max-width:640px){.chgbar .chg-l b{display:none}.chgbar{width:calc(100vw - 24px)}.chgbar .ui-select{flex:1 1 0;min-width:0}.chgbar .ui-select-btn{width:100%}}
 #main:has(.chgbar){padding-bottom:72px}
 .chg-add{background:color-mix(in srgb,var(--ok) 11%,transparent);box-shadow:-4px 0 0 var(--ok);border-radius:2px}
 .chg-mod{box-shadow:-4px 0 0 var(--ok);border-radius:2px}
 .chg-ins{background:color-mix(in srgb,var(--ok) 24%,transparent);text-decoration:none;border-radius:3px;padding:0 1px}
 .chg-del{background:color-mix(in srgb,var(--err) 18%,transparent);color:var(--err);text-decoration:line-through;border-radius:3px;padding:0 1px}
 .chg-ghost{margin:6px 0;padding:6px 10px;background:color-mix(in srgb,var(--err) 10%,transparent);box-shadow:-4px 0 0 var(--err);color:var(--ink-3);font-size:15px;text-decoration:line-through;white-space:pre-wrap;overflow-wrap:anywhere}
+li.chg-ghost{list-style:none;counter-increment:list-item 0;padding:4px 10px}
+tr.chg-ghost{background:none;box-shadow:none;text-decoration:none}
+tr.chg-ghost>td{background:color-mix(in srgb,var(--err) 10%,transparent);box-shadow:inset 4px 0 0 var(--err);color:var(--ink-3);text-decoration:line-through;font-size:15px}
+tr.chg-add,tr.chg-mod{background:none;box-shadow:none}
+tr.chg-add>td,tr.chg-add>th{background:color-mix(in srgb,var(--ok) 11%,transparent)}
+tr.chg-add>:first-child,tr.chg-mod>:first-child{box-shadow:inset 4px 0 0 var(--ok)}
+tr.chg-cur{outline:0}
+tr.chg-cur>td,tr.chg-cur>th{box-shadow:inset 0 2px 0 var(--lamassu-brand),inset 0 -2px 0 var(--lamassu-brand)}
 .chg-ghost .chg-tag{text-decoration:none;display:inline-block;margin-right:8px;font-size:12px;font-weight:700;text-transform:uppercase;color:var(--err)}
 .chg-cur{outline:2px solid var(--lamassu-brand);outline-offset:3px}
 @media print{.chgbar,.chg-ghost,.chg-del{display:none}.chg-add,.chg-mod{background:none;box-shadow:none}.chg-ins{background:none}.chg-cur{outline:0}}
@@ -409,8 +417,8 @@ table.diff td.ad{border:1px solid var(--info-border);border-left:4px solid var(-
 h2.rev-h{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:28px 0 12px;padding-top:14px;border-top:1px solid var(--rule)}
 
 /* forms / editor */
-.form{display:grid;gap:14px}
-.opts{border:1px solid var(--rule);border-radius:16px;padding:14px 16px;margin:0;display:grid;gap:14px}
+.form{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.opts{border:1px solid var(--rule);border-radius:16px;padding:14px 16px;margin:0;min-width:0;display:grid;gap:14px}
 .opts legend{padding:0 6px}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .form label{display:block;font-size:15px;font-weight:500;color:var(--ink-2);margin-bottom:4px}
@@ -419,7 +427,7 @@ h2.rev-h{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:28px 0 12px
 .form textarea{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;line-height:1.55;min-height:460px;resize:vertical;border-radius:0 0 12px 12px}
 .form input:focus,.form select:focus,.form textarea:focus{outline:none;border-color:var(--ink);box-shadow:inset 0 -2px 0 var(--lamassu-brand)}
 .ed-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border:1px solid var(--rule-2);border-bottom:0;border-radius:12px 12px 0 0;background:var(--surface);padding:6px 8px}
-.ed-bar .tb{display:inline-flex;gap:2px;padding-left:6px;margin-left:4px;border-left:1px solid var(--rule-2)}
+.ed-bar .tb{display:inline-flex;flex-wrap:wrap;gap:2px;padding-left:6px;margin-left:4px;border-left:1px solid var(--rule-2)}
 .ed-bar .tb button{border:0;background:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center}
 .ed-bar .tb button:hover{background:var(--paper);color:var(--ink)}
 .ed-bar .tb .noicon{font-size:13.5px;font-weight:700}
@@ -522,19 +530,10 @@ body.gated .gate{display:flex}
   .search input{border-right:1px solid var(--rule-2);border-radius:12px}
   .top .btn{padding:0 10px}
   .shell,body.side-empty .shell{grid-template-columns:minmax(0,1fr);padding:12px 12px 32px}
-  .side,body.side-empty .side,body.wide .side{display:block;position:fixed;z-index:50;top:0;left:0;bottom:0;width:min(86vw,320px);max-height:none;
+  .side,body.side-empty .side,body.wide .side{display:block;position:fixed;z-index:50;top:0;left:0;bottom:0;width:min(86vw,320px);max-height:none;align-self:stretch;
     background:var(--paper);padding:calc(16px + env(safe-area-inset-top,0px)) 16px 24px;transform:translateX(-105%);transition:transform .2s;box-shadow:0 24px 80px var(--shadow-modal)}
   body.menu-off .side .menu{display:block}
   .side{-webkit-mask-image:none;mask-image:none;margin-left:0}
-  body.proj-mode .proj-tree,body.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0}
-  body.proj-mode .side,body.proj-mode.has-toc .side,body.tree-off.proj-mode.has-toc .side{display:block;height:auto;overflow:auto}
-  body.proj-mode .proj-tree,body.proj-mode .toc-side{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
-  body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:row;background:var(--bg);border:0;padding:6px 8px}
-  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:horizontal-tb}
-  body.tree-off.proj-mode .side .mode{display:block}
-  body.proj-mode .shell,body.proj-mode.has-toc .shell,body.proj-mode.menu-off .shell{grid-template-columns:minmax(0,1fr)}
-  body.proj-mode .side .menu,body.proj-mode.menu-off .side .menu{display:none}
-  body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:block}
   .side.open{transform:none}
   .backdrop.open{display:block;position:fixed;inset:0;z-index:45;background:var(--shadow-modal)}
   .page{padding:14px 16px 20px;border-radius:16px}
@@ -547,6 +546,27 @@ body.gated .gate{display:flex}
   .diff-head{width:auto;border-spacing:0 8px;margin:8px 0}
   .diff-head,.diff-head tbody,.diff-head tr,.diff-head td{display:block}
   .mp-hero .stat{text-align:left}
+  .tabs nav{flex-wrap:wrap;gap:0 2px}
+  .tabs{position:relative}
+  .tabs .dd{position:static}
+  .tabs a,.tabs summary{padding-left:8px;padding-right:8px}
+  input[type=file]{max-width:100%}
+}
+/* phones: the search box shrinks to its magnifier and opens over the whole top bar when tapped (CSS only, the input keeps focus) */
+@media (max-width:560px){
+  .top-in{position:relative}
+  .top-right .dd{position:static}
+  .top-right .dd-menu{right:10px}
+  .search{flex:0 0 40px;margin-left:auto}
+  .search + .top-right{margin-left:0}
+  .search input{border-radius:12px;padding:0 0 0 40px;cursor:pointer;color:transparent;background:none;border-color:transparent}
+  .search input::placeholder{color:transparent}
+  .search input::-webkit-search-cancel-button{display:none}
+  html:not(.icons) .search input{border-color:var(--rule-2)}
+  .search:focus-within{position:absolute;left:10px;right:10px;top:calc((var(--head-h) - 40px) / 2);z-index:3;max-width:none;flex:none}
+  .search:focus-within input{cursor:text;color:inherit;background:var(--paper);border-color:var(--ink);padding-right:12px}
+  .search:focus-within input::placeholder{color:var(--ink-3)}
+  .search:focus-within input::-webkit-search-cancel-button{display:revert}
 }
 @media print{
   .top,.side,.tabs,.backdrop,.toast,.report-bar,.catlinks,footer.foot nav{display:none!important}
@@ -602,6 +622,22 @@ body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:no
 body.proj-mode.menu-off,body.proj-mode.menu-off.has-toc{--side-w:248px}
 body.proj-mode.menu-off .shell{grid-template-columns:248px minmax(0,1fr)}
 body.proj-mode.menu-off.side-empty .shell{grid-template-columns:minmax(0,1fr)}
+/* phones and tablets: the project bars live in the same off-canvas drawer as the main menu. This block must stay after the project-mode
+   rules above, which have the same specificity and would otherwise keep their sidebar column and fixed height on small screens. */
+@media (max-width:1000px){
+  body.proj-mode .shell,body.proj-mode.has-toc .shell,body.proj-mode.menu-off .shell{grid-template-columns:minmax(0,1fr);max-width:none}
+  body.proj-mode .top-in{max-width:none}
+  body.proj-mode .side,body.proj-mode.has-toc .side,body.tree-off.proj-mode.has-toc .side{display:block;height:auto;overflow:auto;padding-bottom:24px}
+  body.proj-mode .proj-tree,body.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0}
+  body.proj-mode .proj-tree,body.proj-mode .toc-side{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
+  body.proj-mode .toc-side{margin-top:16px}
+  body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:row;justify-content:space-between;background:var(--bg);border:0;border-radius:8px;padding:6px 8px}
+  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:horizontal-tb;letter-spacing:.16em}
+  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow::before{display:block}
+  body.tree-off.proj-mode .side .mode{display:block}
+  body.proj-mode .side .menu,body.proj-mode.menu-off .side .menu{display:none}
+  body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:block}
+}
 .proj-head{display:flex;flex-direction:column;gap:2px;padding:2px 10px 12px;margin-bottom:6px;border-bottom:1px solid var(--rule)}
 .ph-back{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;color:var(--ink-3)}
 .ph-back .ms{font-size:16px}
@@ -2074,6 +2110,29 @@ const enhanceSelectsIn = root => { if(root.nodeType !== 1) return; if(root.tagNa
 enhanceSelectsIn(document.body);
 new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(enhanceSelectsIn))).observe(document.body, {childList:true, subtree:true});
 
+/* Groups a word diff for reading: unchanged stretches of at most 2 words between two changes are folded into the change, and each run
+   becomes one removed span followed by one added span, instead of alternating single words. Returns [{type:"same"|"del"|"add", text}]. */
+function groupDiff(parts){
+  const words = t => (t.match(/\S+/g) || []).length, out = [];
+  let run = null;
+  const flush = () => { if(!run) return; if(run.del) out.push({type:"del", text:run.del}); if(run.add) out.push({type:"add", text:run.add}); run = null; };
+  for(let i = 0; i < parts.length; i++){
+    const p = parts[i], next = parts[i + 1];
+    if(p.added || p.removed){
+      if(!run){      // a change starts mid-word (SHA-1 → SHA-256): take the start of the word into it
+        run = {del:"", add:""}; const last = out[out.length - 1], m = last && last.type === "same" && last.text.match(/\S+$/);
+        if(m){ last.text = last.text.slice(0, -m[0].length); run.del = run.add = m[0]; if(!last.text) out.pop(); }
+      }
+      run[p.added ? "add" : "del"] += p.value; continue;
+    }
+    if(run && next && (next.added || next.removed) && words(p.value) <= 2){ run.del += p.value; run.add += p.value; continue; }
+    let text = p.value;
+    if(run){ const m = text.match(/^\S+/); if(m){ run.del += m[0]; run.add += m[0]; text = text.slice(m[0].length); } }   // and its end
+    flush(); if(text) out.push({type:"same", text});
+  }
+  flush();
+  return out;
+}
 /* Floating change bar over a Markdown article: highlights, block by block, what changed against an earlier revision (the previous one by default),
    with a selector for older ones and previous/next buttons that jump between the changes. */
 function mountChanges(slug, rev, revs, prose){
@@ -2085,8 +2144,12 @@ function mountChanges(slug, rev, revs, prose){
     b.innerHTML = `<span class="chg-l"><span class="ms" aria-hidden="true">difference</span>First revision: nothing to compare yet. Changes show here after the next edit.</span>`;
     $("#main").appendChild(b); return;
   }
-  const keyOf = el => el.tagName + "|" + el.textContent.replace(/\s+/g, " ").trim();
-  const blocks = [...prose.children], keys = blocks.map(keyOf);
+  /* The units compared: top-level blocks, except that lists and tables are compared item by item and row by row. */
+  const unitsOf = root => [...root.children].flatMap(el => /^(UL|OL)$/.test(el.tagName) ? [...el.children].filter(c => c.tagName === "LI")
+    : el.tagName === "TABLE" ? [...el.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tr")] : [el]);
+  const kindOf = (el, root) => el.parentElement === root ? "TOP" : el.parentElement.tagName;
+  const keyOf = el => el.tagName + "|" + (el.tagName === "TR" ? [...el.cells].map(c => c.textContent.replace(/\s+/g, " ").trim()).join("\t") : el.textContent.replace(/\s+/g, " ").trim());
+  const blocks = unitsOf(prose), keys = blocks.map(keyOf);
   const bar = document.createElement("div"); bar.className = "chgbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Changes in this revision");
   $("#main").appendChild(bar);
   let against = older[0], changes = [], cur = -1, off = lsGet("kb.chg") === "0", token = 0;
@@ -2096,11 +2159,17 @@ function mountChanges(slug, rev, revs, prose){
     $$(".chg-ins", prose).forEach(g => g.replaceWith(...g.childNodes));
     blocks.forEach(b => { b.classList.remove("chg-add", "chg-mod", "chg-cur"); b.normalize(); }); changes = []; cur = -1;
   };
-  /* Word-level marks inside a block that exists in both revisions: added words in <ins>, removed words in <del>, in place. */
+  /* Word-level marks inside a unit that exists in both revisions, in place: grouped (see groupDiff) so a rewritten sentence reads as
+     one removed span then one added span. Table rows with the same columns are compared cell by cell. */
   const inlineDiff = (block, oldBlock) => {
+    if(block.tagName === "TR"){
+      if(block.cells.length !== oldBlock.cells.length) return false;
+      [...block.cells].forEach((c, k) => { if(c.textContent !== oldBlock.cells[k].textContent) inlineDiff(c, oldBlock.cells[k]); });
+      return true;
+    }
     const a = oldBlock.textContent, b = block.textContent;
     if(a.length + b.length > 20000 || block.querySelector(".pdf-embed")) return false;
-    const toks = Diff.diffWordsWithSpace(a, b).map(x => ({type:x.added ? "add" : x.removed ? "del" : "same", text:x.value, rem:x.value.length}));
+    const toks = groupDiff(Diff.diffWordsWithSpace(a, b)).map(t => Object.assign(t, {rem:t.text.length}));
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), nodes = []; for(let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
     const piece = (type, text) => { if(type === "same") return document.createTextNode(text); const e = document.createElement(type === "add" ? "ins" : "del"); e.className = type === "add" ? "chg-ins" : "chg-del"; e.textContent = text; return e; };
     let ti = 0;
@@ -2117,11 +2186,18 @@ function mountChanges(slug, rev, revs, prose){
     });
     return true;
   };
-  const ghost = els => { const g = document.createElement("div"); g.className = "chg-ghost"; const t = document.createElement("span"); t.className = "chg-tag"; t.textContent = "Removed";
-    g.append(t, els.map(e => e.textContent.replace(/\s+/g, " ").trim()).filter(Boolean).join(" ¶ ").slice(0, 600)); return g; };
+  /* A removed unit is shown where it was, as the same kind of element (a list item inside the list, a row inside the table). */
+  const ghost = (old, kind) => {
+    const text = old.tagName === "TR" ? [...old.cells].map(c => c.textContent.trim()).join(" · ") : old.textContent.replace(/\s+/g, " ").trim();
+    const g = document.createElement(kind === "LI" ? "li" : kind === "TR" ? "tr" : "div"); g.className = "chg-ghost";
+    const host = kind === "TR" ? g.appendChild(Object.assign(document.createElement("td"), {colSpan:old.cells.length || 1})) : g;
+    const t = document.createElement("span"); t.className = "chg-tag"; t.textContent = "Removed";
+    host.append(t, text.slice(0, 600)); return g;
+  };
+  const topOf = el => { while(el && el.parentElement !== prose) el = el.parentElement; return el; };
   const mark = oldContent => {
     clear();
-    const oldBlocks = [...renderMarkdown(oldContent).children], parts = Diff.diffArrays(oldBlocks.map(keyOf), keys);
+    const oldRoot = renderMarkdown(oldContent), oldBlocks = unitsOf(oldRoot), parts = Diff.diffArrays(oldBlocks.map(keyOf), keys);
     let oi = 0, ni = 0;
     for(let i = 0; i < parts.length; i++){
       const p = parts[i];
@@ -2129,16 +2205,27 @@ function mountChanges(slug, rev, revs, prose){
       let removed = [], added = 0;
       if(p.removed){ removed = oldBlocks.slice(oi, oi + p.count); oi += p.count; if(parts[i + 1] && parts[i + 1].added){ added = parts[++i].count; } }
       else added = p.count;
-      let anchor = null;
-      const paired = Math.min(removed.length, added), lost = removed.slice(paired);       // blocks edited in place pair up by position
-      if(lost.length){ anchor = ghost(lost); prose.insertBefore(anchor, blocks[ni + paired] || null); }
-      for(let k = 0; k < added; k++){
+      const paired = Math.min(removed.length, added), firstGhosts = [];
+      for(let k = 0; k < added; k++){                                  // units edited in place pair up by position
         const b = blocks[ni + k], o = k < paired ? removed[k] : null;
-        if(o && o.tagName === b.tagName && inlineDiff(b, o)) b.classList.add("chg-mod"); else b.classList.add("chg-add");
+        if(o && o.tagName === b.tagName && inlineDiff(b, o)) b.classList.add("chg-mod");
+        else { b.classList.add("chg-add"); if(o) removed.push(o); }    // not comparable: show the old one as removed too
       }
-      if(added) anchor = blocks[ni] || anchor;
-      ni += added; changes.push(anchor);
+      let prev = blocks[ni + added - 1] || blocks[ni - 1] || null; const next = blocks[ni + added] || null;
+      for(const o of removed.slice(paired)){
+        const kind = o.parentElement === oldRoot ? "TOP" : o.parentElement.tagName.replace(/^(THEAD|TBODY|TABLE)$/, "TR").replace(/^(UL|OL)$/, "LI");
+        const fits = el => el && (kind === "TOP" ? kindOf(el, prose) === "TOP" || el.classList.contains("chg-ghost") && el.parentElement === prose : el.tagName === kind);
+        let g;
+        if(fits(next)){ g = ghost(o, kind); next.before(g); }
+        else if(fits(prev)){ g = ghost(o, kind); prev.after(g); prev = g; }
+        else { g = ghost(o, "TOP"); const t = topOf(next); if(t) t.before(g); else prose.appendChild(g); }
+        firstGhosts.push(g);
+      }
+      const marks = [...(added ? [blocks[ni]] : []), ...firstGhosts];
+      changes.push(marks.sort((x, y) => x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1)[0]);
+      ni += added;
     }
+    changes.sort((x, y) => x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
   };
   const draw = () => {
     const n = changes.length;
@@ -2154,7 +2241,7 @@ function mountChanges(slug, rev, revs, prose){
   const go = d => {
     if(!changes.length) return;
     cur = cur < 0 ? (d > 0 ? 0 : changes.length - 1) : (cur + d + changes.length) % changes.length;
-    blocks.forEach(b => b.classList.remove("chg-cur")); $$(".chg-ghost", prose).forEach(b => b.classList.remove("chg-cur"));
+    $$(".chg-cur", prose).forEach(b => b.classList.remove("chg-cur"));
     changes[cur].classList.add("chg-cur"); changes[cur].scrollIntoView({behavior:"smooth", block:"center"}); draw(); bar.querySelector(`[data-a="${d > 0 ? "next" : "prev"}"]`).focus({preventScroll:true});
   };
   const load = async () => {
@@ -3448,9 +3535,11 @@ function setupSearch(){
   q.addEventListener("keydown", e => {
     const items = $$("a", box);
     if(e.key==="ArrowDown"){ sel=Math.min(items.length-1, sel+1); } else if(e.key==="ArrowUp"){ sel=Math.max(-1, sel-1); }
-    else if(e.key==="Escape"){ close(); return; } else return;
+    else if(e.key==="Escape"){ if(box.classList.contains("open")) close(); else q.blur(); return; } else return;
     e.preventDefault(); items.forEach((a,i)=>a.classList.toggle("sel", i===sel));
   });
+  // on phones the search opens over the top bar while it has focus: leaving for another page gives the bar back
+  addEventListener("hashchange", () => { if($("#searchForm").contains(document.activeElement)) document.activeElement.blur(); });
   // Enter: chosen suggestion → there; exact title → the article ("Go"); otherwise → search results
   $("#searchForm").addEventListener("submit", e => {
     e.preventDefault();

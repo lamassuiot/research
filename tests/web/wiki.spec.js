@@ -127,6 +127,32 @@ test.describe("editor", () => {
     await expect(p).toContainText("ML-DSA signatures are");                         // the unchanged words stay as they are
   });
 
+  test("lists and tables are diffed item by item and row by row; rewrites read as one removed and one added span", async ({ page }) => {
+    const V1 = "## 9.6 OCSP\n\n1. Resolve the CA from `CertID`.\n2. Look up the certificate with `SelectByIssuerAndSerial(ca.id, serial)`. This replaces the global serial lookup; serials are only unique per issuer.\n3. Old step that goes away.\n4. Sign with the CA's key.\n\n| Field | Value |\n|---|---|\n| hashAlgorithm | SHA-1 |\n| nonce | optional |\n| obsolete | row |\n";
+    const V2 = "## 9.6 OCSP\n\n1. Resolve the CA from `CertID`.\n2. Look up the certificate with `SelectByIssuerAndSerial(ca.id, serial)`. Although the serial is globally unique, it must belong to the CA resolved from `CertID`; a certificate issued by another CA must not be returned for that request.\n3. Sign with the CA's key.\n\n| Field | Value |\n|---|---|\n| hashAlgorithm | SHA-256 |\n| nonce | optional |\n";
+    await open(page, "#/new", { repo });
+    await page.fill("#f-title", "OCSP diff"); await page.fill("#f-sum", "v1"); await page.fill("#f-body", V1);
+    await page.locator("#saveBtn").click();
+    await expect(page).toHaveURL(/#\/wiki\/general\/ocsp-diff$/);
+    await page.goto("/research/#/edit/ocsp-diff");
+    await page.fill("#f-body", V2); await page.fill("#f-sum", "v2"); await page.locator("#saveBtn").click();
+    await expect(page).toHaveURL(/#\/wiki\/general\/ocsp-diff$/);
+    const li = page.locator("#prose ol > li.chg-mod");
+    await expect(li).toHaveCount(1);
+    await expect(page.locator("#prose ol")).not.toHaveClass(/chg-/);                 // the list itself is not marked, only its item
+    await expect(li.locator("del.chg-del")).toHaveCount(1);
+    await expect(li.locator("del.chg-del")).toHaveText("This replaces the global serial lookup; serials are only unique per issuer.");
+    expect((await li.locator("ins.chg-ins").allTextContents()).join("")).toBe("Although the serial is globally unique, it must belong to the CA resolved from CertID; a certificate issued by another CA must not be returned for that request.");
+    await expect(page.locator("#prose ol > li.chg-ghost")).toContainText("Old step that goes away.");
+    const row = page.locator("#prose table tr.chg-mod");
+    await expect(row).toHaveCount(1);
+    await expect(row.locator("td").nth(1).locator("ins.chg-ins")).toHaveText("SHA-256");
+    await expect(row.locator("td").nth(0).locator("ins, del")).toHaveCount(0);
+    await expect(page.locator("#prose table tbody > tr.chg-ghost")).toContainText("obsolete · row");
+    await expect(page.locator(".chgbar .chg-n")).toHaveText("– / 3");                 // the item and the removed one are one change; the row, the removed row
+    await page.screenshot({ path: "/tmp/claude-1000/-home-ubuntu-dev-lamassu-lama-library/a633621d-1269-478a-a134-b5b7f7015251/scratchpad/ocsp-diff.png", fullPage: true });
+  });
+
   test("selectors are shadcn-style listboxes: mouse and keyboard, and the native value follows", async ({ page }) => {
     await open(page, "#/wiki/general/my-rfc-notes", { repo });
     const btn = page.locator(".chgbar .ui-select-btn");
