@@ -68,3 +68,4 @@ warning
 width_full
 zoom_in
 zoom_out
+check

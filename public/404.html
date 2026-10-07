@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://api.github.com" crossorigin>
 <link rel="preconnect" href="https://research-auth.hsaizsierra.workers.dev" crossorigin>
 <!-- Fonts load without blocking the first paint. The icon font holds only the icons this page uses (about 8 KB instead of 395 KB). -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,drive_file_move,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,travel_explore,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,drive_file_move,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,travel_explore,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script>try{var t=localStorage.getItem("kb.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/**
@@ -2961,8 +2961,9 @@ function treeList(items, o){
     const cur = o.cur && (it.type + ":" + it.id) === o.cur ? " cur" : "";
     const link = `<a class="pt-l${cur}" href="${esc(info.href)}"${info.external ? ' target="_blank" rel="noopener noreferrer nofollow"' : ""}>${esc(info.label)}</a>`;
     const ctl = o.organize ? `<span class="pt-ctl">${CTL.map(([op, ic, tx, lab]) => `<button type="button" class="sc-icon" data-op="${op}" data-type="${it.type}" data-id="${esc(it.id)}" title="${lab}" aria-label="${lab}: ${esc(info.label)}"><span class="ms" aria-hidden="true">${ic}</span><span class="noicon">${tx}</span></button>`).join("")}</span>` : "";
+    const act = o.organize ? `<span class="pt-ctl pt-act"><a class="sc-icon" href="${it.type === "page" ? "#/edit/" + enc(it.id) : it.type === "link" ? "#/links?edit=" + enc(it.id) : "#/file/" + enc(it.id)}" title="Edit" aria-label="Edit: ${esc(info.label)}"><span class="ms" aria-hidden="true">edit</span><span class="noicon">edit</span></a><button type="button" class="sc-icon" data-rm="${it.type}" data-id="${esc(it.id)}" data-label="${esc(info.label)}" title="Delete" aria-label="Delete: ${esc(info.label)}"><span class="ms" aria-hidden="true">delete</span><span class="noicon">del</span></button></span>` : "";
     const sub = o.compact ? "" : `<span class="pt-sub">${esc(info.sub || "")}</span>`;
-    return `<li class="pt-${it.type}"><span class="pt-row"><span class="ms" aria-hidden="true">${info.icon}</span>${link}${sub}${ctl}</span>${it.children ? treeList(it.children, o) : ""}</li>`;
+    return `<li class="pt-${it.type}"><span class="pt-row"><span class="ms" aria-hidden="true">${info.icon}</span>${link}${sub}${ctl}${act}</span>${it.children ? treeList(it.children, o) : ""}</li>`;
   }).join("");
   return rows ? `<ul class="ptree${o.compact ? " compact" : ""}">${rows}</ul>` : "";
 }
@@ -3081,7 +3082,7 @@ async function viewProject(id, params){
   await refreshPages(); await refreshLinks();
   const pr = projectOf(id);
   if(!pr){ setMainFor(nav, `<h1 class="title">${esc(id)}</h1>${ambox("slate","info","<p>This project does not exist.</p>")}${footer()}`); return; }
-  const organize = params.get("organize") === "1" && S.me.canWrite;
+  const organize = (params.get("manage") === "1" || params.get("organize") === "1") && S.me.canWrite;
   const c = countItems(pr), q = enc(id);
   const elsewhere = S.projects.filter(p => p.id !== id).sort((a, b) => a.title.localeCompare(b.title)).map(p => {
     const opts = []; treeWalk(p.items || [], (it, chain) => { const info = itemInfo(it); if(info) opts.push({value:`${p.id}|${it.type}:${it.id}`, label:"— ".repeat(chain.length) + info.label, type:it.type}); });
@@ -3090,33 +3091,26 @@ async function viewProject(id, params){
   const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
   const tree = treeList(pr.items, {organize});
   setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
-    <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?organize=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">swap_vert</span>${organize ? "Done organizing" : "Organize"}</a>` : ""}</nav></div><div class="maturity"></div>
+    <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?manage=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">${organize ? "check" : "edit"}</span>${organize ? "Done" : "Edit project"}</a>` : ""}</nav></div><div class="maturity"></div>
     ${pr.description ? `<p style="margin:0 0 12px">${esc(pr.description)}</p>` : ""}
     ${(pr.tags || []).length ? `<p class="pr-tags">${projectBadges(pr)} <span class="muted" style="font-size:13.5px">Listed under these tags; its pages are not listed separately.</span></p>` : ""}
     <p class="muted" style="margin:0 0 10px;font-size:15px">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${pr.updatedAt ? ` · updated ${timeAgo(pr.updatedAt)}` : ""}</p>
     ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
       <a class="btn small" href="#/links?new=1&project=${q}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
       <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : ""}
-    ${quickAccessHtml(pr)}
-    ${pr.intro ? `<section class="proj-intro"><div class="prose" id="proj-intro">${renderMarkdown(pr.intro).innerHTML}</div></section>`
-      : S.me.canWrite ? `<p class="muted" style="margin:0 0 14px;font-size:15px">No introduction yet: add one (Markdown) with <i>Edit project</i> below.</p>` : ""}
-    ${organize ? ambox("slate","info","<p>Use the arrows to reorder, <b>→</b> to make an item a sub-page of the page above it and <b>←</b> to move it back out. To bring items from another project here, use <i>Move items here</i> below.</p>") : ""}
+    ${organize ? "" : quickAccessHtml(pr)}
+    ${organize ? "" : pr.intro ? `<section class="proj-intro"><div class="prose" id="proj-intro">${renderMarkdown(pr.intro).innerHTML}</div></section>`
+      : S.me.canWrite ? `<p class="muted" style="margin:0 0 14px;font-size:15px">No introduction yet: add one (Markdown) with <i>Edit project</i> (top right).</p>` : ""}
+    ${organize ? editProjectForm(pr) : ""}
+    ${organize ? ambox("slate","info","<p>Use the arrows to reorder, <b>→</b> to make an item a sub-page of the page above it and <b>←</b> to move it back out; the pencil edits an item and the bin deletes it (its history stays in git, and a page's sub-pages move up). To bring items from another project here, use <i>Move items here</i> below.</p>") : ""}
     <h2 class="pr-h">Structure</h2>
     ${tree || '<div class="empty">This project is empty.</div>'}
-    ${S.me.canWrite && elsewhere.length ? `<details class="addlink" style="margin-top:18px"><summary class="btn small"><span class="ms" aria-hidden="true">drive_file_move</span>Move items here</summary>
+    ${organize && elsewhere.length ? `<details class="addlink" style="margin-top:18px"><summary class="btn small"><span class="ms" aria-hidden="true">drive_file_move</span>Move items here</summary>
       <form class="form" id="aef" novalidate><div class="row"><div style="grid-column:span 2"><label for="ae-item">Item</label><select id="ae-item">
         ${elsewhere.map(g => `<optgroup label="${esc(g.p.title)}">${g.opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)} (${o.type})</option>`).join("")}</optgroup>`).join("")}</select>
         <div class="hint">A page takes its sub-pages with it. Its earlier revisions stay in git, but its history here starts at the move.</div></div>
         <div><label for="ae-par">Under</label><select id="ae-par"><option value="">(top level)</option>${parents.map(p => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join("")}</select></div></div>
         <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">drive_file_move</span><span>Move to this project</span></button></div></form></details>` : ""}
-    ${S.me.canWrite ? `<details class="addlink" style="margin-top:10px"><summary class="btn small"><span class="ms" aria-hidden="true">edit</span>Edit project</summary>
-      <form class="form" id="epf" novalidate><div class="row"><div style="grid-column:span 3"><label for="ep-title">Title</label><input type="text" id="ep-title" maxlength="200" value="${esc(pr.title)}"></div></div>
-        <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
-        <div class="row"><div style="grid-column:span 3"><label for="ep-intro">Introduction <small class="muted">(Markdown, shown on the project's home below the quick access cards; up to ${fmtNum(MAX_INTRO)} characters)</small></label>
-          <textarea id="ep-intro" rows="9" maxlength="${MAX_INTRO}" spellcheck="true" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14.5px">${esc(pr.intro || "")}</textarea></div></div>
-        <fieldset class="tagpick"><legend>Tags <small class="muted">(optional; when set, the pages inside are not listed under tags)</small></legend><div class="tagchips">${tagChipsHtml("eptag", pr.tags || [])}</div></fieldset>
-        <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
-          <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form></details>` : ""}
     ${footer()}`);
   if($("#proj-intro")) hydrateEmbeds($("#proj-intro"));
   const run = async (summary, fn, done) => {
@@ -3126,6 +3120,13 @@ async function viewProject(id, params){
   $$(".pt-ctl [data-op]").forEach(b => b.onclick = () => {
     const {op, type, id: item} = b.dataset, f = {up:i => treeMove(i, type, item, -1), down:i => treeMove(i, type, item, 1), out:i => treeOutdent(i, type, item), in:i => treeIndent(i, type, item)}[op];
     b.disabled = true; run(`Reorder project: ${pr.title}`, i => f(i), null);
+  });
+  $$("[data-rm]").forEach(b => b.onclick = async () => {
+    const {rm: type, id: item, label} = b.dataset;
+    if(!confirm(`Delete ${type === "file" ? "the file" : "the " + type} “${label}”?${type === "page" ? " Its sub-pages move up one level." : ""} It stays in the repository history.`)) return;
+    b.disabled = true;
+    try{ await (type === "page" ? S.store.deletePage(item, label) : type === "link" ? S.store.deleteLink(item, label) : S.store.deleteFile(item)); invalidatePages(); toast("Deleted."); route(); }
+    catch(err){ console.error(err); b.disabled = false; toast(err.message || String(err), 7000); }
   });
   const ae = $("#aef"); if(ae) ae.onsubmit = async e => {
     e.preventDefault();
@@ -3137,13 +3138,22 @@ async function viewProject(id, params){
     catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
   };
   const ep = $("#epf"); if(ep){
-    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); route(); }catch(err){ toast(err.message || String(err), 7000); } };
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); const h = "#/wiki/" + enc(id); if(location.hash === h) route(); else location.hash = h; }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
       if(c.page + c.link + c.file){ toast("Move this project's pages, links and files to another project first: a project can only be deleted when it is empty.", 8000); return; }
       if(!confirm(`Delete the empty project “${pr.title}”?`)) return;
       try{ await S.store.deleteProject(id, pr.title); invalidatePages(); toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
     };
   }
+}
+function editProjectForm(pr){
+  return `      <form class="form" id="epf" novalidate><div class="row"><div style="grid-column:span 3"><label for="ep-title">Title</label><input type="text" id="ep-title" maxlength="200" value="${esc(pr.title)}"></div></div>
+      <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
+      <div class="row"><div style="grid-column:span 3"><label for="ep-intro">Introduction <small class="muted">(Markdown, shown on the project's home below the quick access cards; up to ${fmtNum(MAX_INTRO)} characters)</small></label>
+        <textarea id="ep-intro" rows="9" maxlength="${MAX_INTRO}" spellcheck="true" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14.5px">${esc(pr.intro || "")}</textarea></div></div>
+      <fieldset class="tagpick"><legend>Tags <small class="muted">(optional; when set, the pages inside are not listed under tags)</small></legend><div class="tagchips">${tagChipsHtml("eptag", pr.tags || [])}</div></fieldset>
+      <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
+        <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form>`;
 }
 /* Opens #/wiki/<project>[/<page>...]: a project, or an article whose address is made canonical (Project/Parent/Page) */
 async function openWiki(path, params){

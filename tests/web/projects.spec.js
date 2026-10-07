@@ -17,6 +17,8 @@ async function open(page, hash, opts) {
   await page.goto("/research/" + hash);
   await expect(page.locator("#gate")).toBeHidden();
 }
+// "Edit project" opens the management view: the project form plus every resource with its controls
+const manage = async page => { await page.evaluate(() => { location.hash = location.hash.split("?")[0] + "?manage=1"; }); await expect(page.locator("#epf")).toBeVisible(); };
 const chip = (page, name) => page.locator(".tagchip", { hasText: new RegExp("^" + name + "$") }).locator("span").first();
 async function newPage(page, hash, title, tag = "PKI") {
   await open(page, hash);
@@ -135,6 +137,7 @@ test("an item can be moved to another project: its blobs are reused in one commi
   await open(page, "#/projects");
   await page.fill("#np-title", "Research"); await page.locator("#np-btn").click();
   await expect(page).toHaveURL(/#\/wiki\/research$/);
+  await manage(page);
   await page.locator(".addlink summary", { hasText: "Move items here" }).click();
   const opts = await page.locator("#ae-item option").allTextContents();
   expect(opts).toContain("ca-spec.pdf (file)");
@@ -156,6 +159,7 @@ const gh_blobs = () => (w.gh && w.gh.blobUploads) || 0;
 
 test("moving a page takes its sub-pages and keeps its content", async ({ page }) => {
   await open(page, "#/wiki/research");
+  await manage(page);
   await page.locator(".addlink summary", { hasText: "Move items here" }).click();
   await page.selectOption("#ae-item", "lamassu-ca|page:design");
   await page.locator("#aef button[type=submit]").click();
@@ -172,12 +176,14 @@ test("moving a page takes its sub-pages and keeps its content", async ({ page })
   await expect(page.locator("h1.title")).toContainText("Design");
   // and everything goes back, so the next tests find the project as it was
   await page.goto("/research/#/wiki/lamassu-ca");
+  await manage(page);
   await page.locator(".addlink summary", { hasText: "Move items here" }).click();
   for (const key of ["research|page:design", "research|file:ca-spec.pdf"]) {
     await page.selectOption("#ae-item", key);
     await page.locator("#aef button[type=submit]").click();
     await expect.poll(() => items("lamassu-ca").length).toBeGreaterThan(key.includes("design") ? 0 : 1);
     await page.reload();
+    await manage(page);
     await page.locator(".addlink summary", { hasText: "Move items here" }).click().catch(() => {});
   }
   expect(items("lamassu-ca").map(i => i.id)).toEqual(["design", "ca-spec.pdf"]);
@@ -215,18 +221,18 @@ test("addresses cannot clash between projects and articles", async ({ page }) =>
 
 test("edit a project; only an empty project can be deleted", async ({ page }) => {
   await open(page, "#/wiki/lamassu-ca");
-  await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+  await manage(page);
   const before = repo.commits.length;
   await page.locator("#ep-del").click();
   await expect(page.locator("#toast")).toContainText("only be deleted when it is empty");
   expect(repo.commits.length).toBe(before);
   await page.goto("/research/#/wiki/research");
-  await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+  await manage(page);
   await page.fill("#ep-title", "Research notes"); await page.locator("#epf button[type=submit]").click();
   await expect(page.locator("h1.title")).toContainText("Research notes");
   expect(repo.head().message.split("\n")[0]).toBe("Edit project: Research notes");
   page.once("dialog", d => d.accept());
-  await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+  await manage(page);
   await page.locator("#ep-del").click();
   await expect(page).toHaveURL(/#\/projects$/);
   expect(repo.head().files.has("projects/research/project.json")).toBe(false);
@@ -265,6 +271,7 @@ test.describe("project tags and project mode", () => {
     await page.goto("/research/#/tag/PQC");
     await expect(page.locator("#main")).toContainText("PQC migration notes");                                  // still indexed: it is in the untagged General project
     await page.goto("/research/#/wiki/pqc-programme");
+    await manage(page);
     await page.locator(".addlink summary", { hasText: "Move items here" }).click();
     await page.selectOption("#ae-item", "general|page:pqc-migration-notes");
     await page.locator("#aef button[type=submit]").click();
@@ -281,7 +288,7 @@ test.describe("project tags and project mode", () => {
 
   test("editing the project's tags changes the index; removing them re-indexes the pages", async ({ page }) => {
     await open(page, "#/wiki/pqc-programme");
-    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await manage(page);
     await page.locator("#epf .tagchip", { hasText: /^PQC$/ }).locator("span").first().click();     // untick
     await page.locator("#epf button[type=submit]").click();
     await expect(page.locator(".pr-tags")).toHaveCount(0);
@@ -348,7 +355,7 @@ test.describe("project home: quick access and introduction", () => {
   test("the introduction is Markdown, safe, and sits between the cards and the structure", async ({ page }) => {
     await open(page, "#/wiki/lamassu-ca");
     const before = repo.commits.length;
-    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await manage(page);
     await page.fill("#ep-intro", "## About this project\n\nThe **CA** design, see [[Design]].\n\n<script>window.__pwned = 1</script>\n\n[x](javascript:alert(1))\n");
     await page.locator("#epf button[type=submit]").click();
     const intro = page.locator("#proj-intro");
@@ -369,7 +376,7 @@ test.describe("project home: quick access and introduction", () => {
 
   test("emptying the introduction removes it; an empty project has no cards", async ({ page }) => {
     await open(page, "#/wiki/lamassu-ca");
-    await page.locator(".addlink summary", { hasText: "Edit project" }).click();
+    await manage(page);
     await page.fill("#ep-intro", "");
     await page.locator("#epf button[type=submit]").click();
     await expect(page.locator(".proj-intro")).toHaveCount(0);
@@ -462,7 +469,19 @@ test.describe("structure bar", () => {
 });
 
 // Last: it deletes welcome and ca-spec.pdf from the shared serial repository.
-test("delete a page (its sub-pages move up) and a PDF", async ({ page }) => {
+test("manage a project: edit links go to their forms; delete a page, a link and a PDF from the list", async ({ page }) => {
+  await open(page, "#/wiki/lamassu-ca?manage=1");
+  await expect(page.locator('.pt-act a[title="Edit"]').first()).toBeVisible();
+  const del = (type, id) => page.locator(`[data-rm="${type}"][data-id="${id}"]`);
+  page.once("dialog", d => d.accept());
+  await del("file", "ca-spec.pdf").click();
+  await expect(del("file", "ca-spec.pdf")).toHaveCount(0);
+  expect(repo.head().message.split("\n")[0]).toBe("Remove file: ca-spec.pdf");
+  expect(repo.head().files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(false);
+  expect(JSON.stringify(items("lamassu-ca"))).not.toContain("ca-spec.pdf");
+});
+
+test("delete a page (its sub-pages move up) from its Tools menu", async ({ page }) => {
   await open(page, "#/wiki/welcome");
   page.once("dialog", d => d.accept());
   await page.locator("#tools summary").click();
@@ -471,10 +490,4 @@ test("delete a page (its sub-pages move up) and a PDF", async ({ page }) => {
   expect(repo.head().message.split("\n")[0]).toMatch(/^Remove page: /);
   expect([...repo.head().files.keys()].some(p => p.includes("/pages/welcome/"))).toBe(false);
   expect(JSON.stringify(items("general"))).not.toContain('"welcome"');
-  await page.goto("/research/#/file/ca-spec.pdf");
-  page.once("dialog", d => d.accept());
-  await page.locator("#f-del").click();
-  await expect(page).toHaveURL(/#\/projects$/);
-  expect(repo.head().message.split("\n")[0]).toBe("Remove file: ca-spec.pdf");
-  expect(repo.head().files.has("projects/lamassu-ca/files/ca-spec.pdf")).toBe(false);
 });
