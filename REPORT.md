@@ -77,3 +77,13 @@ Todo lo de `docs/SETUP.md` §7:
 - **Verificado contra GitHub real (solo lectura):** las consultas `ListFiles` y `FileRevs` se aceptan sin errores de esquema.
 - **Sin verificar:** el tamaño máximo real que acepta `POST /git/blobs` (se asume que hasta el límite de 100 MB por archivo); que el `PATCH` de la ref funcione con el ruleset (sin force-push); el visor en Safari e iOS; y PDFs reales grandes o con JPEG 2000 / JBIG2 (wasm incluido).
 - **Sin hacer:** búsqueda dentro de los PDFs, borrado de archivos y lista de "artículos que enlazan este archivo".
+
+## 8. Ampliación: enlaces externos
+
+- **Datos:** un archivo `links/<id>.json` por enlace (no un único `links.json`, para que dos altas simultáneas no choquen). Campos: `url`, `title`, `description` (opcional), `kind` (`news`, `blog`, `paper`, `video`, `docs`, `other`), `tags` (de `tags.json`, al menos una), `addedAt/By`, `updatedAt/By`. El id sale del título (con sufijo `-2`, `-3` si existe).
+- **Interfaz:** página *External links* (menú lateral) con filtro por texto, tipo y etiqueta, y formulario para añadir y editar. La página de cada etiqueta lista también sus enlaces. Cualquier editor puede añadir, editar y borrar: los borrados quedan en el historial de git. Un lector solo los ve.
+- **Seguridad:** solo `http(s)`, sin usuario ni contraseña (se rechazan `javascript:`, `ftp:`…); detección de duplicados por URL; enlaces con `target="_blank" rel="noopener noreferrer nofollow"`. La app no contacta con esos sitios, así que no hay vistas previas ni favicons (la CSP los bloquearía y expondrían qué se lee).
+- **Git:** `createCommitOnBranch` con reintentos (`commitChanges`), mensaje `Add|Edit|Remove link: <título>` y trailers `Know-how-Link` y `Link-Host`.
+- **Validador:** comprueba `links/` (nombre, URL, tipo, etiquetas, campos), con 4 tests nuevos. **Tests:** 5 tests Playwright nuevos (alta con commit y trailers, URLs peligrosas/sin etiqueta/duplicados, editar y borrar, filtros y página de etiqueta, lector sin permisos).
+- **Sin verificar con GitHub real:** las consultas `ListLinks` y `LinkBlobs` tienen la misma forma que `ListFiles`/`PageMetas`, que sí se validaron contra el esquema, pero no se ejecutaron tal cual.
+- **Sin hacer:** los enlaces no entran en la búsqueda global ni en *Recent changes*; no hay importación masiva ni extracción automática del título de la página.

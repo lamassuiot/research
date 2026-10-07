@@ -10,6 +10,8 @@ const STATUSES = ["draft", "reviewed", "validated", "deprecated"];
 const FORMATS = ["md", "html"];
 const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
 const MAX_FILE = 50 * 1024 * 1024;
+const LINK_FILE_RE = /^[a-z0-9][a-z0-9-]{0,79}\.json$/;
+const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
 const REQUIRED_STR = ["title", "abstract", "updatedAt", "updatedBy", "createdAt", "createdBy", "sha256"];
 
 export function validate(root) {
@@ -67,6 +69,23 @@ export function validate(root) {
       if (m.sha256 !== sha) err(mp, "sha256 does not match the content");
     }
   }
+  const linksDir = path.join(root, "links");
+  for (const name of fs.existsSync(linksDir) ? fs.readdirSync(linksDir) : []) {
+    const rel = `links/${name}`;
+    if (!LINK_FILE_RE.test(name) || !fs.statSync(path.join(linksDir, name)).isFile()) { err(rel, "invalid link file name (lowercase letters, digits and hyphens, ending in .json)"); continue; }
+    const l = readJson(rel);
+    if (!l) continue;
+    let ok = false;
+    try { const u = new URL(l.url); ok = (u.protocol === "http:" || u.protocol === "https:") && !u.username && !u.password; } catch { /* not a URL */ }
+    if (!ok) err(rel, "url must be a full http(s) address without credentials");
+    if (typeof l.title !== "string" || !l.title.trim() || l.title.length > 200) err(rel, "title must be 1-200 characters");
+    if (l.description !== undefined && (typeof l.description !== "string" || l.description.length > 300)) err(rel, "description must be at most 300 characters");
+    if (!LINK_KINDS.includes(l.kind)) err(rel, `kind must be one of ${LINK_KINDS.join(", ")}`);
+    if (!Array.isArray(l.tags) || l.tags.length < 1 || l.tags.length > 20) err(rel, "tags must have between 1 and 20 entries");
+    else for (const t of l.tags) if (!tagList.includes(t)) err(rel, `tag "${t}" is not listed in tags.json`);
+    for (const k of ["addedAt", "addedBy", "updatedAt", "updatedBy"]) if (typeof l[k] !== "string" || !l[k]) err(rel, `"${k}" must be a non-empty string`);
+  }
+
   const filesDir = path.join(root, "files");
   for (const name of fs.existsSync(filesDir) ? fs.readdirSync(filesDir) : []) {
     const rel = `files/${name}`, full = path.join(filesDir, name);

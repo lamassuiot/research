@@ -91,3 +91,23 @@ test("a bad file name or a folder in files/ fails", () => {
   assert.ok(errs.some((e) => e.startsWith("files/Bad Name.pdf: invalid file name")), errs.join("\n"));
   assert.ok(errs.some((e) => e.startsWith("files/sub: only PDF files")), errs.join("\n"));
 });
+
+const goodLink = { url: "https://example.org/post", title: "A post", description: "", kind: "blog", tags: ["PQC"],
+  addedAt: "2026-10-07T00:00:00.000Z", addedBy: "ada", updatedAt: "2026-10-07T00:00:00.000Z", updatedBy: "ada" };
+const withLink = (l) => (d) => { fs.mkdirSync(path.join(d, "links")); fs.writeFileSync(path.join(d, "links", "a-post.json"), JSON.stringify(l, null, 2) + "\n"); };
+test("a valid link passes", () => { assert.deepEqual(validate(fixture(withLink(goodLink))), []); });
+test("a javascript: or credentialed link address fails", () => {
+  for (const url of ["javascript:alert(1)", "https://user:pw@example.org/", "not a url"]) {
+    const errs = validate(fixture(withLink({ ...goodLink, url })));
+    assert.ok(errs.some((e) => e.includes("url must be a full http(s) address")), url + "\n" + errs.join("\n"));
+  }
+});
+test("a link with an unknown tag, kind or no tags fails", () => {
+  assert.ok(validate(fixture(withLink({ ...goodLink, tags: ["Nope"] }))).some((e) => e.includes('tag "Nope" is not listed')));
+  assert.ok(validate(fixture(withLink({ ...goodLink, tags: [] }))).some((e) => e.includes("tags must have between 1 and 20")));
+  assert.ok(validate(fixture(withLink({ ...goodLink, kind: "tweet" }))).some((e) => e.includes("kind must be one of")));
+});
+test("a bad link file name fails", () => {
+  const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, "links")); fs.writeFileSync(path.join(d, "links", "Bad Name.json"), "{}"); }));
+  assert.ok(errs.some((e) => e.startsWith("links/Bad Name.json: invalid link file name")), errs.join("\n"));
+});

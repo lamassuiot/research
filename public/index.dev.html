@@ -473,6 +473,21 @@ body.gated .gate{display:flex}
 .tagchip input:checked + span{background:var(--link);border-color:var(--link);color:#fff}
 .tagchip input:focus-visible + span{outline:2px solid var(--link);outline-offset:2px}
 .hint.err{color:var(--err)}
+/* ---------- external links ---------- */
+.linklist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.linkcard{border:1px solid var(--rule);border-radius:12px;padding:10px 14px;background:var(--paper)}
+.lc-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.lc-title{font-weight:700;font-size:18px}
+.lc-title .ms{font-size:16px;margin-left:4px;vertical-align:-2px;color:var(--ink-3)}
+.lc-host{font-size:13.5px;color:var(--ink-3)}
+.lc-d{margin:4px 0 6px}
+.lc-f{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:14.5px}
+.lc-by{margin-left:auto}
+.pill.kind{background:var(--slate-soft);border-color:var(--slate-border)}
+details.addlink{margin:0 0 14px}
+details.addlink > summary{cursor:pointer;display:inline-flex;list-style:none}
+details.addlink[open] > summary{margin-bottom:10px}
+.linkfilter{margin:6px 0 8px}
 /* ---------- PDF files ---------- */
 .file-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
 .file-bar .sp,.pdfv-bar .sp{flex:1}
@@ -523,6 +538,7 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
         <li><a href="#/" data-nav="home"><span class="ms" aria-hidden="true">home</span>Main page</a></li>
         <li><a href="#/all" data-nav="all"><span class="ms" aria-hidden="true">list</span>All articles</a></li>
         <li><a href="#/tags" data-nav="tags"><span class="ms" aria-hidden="true">sell</span>All tags</a></li>
+        <li><a href="#/links" data-nav="links"><span class="ms" aria-hidden="true">link</span>External links</a></li>
         <li><a href="#/files" data-nav="files"><span class="ms" aria-hidden="true">picture_as_pdf</span>Files</a></li>
         <li><a href="#/recent" data-nav="recent"><span class="ms" aria-hidden="true">history</span>Recent changes</a></li>
         <li><a href="#/random" data-nav="random"><span class="ms" aria-hidden="true">shuffle</span>Random article</a></li>
@@ -825,11 +841,61 @@ class GitHubStore{
       }
     }
   }
+  /* ---- external links: links/<id>.json (one file per link, so two people adding links never conflict) */
+  async listLinks(){
+    const d = await this.gql("ListLinks", `query ListLinks($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:this.branch + ":links"});
+    const entries = (d.repository && d.repository.object && d.repository.object.entries) || [];
+    const ids = entries.filter(e => e.type === "blob" && LINK_FILE_RE.test(e.name)).map(e => e.name.slice(0, -5));
+    const out = [];
+    for(let i = 0; i < ids.length; i += 50){
+      const chunk = ids.slice(i, i + 50), vars = {owner:this.owner, name:this.repo};
+      chunk.forEach((id, k) => vars["e" + k] = `${this.branch}:links/${id}.json`);
+      const q = `query LinkBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
+      const r = (await this.gql("LinkBlobs", q, vars)).repository || {};
+      chunk.forEach((id, k) => { const m = metaOf(r["m" + k] && r["m" + k].text); if(m && typeof m.url === "string") out.push(Object.assign({id}, m)); });
+    }
+    return out;
+  }
+  /* One commit on main with retries when main moved (same scheme as save()). */
+  async commitChanges(headline, body, additions, deletions){
+    for(let attempt = 1; ; attempt++){
+      const h = (await this.gql("SaveHead", `query SaveHead($owner:String!,$name:String!,$ref:String!,$metaExpr:String!){ repository(owner:$owner,name:$name){
+          ref(qualifiedName:$ref){ target { oid } } meta: object(expression:$metaExpr){ ${BLOB} } } }`,
+        this.v({metaExpr:`${this.branch}:tags.json`}))).repository || {};
+      const headOid = h.ref && h.ref.target && h.ref.target.oid;
+      if(!headOid) throw new Error("The content repository has no " + this.branch + " branch");
+      const input = {branch:{repositoryNameWithOwner:this.full, branchName:this.branch}, expectedHeadOid:headOid, message:{headline, body},
+        fileChanges:{additions, deletions}};
+      try{
+        const r = await this.gql("CreateCommit", `mutation CreateCommit($input: CreateCommitOnBranchInput!){ createCommitOnBranch(input:$input){ commit { oid } } }`, {input});
+        return {rev:r.createCommitOnBranch.commit.oid};
+      }catch(e){
+        if(!/expectedHeadOid|point to/i.test(e.message || "")) throw e;
+        if(attempt >= 3) throw new Error("Someone else saved at the same time; please retry");
+      }
+    }
+  }
+  async saveLink(id, d, prev){
+    if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
+    const now = new Date().toISOString();
+    const meta = {url:d.url, title:cleanText(d.title, 200), description:cleanText(d.description, 300), kind:LINK_KINDS.includes(d.kind) ? d.kind : "other",
+      tags:[...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : S.me.id, updatedAt:now, updatedBy:S.me.id};
+    if(!meta.title || !isHttpUrl(meta.url)) throw new Error("A title and an http(s) address are required");
+    if(!meta.tags.length || meta.tags.length > 20) throw new Error("Choose between 1 and 20 tags");
+    const host = new URL(meta.url).hostname;
+    return this.commitChanges(`${prev ? "Edit" : "Add"} link: ${meta.title}`.slice(0, 300), `Know-how-Link: ${id}\nLink-Host: ${host}`,
+      [{path:`links/${id}.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}], []);
+  }
+  async deleteLink(id, title){
+    if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address");
+    return this.commitChanges(`Remove link: ${cleanText(title, 200) || id}`, `Know-how-Link: ${id}`, [], [{path:`links/${id}.json`}]);
+  }
 }
 
 class MemoryStore{
   constructor(){
-    this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {};
+    this.kind = "memory"; this.pages = {}; this.revs = {}; this.files = {}; this.links = {};
     const at = new Date().toISOString();
     const seed = (slug, title, tags, abstract, content) => {
       const rid = slug + "~1";
@@ -841,6 +907,13 @@ class MemoryStore{
   }
   async me(){ return {id:"you", name:"You", role:"admin", isAdmin:true, canWrite:true}; }
   async tags(){ return DEV_TAGS.slice(); }
+  async listLinks(){ return Object.entries(this.links).map(([id, m]) => Object.assign({id}, m)); }
+  async saveLink(id, d, prev){
+    const now = new Date().toISOString();
+    this.links[id] = {url:d.url, title:d.title, description:d.description || "", kind:d.kind || "other", tags:d.tags || [], addedAt:prev ? prev.addedAt : now, addedBy:prev ? prev.addedBy : "you", updatedAt:now, updatedBy:"you"};
+    return {rev:id};
+  }
+  async deleteLink(id){ delete this.links[id]; return {rev:id}; }
   async listFiles(){ return Object.keys(this.files).map(name => ({name, size:this.files[name][0].data.byteLength})); }
   async fileRevs(name){ return (this.files[name] || []).map(v => ({id:v.id, at:v.at, by:"you", summary:v.summary, size:v.data.byteLength})); }
   async getFile(name, rev){ const v = (this.files[name] || []).find(x => !rev || x.id === rev); return v ? v.data.slice(0) : null; }
@@ -959,7 +1032,7 @@ function showGate(kind, detail){
 }
 
 /* ---------------------------------------------------------------- state */
-const S = { editing:null, files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
+const S = { editing:null, links:[], files:[], tags:[], store:null, me:{id:null, canWrite:false}, pages:[], names:{}, pagesAt:0, nav:0, texts:{}, spy:null };
 
 const allTags = () => [...S.tags, ...[...new Set(S.pages.flatMap(p => p.tags||[]))].filter(t => !S.tags.includes(t)).sort((a,b)=>a.localeCompare(b))];
 async function refreshPages(force){
@@ -1185,6 +1258,7 @@ function route(){
     case "info":       return go(viewInfo(seg[1]));
     case "access":     return go(viewAccess());
     case "automation": return go(viewAutomation());
+    case "links":      return go(viewLinks(params));
     case "files":      return go(viewFiles());
     case "file":       return go(viewFile(seg[1], params));
     case "recent":     return go(viewRecent());
@@ -1307,6 +1381,8 @@ async function viewList(title, pred, kind, help){
   const nav = S.nav;
   const all = await refreshPages(true);
   const pages = all.filter(pred).sort((a,b)=>a.title.localeCompare(b.title));
+  const tagLinks = kind === "Tag" ? (await refreshLinks()).filter(l => (l.tags||[]).includes(title)).sort((a,b) => (b.addedAt||"").localeCompare(a.addedAt||"")) : [];
+  if(tagLinks.length) await resolveNames(tagLinks.map(l => l.addedBy));
   const what = kind==="Tag" ? `with this tag` : kind==="Maturity" ? `at this maturity level` : `in ${SITE}`;
   setMainFor(nav, `<h1 class="title">${kind?`<span class="ns">${esc(kind)}:</span>`:""}${esc(title)}</h1>
     ${help?ambox(kind==="Maturity"&&title==="Draft"?"warn":"slate", "info", `<p>${esc(help)}</p>`):""}
@@ -1314,7 +1390,9 @@ async function viewList(title, pred, kind, help){
       <p class="muted" style="margin:0 0 10px;font-size:16px">The following ${pages.length} page${pages.length>1?"s are":" is"} ${what}${kind?`, out of ${all.length} total`:""}.</p>
       ${groupedList(pages)}`
     : `<div class="empty">No articles here yet.${S.me.canWrite && kind==="Tag" ? ` <a href="#/new?tag=${enc(title)}">Write one</a>.`:""}</div>`}
+    ${tagLinks.length ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 4px">External links tagged “${esc(title)}”</h2><ul class="linklist">${tagLinks.map(linkCard).join("")}</ul><p style="margin:8px 0 0"><a href="#/links?tag=${enc(title)}">All links with this tag →</a></p>` : ""}
     ${footer()}`);
+  $$(".linklist [data-del]").forEach(b => b.remove());
 }
 async function viewTags(){
   const nav = S.nav;
@@ -1633,6 +1711,9 @@ Articles are written in **Markdown** (GitHub flavour: tables, fenced code blocks
 | \\\`code\\\` and \\\`\\\`\\\` fences | Inline code and code blocks |
 
 Always fill in the **edit summary**: it is the commit message other engineers will read in the history.
+
+## External links
+The **External links** page keeps news, blogs, papers and videos worth remembering, each with a title, a short note and tags. Links open in a new tab and also appear on the page of each of their tags. Anyone who can edit can add, change or remove links (the repository history keeps every change). To link from inside an article, just use normal Markdown: \`[text](https://…)\`.
 
 ## PDF files
 Manuals, specifications and papers live on the **Files** page (PDF only, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; uploading a file with the same name adds a new version and keeps the old ones.
@@ -2017,6 +2098,82 @@ function hydrateEmbeds(root){
       catch(e){ box.innerHTML = ambox("err","error",`<p>Could not load ${esc(name)}: ${esc(e.message || e)}</p>`); b.disabled = false; }
     };
   });
+}
+
+/* ---------------------------------------------------------------- external links (news, blogs, papers…) */
+const LINK_ID_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
+const LINK_FILE_RE = /^[a-z0-9][a-z0-9-]{0,79}\.json$/;
+const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
+const KIND_LABEL = {news:"News", blog:"Blog", paper:"Paper", video:"Video", docs:"Docs", other:"Other"};
+function isHttpUrl(u){ try{ const x = new URL(u); return (x.protocol === "http:" || x.protocol === "https:") && !x.username && !x.password; }catch{ return false; } }
+const hostOf = u => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch{ return ""; } };
+async function refreshLinks(){ try{ S.links = await S.store.listLinks(); }catch(e){ console.warn(e); } return S.links; }
+function linkCard(l){
+  const tags = (l.tags || []).map(t => `<a class="tag" href="#/links?tag=${enc(t)}">${esc(t)}</a>`).join("");
+  return `<li class="linkcard" data-id="${esc(l.id)}">
+    <div class="lc-h"><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer nofollow" class="lc-title">${esc(l.title)}<span class="ms" aria-hidden="true">open_in_new</span></a>
+      <span class="pill sm kind">${esc(KIND_LABEL[l.kind] || "Other")}</span></div>
+    <div class="lc-host mono">${esc(hostOf(l.url))}</div>
+    ${l.description ? `<p class="lc-d">${esc(l.description)}</p>` : ""}
+    <div class="lc-f">${tags}<span class="muted lc-by">added by ${personSpan(l.addedBy)}, ${fmtMW(l.addedAt)}</span>
+      ${S.me.canWrite ? `<span class="lc-act"><a href="#/links?edit=${enc(l.id)}" data-edit="${esc(l.id)}">Edit</a> · <button type="button" class="linkish" data-del="${esc(l.id)}">Remove</button></span>` : ""}</div></li>`;
+}
+async function viewLinks(params){
+  const nav = S.nav;
+  setMainFor(nav, '<div class="loading">Loading links…</div>');
+  await refreshPages();
+  const links = (await refreshLinks()).slice().sort((a,b) => (b.addedAt||"").localeCompare(a.addedAt||""));
+  await resolveNames(links.map(l => l.addedBy));
+  const tag = params.get("tag") || "", kind = params.get("kind") || "", q = (params.get("q") || "").toLowerCase();
+  const editing = params.get("edit") ? links.find(l => l.id === params.get("edit")) : null;
+  const shown = links.filter(l => (!tag || (l.tags||[]).includes(tag)) && (!kind || l.kind === kind)
+    && (!q || [l.title, l.description, l.url, ...(l.tags||[])].join(" ").toLowerCase().includes(q)));
+  const d = editing || {url:"", title:"", description:"", kind:"other", tags:tag && S.tags.includes(tag) ? [tag] : []};
+  const tagOpts = [...S.tags, ...d.tags.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="ltag" value="${esc(t)}" ${d.tags.includes(t)?"checked":""}><span>${esc(t)}</span></label>`).join("");
+  setMainFor(nav, `<h1 class="title">External links</h1><div class="tabs"><nav><a class="on">Links</a></nav><nav></nav></div><div class="maturity"></div>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">News, blogs, papers and other pages worth keeping. Links open in a new tab; ${esc(SITE)} does not contact those sites.</p>
+    ${S.me.canWrite ? `<details class="addlink" ${editing || params.get("new") ? "open" : ""}><summary class="btn small"><span class="ms" aria-hidden="true">add_link</span>${editing ? "Edit link" : "Add a link"}</summary>
+      <form class="form" id="lf" novalidate>
+        <div class="row"><div style="grid-column:span 2"><label for="l-url">Address</label><input type="url" id="l-url" value="${esc(d.url)}" placeholder="https://…" required spellcheck="false"></div>
+          <div><label for="l-kind">Type</label><select id="l-kind">${LINK_KINDS.map(k => `<option value="${k}" ${k===d.kind?"selected":""}>${KIND_LABEL[k]}</option>`).join("")}</select></div></div>
+        <div class="row"><div style="grid-column:span 3"><label for="l-title">Title</label><input type="text" id="l-title" value="${esc(d.title)}" maxlength="200" required></div></div>
+        <div class="row"><div style="grid-column:span 3"><label for="l-desc">Why it matters <small class="muted">(optional)</small></label><input type="text" id="l-desc" value="${esc(d.description)}" maxlength="300"></div></div>
+        <fieldset class="tagpick"><legend>Tags <small class="muted">(at least one)</small></legend><div class="tagchips">${tagOpts || '<span class="muted">No tags defined yet.</span>'}</div></fieldset>
+        <div class="actions"><button class="btn primary" id="l-save" type="submit"><span class="ms" aria-hidden="true">${editing ? "save" : "add_link"}</span><span>${editing ? "Save changes" : "Add link"}</span></button>
+          ${editing ? '<a class="btn" href="#/links">Cancel</a>' : ""}</div>
+      </form></details>` : ""}
+    <form class="toolbar linkfilter" id="lff" role="search"><input type="search" id="lq" value="${esc(params.get("q")||"")}" placeholder="Filter links" aria-label="Filter links">
+      <select id="lk" aria-label="Type"><option value="">All types</option>${LINK_KINDS.map(k => `<option value="${k}" ${k===kind?"selected":""}>${KIND_LABEL[k]}</option>`).join("")}</select>
+      ${tag ? `<a class="tag" href="#/links${kind||q ? "?" + new URLSearchParams({...(kind?{kind}:{}), ...(q?{q}:{})}) : ""}">${esc(tag)} ✕</a>` : ""}</form>
+    ${shown.length ? `<p class="muted" style="margin:6px 0 4px;font-size:15px">${shown.length} link${shown.length>1?"s":""}${links.length !== shown.length ? ` of ${links.length}` : ""}.</p><ul class="linklist">${shown.map(linkCard).join("")}</ul>`
+      : `<div class="empty">${links.length ? "No links match this filter." : "No links yet."}</div>`}
+    ${footer()}`);
+  const go = () => { const p = new URLSearchParams(); if($("#lq").value.trim()) p.set("q", $("#lq").value.trim()); if($("#lk").value) p.set("kind", $("#lk").value); if(tag) p.set("tag", tag); location.hash = "#/links" + (p.toString() ? "?" + p : ""); };
+  $("#lff").onsubmit = e => { e.preventDefault(); go(); };
+  $("#lk").onchange = go;
+  $$("[data-del]").forEach(b => b.onclick = async () => {
+    const l = links.find(x => x.id === b.dataset.del); if(!l || !confirm(`Remove “${l.title}”? It stays in the repository history.`)) return;
+    b.disabled = true;
+    try{ await S.store.deleteLink(l.id, l.title); toast("Link removed."); route(); }catch(err){ b.disabled = false; toast(err.message || String(err), 7000); }
+  });
+  const f = $("#lf"); if(!f) return;
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const url = $("#l-url").value.trim(), title = $("#l-title").value.trim(), tags = $$("input[name=ltag]:checked").map(x => x.value);
+    if(!isHttpUrl(url)){ toast("Enter a full http(s) address, without a user name or password."); $("#l-url").focus(); return; }
+    if(!title){ toast("Give the link a title."); $("#l-title").focus(); return; }
+    if(!tags.length){ toast("Choose at least one tag."); return; }
+    const href = new URL(url).href, dup = links.find(l => new URL(l.url).href === href && (!editing || l.id !== editing.id));
+    if(dup){ toast(`Already added as “${dup.title}”.`, 6000); return; }
+    let id = editing ? editing.id : slugify(title).slice(0, 70).replace(/-+$/, ""); if(!LINK_ID_RE.test(id)) id = "link-" + Date.now().toString(36);
+    if(!editing){ const base = id; for(let n = 2; links.some(l => l.id === id); n++) id = base + "-" + n; }
+    const btn = $("#l-save"); btn.disabled = true;
+    try{
+      await S.store.saveLink(id, {url:href, title, description:$("#l-desc").value.trim(), kind:$("#l-kind").value, tags}, editing);
+      toast(editing ? "Link saved." : "Link added.");
+      const dest = "#/links" + (tag ? "?tag=" + enc(tag) : ""); if(location.hash === dest) route(); else location.hash = dest;
+    }catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
+  };
 }
 
 /* ---------------------------------------------------------------- access and automation */

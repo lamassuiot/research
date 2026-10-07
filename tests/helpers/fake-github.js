@@ -188,7 +188,11 @@ async function installFakeGitHub(page, opts = {}) {
         const names = [...new Set([...repo.head().files.keys()].filter(f => f.startsWith("pages/")).map(f => f.split("/")[1]))];
         data = { repository: { object: { entries: names.map(name => ({ name, type: "tree" })) } } }; break;
       }
-      case "PageMetas": case "RecentMetas": data = { repository: metas(v) }; break;
+      case "ListLinks": {
+        const names = [...repo.head().files.keys()].filter(f => /^links\/[^/]+$/.test(f)).map(f => f.slice(6));
+        data = { repository: { object: names.length ? { entries: names.map(name => ({ name, type: "blob" })) } : null } }; break;
+      }
+      case "PageMetas": case "RecentMetas": case "LinkBlobs": data = { repository: metas(v) }; break;
       case "GetPage": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path, 1).map(c => ({ oid: c.oid }))) } }; break;
       case "ListRevs": data = { repository: ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) }; break;
       case "GetRev": { const c = repo.find(v.sha); data = { repository: { commit: c ? node(c) : null, meta: blob(repo.read(v.metaExpr)) } }; break; }

@@ -6,6 +6,7 @@ Wiki versionada de investigación de Lamassu (PKI, X.509, PQC, RFCs…), publica
 - Los artículos viven en **`lamassuiot/research-content`** (privado). El navegador los lee y escribe con la API de GitHub y el token del propio usuario; cada guardado es un commit suyo.
 - Una función de **Cloudflare Workers** (plan gratuito) canjea el código OAuth por el token, porque eso exige el *client secret*.
 - Los artículos se clasifican con **etiquetas** (lista cerrada en `tags.json`). No hay categorías.
+- **Enlaces externos** (noticias, blogs, papers): un archivo `links/<id>.json` por enlace en el repo de contenido, con título, nota, tipo y etiquetas. Página *External links* con filtros; también salen en la página de cada etiqueta.
 - **PDFs** (manuales, especificaciones) en `files/` del mismo repo privado, hasta 50 MB. Se enlazan con `[[File:nombre.pdf]]` (o `#page=12`), se incrustan con `![[File:nombre.pdf]]` y se ven en un visor propio (pdf.js, en `public/vendor/pdfjs/`).
 
 ```
