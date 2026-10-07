@@ -93,6 +93,25 @@ test.describe("editor", () => {
     expect(JSON.parse(repo.head().files.get("projects/general/pages/my-rfc-notes/meta.json")).revN).toBe(4);
   });
 
+  test("the change bar highlights what changed against the previous revision and walks the changes", async ({ page }) => {
+    await open(page, "#/wiki/general/my-rfc-notes", { repo });
+    const bar = page.locator(".chgbar");
+    await expect(bar).toBeVisible();
+    await expect(page.locator("#prose .chg-add, #prose .chg-mod").first()).toContainText("After the race.");
+    await expect(bar.locator(".chg-n")).toHaveText("– / 1");
+    const options = await bar.locator("select option").count();
+    expect(options).toBe(3);                                                       // revisions 3, 2 and 1
+    await bar.locator('[data-a="next"]').click();
+    await expect(bar.locator(".chg-n")).toHaveText("1 / 1");
+    await expect(page.locator("#prose .chg-cur")).toHaveCount(1);
+    await bar.locator("select").selectOption({ index: options - 1 });              // against the first revision
+    await expect(page.locator("#prose .chg-add, #prose .chg-mod").first()).toBeVisible();
+    await bar.locator('[data-a="off"]').click();
+    await expect(page.locator("#prose .chg-add, #prose .chg-mod, #prose .chg-ghost")).toHaveCount(0);
+    await bar.locator('[data-a="on"]').click();
+    await expect(bar.locator("select")).toBeVisible();
+  });
+
   test("a large HTML report is saved and shown in a sandboxed iframe", async ({ page }) => {
     await open(page, "#/new", { repo });
     await page.fill("#f-title", "Big report");
