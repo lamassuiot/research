@@ -1,0 +1,11 @@
+{
+  "siteName": "Lamassu Research",
+  "basePath": "/research/",
+  "owner": "lamassuiot",
+  "contentRepo": "research-content",
+  "branch": "main",
+  "githubClientId": "test-client",
+  "authWorkerUrl": "https://auth.test",
+  "accessTeamUrl": "https://github.com/orgs/lamassuiot/teams/research-editors",
+  "devMemoryStore": false
+}
