@@ -8,7 +8,6 @@
 //   projects/<id>/files/<name>.pdf
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
@@ -19,7 +18,7 @@ const MAX_FILE = 50 * 1024 * 1024;
 const MAX_TREE_DEPTH = 8;
 const LINK_FILE_RE = /^[a-z0-9][a-z0-9-]{0,79}\.json$/;
 const LINK_KINDS = ["news", "blog", "paper", "video", "docs", "other"];
-const REQUIRED_STR = ["title", "abstract", "updatedAt", "updatedBy", "createdAt", "createdBy", "sha256"];
+const REQUIRED_STR = ["title", "abstract", "updatedAt", "updatedBy", "createdAt", "createdBy"];
 
 export function validate(root) {
   const errors = [];
@@ -89,7 +88,6 @@ export function validate(root) {
       if (!STATUSES.includes(m.status)) err(mp, `status must be one of ${STATUSES.join(", ")}`);
       if (!FORMATS.includes(m.format)) err(mp, `format must be one of ${FORMATS.join(", ")}`);
       if (!Number.isInteger(m.revN) || m.revN < 1) err(mp, "revN must be an integer >= 1");
-      if (!Number.isInteger(m.size) || m.size < 0) err(mp, "size must be a non-negative integer");
       if (m.category !== undefined) err(mp, "category is not used: use tags");
       if (!Array.isArray(m.tags) || m.tags.length > 20) err(mp, "tags must be an array of at most 20 entries");
       else {
@@ -103,12 +101,6 @@ export function validate(root) {
       const contents = listDir(dir).filter((f) => /^content\./.test(f));
       if (contents.length !== 1) err(dir, `expected exactly one content file, found ${contents.length}`);
       else if (FORMATS.includes(m.format) && contents[0] !== `content.${m.format}`) err(dir, `${contents[0]} does not match format "${m.format}"`);
-      else {
-        const buf = fs.readFileSync(path.join(root, dir, contents[0]));
-        if (m.size !== buf.length) err(mp, `size is ${m.size} but the content has ${buf.length} bytes`);
-        const sha = crypto.createHash("sha256").update(buf).digest("hex");
-        if (m.sha256 !== sha) err(mp, "sha256 does not match the content");
-      }
     }
 
     /* links */

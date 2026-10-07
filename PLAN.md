@@ -157,7 +157,7 @@ export default {
 | `listRevs(slug)` | GraphQL: `history(path: "pages/<slug>", first: 100)` con autor, fecha y mensaje, y por cada commit `file(path: ".../meta.json")` para `revN`, tamaño, estado y título. Es una sola petición |
 | `getRev(slug, sha)` | `meta.json` en ese commit (GraphQL) + contenido con `GET /repos/…/contents/<path>?ref=<sha>` y `Accept: application/vnd.github.raw`. Se usa la vía REST porque GraphQL puede truncar blobs grandes, y los informes HTML pasan de 400 KB |
 | `recent(limit)` | GraphQL: `history(path: "pages", first: limit)`. El slug sale del trailer `Know-how-Page`, y los metadatos de cada revisión se piden en una segunda consulta con aliases |
-| `save(slug, d, baseRevN)` | Leer `meta.json` y el `oid` de `main`, calcular `revN + 1` y hacer la mutación **`createCommitOnBranch`** con `expectedHeadOid`: un commit atómico de `meta.json` y `content.*` (y el borrado del formato anterior si cambia), con el mensaje `summary` y los trailers `Know-how-Page/Revision/Status`, `Content-SHA256`. Si `main` se movió entretanto, se relee y se reintenta (hasta 3 veces). `conflict` se calcula con `baseRevN`, como ahora. El autor del commit es el propio usuario |
+| `save(slug, d, baseRevN)` | Leer `meta.json` y el `oid` de `main`, calcular `revN + 1` y hacer la mutación **`createCommitOnBranch`** con `expectedHeadOid`: un commit atómico de `meta.json` y `content.*` (y el borrado del formato anterior si cambia), con el mensaje `summary` y los trailers `Know-how-Page/Revision/Status`. Si `main` se movió entretanto, se relee y se reintenta (hasta 3 veces). `conflict` se calcula con `baseRevN`, como ahora. El autor del commit es el propio usuario |
 | `names(ids)` | Los autores ya vienen con nombre en los commits |
 | búsqueda | En el cliente: primero metadatos; la primera búsqueda descarga con GraphQL el texto de los `content.md` y lo guarda en memoria |
 
@@ -227,7 +227,7 @@ El formato de contenido deja de ser idéntico al de ik-library: para importar ar
 
 ### 3.5 Repo de contenido: validación
 Cualquiera con Write puede hacer push directo con git, lo que viene bien para importaciones masivas. Para que eso no rompa la wiki:
-- **Action `validate`** en `research-content` en cada push: comprueba que el slug cumple `^[a-z0-9][a-z0-9-]{0,79}$`, que existe `meta.json` con los campos obligatorios, que las etiquetas están en `tags.json` (al menos una), que el `content.<format>` coincide con `meta.format`, que el `sha256` es correcto y que `revN` sube de uno en uno. Si algo falla, el check queda en rojo y se abre un issue.
+- **Action `validate`** en `research-content` en cada push: comprueba que el slug cumple `^[a-z0-9][a-z0-9-]{0,79}$`, que existe `meta.json` con los campos obligatorios, que las etiquetas están en `tags.json` (al menos una), que el `content.<format>` coincide con `meta.format`, y que `revN` sube de uno en uno. Si algo falla, el check queda en rojo y se abre un issue.
 - `README.md` en el repo de contenido con la estructura y el formato de los trailers.
 
 ---

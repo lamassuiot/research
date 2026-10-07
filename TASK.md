@@ -139,8 +139,6 @@ research-content/
   "format": "md",
   "abstract": "…",
   "revN": 3,
-  "size": 1234,
-  "sha256": "<hex del contenido en UTF-8>",
   "updatedAt": "2026-10-07T10:00:00.000Z",
   "updatedBy": "<login de GitHub>",
   "createdAt": "…",
@@ -153,7 +151,6 @@ research-content/
 - `title`: hasta 200 caracteres.
 - `abstract`: hasta 240 caracteres.
 - `revN`: empieza en 1 y sube de uno en uno en cada guardado del artículo.
-- `size`: bytes UTF-8 del contenido.
 - `title` y `createdAt/By` se conservan del primer guardado (igual que en ik-library).
 
 **Mensaje de commit de cada guardado:**
@@ -164,7 +161,6 @@ research-content/
 Know-how-Page: <slug>
 Know-how-Revision: <revN>
 Know-how-Status: <status>
-Content-SHA256: <sha256>
 ```
 
 El autor del commit es el usuario. Lo pone GitHub automáticamente al usar su token.
@@ -307,7 +303,7 @@ Módulo dentro de la plantilla. **El token vive solo en una variable JS (`AUTH.t
 **`save()` paso a paso:**
 1. **Validar:** título no vacío (en creación), contenido no vacío, `d.tags` con 1-20 etiquetas presentes en `S.tags` (salvo las que ya tuviera la página y se hayan conservado), `status` y `format` válidos. Limpia `summary`, `title` y `abstract` como `clean()` de ik-library: quitar `\r\n\0<>` y recortar a la longitud máxima.
 2. **`SaveHead`:** `ref(qualifiedName: "refs/heads/main"){ target { oid } }` + `object(expression: "main:pages/<slug>/meta.json"){ ... on Blob { text } }`. Así se obtienen `headOid` y `prev`.
-3. **Construir `meta`** según la sección 4: `n = (prev?.revN || 0) + 1`, `sha256` con `crypto.subtle`, `size` con `TextEncoder`, `updatedBy = S.me.id`, y `title`/`createdAt`/`createdBy` conservados de `prev`.
+3. **Construir `meta`** según la sección 4: `n = (prev?.revN || 0) + 1`, `updatedBy = S.me.id`, y `title`/`createdAt`/`createdBy` conservados de `prev`.
 4. **`CreateCommit`:**
    ```graphql
    mutation CreateCommit($input: CreateCommitOnBranchInput!) {
@@ -387,14 +383,13 @@ Crea `content-template/`. Una persona lo copiará como contenido inicial de `res
    - `pages/welcome/`: Markdown, etiqueta `Lamassu`, cómo usar la wiki.
    - `pages/pqc-migration-notes/`: Markdown, etiquetas `PQC` y `Crypto Agility`, un esqueleto con secciones vacías.
 
-   Ambos con `meta.json` válido (`revN: 1`, `sha256` y `size` correctos) y `createdBy: "lamassu-research"`.
+   Ambos con `meta.json` válido (`revN: 1`) y `createdBy: "lamassu-research"`.
 4. **`scripts/validate.mjs`** (Node ≥ 20, sin dependencias, `node scripts/validate.mjs [dir]`). Comprueba:
    - que `tags.json` existe, es válido y no tiene duplicados;
    - que cada `pages/<slug>` tiene un slug válido;
    - que `meta.json` es válido y tiene los campos y tipos de la sección 4;
    - que las etiquetas están en `tags.json` (de 1 a 20);
    - que existe exactamente un `content.*` y coincide con `format`;
-   - que `sha256` y `size` cuadran con el contenido.
 
    Imprime todos los errores (`path: mensaje`) y termina con código 1 si hay alguno.
 
@@ -438,7 +433,7 @@ El repo en memoria arranca con el contenido de `content-template/` (lee `tags.js
 
 *Wiki:*
 9. Con `permission: "read"` no hay "Edit" ni "Create" y sí se puede leer.
-10. Con `permission: "write"`: crear un artículo con dos etiquetas (se valida que no se puede guardar sin etiquetas). Comprobar el mensaje y los trailers del commit, y el `meta.json` en el repo simulado (`revN 1`, `sha256` correcto, `createdBy` = login).
+10. Con `permission: "write"`: crear un artículo con dos etiquetas (se valida que no se puede guardar sin etiquetas). Comprobar el mensaje y los trailers del commit, y el `meta.json` en el repo simulado (`revN 1`, `createdBy` = login).
 11. Editar el artículo (revN 2), ver el historial, ver el diff y restaurar la revisión 1 (revN 3).
 12. Con `raceOnce`, guardar reintenta y termina bien con un solo commit propio.
 13. `#/tags` muestra todas las etiquetas en el orden de `tags.json`, con recuentos; `#/tag/PQC` lista el artículo de ejemplo; la portada tiene "Browse by tag".

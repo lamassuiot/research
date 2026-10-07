@@ -242,8 +242,6 @@ h1.title .ns{font-weight:400;color:var(--ink-3)}
 .sc-av.more{width:28px;height:28px;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--rule);font-size:11px;font-weight:700;color:var(--ink-2)}
 .sc-sub{display:block;color:var(--ink-3);font-size:12.5px;margin-top:4px}
 .sc-link{font-size:13px;margin-left:6px}
-.sc-sha{display:flex;align-items:center;gap:6px}
-.sc-sha code{font-size:12.5px;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:1px 6px}
 .sc-icon{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 4px;font-size:12px;border-radius:6px;border:1px solid transparent;background:none;color:var(--ink-3);cursor:pointer}
 .sc-icon:hover{background:var(--surface);border-color:var(--rule);color:var(--ink)}
 .sc-icon .ms{font-size:16px}
@@ -307,8 +305,6 @@ footer.foot nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
 .special .disabled{color:var(--ink-4)}
 h2.day{font-size:17px;font-weight:700;margin:20px 0 6px;letter-spacing:-.01em;border-bottom:1px solid var(--rule);padding-bottom:4px}
 .newpage{font-weight:700;text-decoration:none;cursor:help}
-.delta{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
-.delta.pos{color:var(--ok)} .delta.neg{color:var(--err)} .delta.zero{color:var(--ink-4)} .delta.big{font-weight:700}
 .summary-text{font-style:italic;color:var(--ink-3)}
 .hist input[type=radio]{margin:0 2px;vertical-align:-2px;accent-color:var(--ink)}
 .data{border-collapse:collapse;width:100%;font-size:16px;margin:0 0 18px}
@@ -366,6 +362,8 @@ h2.day{font-size:17px;font-weight:700;margin:20px 0 6px;letter-spacing:-.01em;bo
 .ui-select-btn .ms{font-size:18px;color:var(--ink-4);flex:none}
 .toolbar .ui-select-btn{height:38px;border-radius:12px}
 .grid-table .ui-select-btn{min-height:32px;padding:0 8px 0 10px;font-size:14.5px}
+.opt-r{display:flex;align-items:center;gap:8px;min-width:0}.opt-r .av{width:20px;height:20px;font-size:9px}.opt-r .opt-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ui-opt .opt-r .opt-t{white-space:normal}.opt-r .opt-ago{color:var(--ink-4);white-space:nowrap;flex:none}
+.chg-sw{gap:8px!important;padding:0 6px!important;width:auto!important;white-space:nowrap}.chg-sw .sw-track{position:relative;flex:none;width:34px;height:20px;border-radius:999px;background:var(--rule-2);transition:background .12s}.chg-sw .sw-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--paper);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .12s}.chg-sw[aria-checked=true] .sw-track{background:var(--lamassu-brand)}.chg-sw[aria-checked=true] .sw-thumb{transform:translateX(14px)}.chg-sw:focus-visible{outline:2px solid var(--lamassu-brand);outline-offset:1px}
 .chgbar .ui-select-btn{min-height:32px;font-size:14px;border-radius:999px;width:min(46vw,360px)}
 .ui-select-pop{position:fixed;z-index:80;box-sizing:border-box;max-height:min(320px,60vh);overflow:auto;padding:4px;background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:10px;box-shadow:0 10px 30px var(--shadow-modal);font-size:15px}
 .ui-select-pop[hidden]{display:none}
@@ -888,10 +886,6 @@ function splitChunks(s){
   if(!out.length) out.push("");
   return out;
 }
-async function sha256(s){
-  try{ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join(""); }
-  catch{ return ""; }
-}
 
 /* ---------------------------------------------------------------- projects: a project is a container whose structure is one JSON tree
    projects/<id>.json = {title, description, items:[{type:"page"|"link"|"file", id, children?:[...]}], createdAt, createdBy, updatedAt, updatedBy}
@@ -975,7 +969,7 @@ function b64(str){
 }
 const metaOf = text => { try{ const m = JSON.parse(text); return m && typeof m === "object" ? m : null; }catch{ return null; } };
 const publicMeta = (slug, m, project) => ({slug, project, title:m.title, tags:m.tags||[], status:m.status, format:m.format, abstract:m.abstract||"",
-  revN:m.revN, size:m.size, updatedAt:m.updatedAt, updatedBy:m.updatedBy, createdAt:m.createdAt, createdBy:m.createdBy});
+  revN:m.revN, updatedAt:m.updatedAt, updatedBy:m.updatedBy, createdAt:m.createdAt, createdBy:m.createdBy});
 const BLOB = "... on Blob { text }";
 const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
 
@@ -1143,7 +1137,7 @@ class GitHubStore{
     const u = c.author && c.author.user;
     if(u && u.login && u.avatarUrl) S.avatars[u.login] = u.avatarUrl;
     return {id:c.oid, n:m.revN, at:c.authoredDate, by:(c.author && c.author.user && c.author.user.login) || (c.author && c.author.name) || null,
-      summary:c.messageHeadline, size:m.size, format:m.format, status:m.status, title:m.title, tags:m.tags||[], sha256:m.sha256};
+      summary:c.messageHeadline, format:m.format, status:m.status, title:m.title, tags:m.tags||[]};
   }
   async getRev(slug, sha){
     this.slug(slug);
@@ -1207,8 +1201,7 @@ class GitHubStore{
       if(isNew && prev) throw new Error("An article with this address already exists");
       if(tags.some(t => !S.tags.includes(t) && !(prev && (prev.tags||[]).includes(t)))) throw new Error("A selected tag is not listed in tags.json");
       const n = (prev ? prev.revN : 0) + 1, now = new Date().toISOString();
-      const sha256 = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content)));
-      const meta = {title:prev ? prev.title : title, tags, status, format, abstract, revN:n, size:new TextEncoder().encode(content).length, sha256,
+      const meta = {title:prev ? prev.title : title, tags, status, format, abstract, revN:n,
         updatedAt:now, updatedBy:S.me.id, createdAt:prev ? prev.createdAt : now, createdBy:prev ? prev.createdBy : S.me.id};
       const adds = [{path:`${dir}/content.${format}`, contents:b64(content)}, {path:`${dir}/meta.json`, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
       if(isNew){
@@ -1216,7 +1209,7 @@ class GitHubStore{
         adds.push({path:pc.path, contents:pc.contents});
       }
       const input = {branch:{repositoryNameWithOwner:this.full, branchName:this.branch}, expectedHeadOid:headOid,
-        message:{headline:summary, body:`Know-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: ${n}\nKnow-how-Status: ${status}\nContent-SHA256: ${sha256}`},
+        message:{headline:summary, body:`Know-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: ${n}\nKnow-how-Status: ${status}`},
         fileChanges:{additions:adds,
           deletions:prev && prev.format !== format ? [{path:`${dir}/content.${prev.format}`}] : []}};
       try{
@@ -1465,8 +1458,8 @@ class MemoryStore{
     this.projects.general = {title:"General", description:"Everything that does not belong to a more specific project.", tags:[], items:[], createdAt:at, createdBy:"you", updatedAt:at, updatedBy:"you"};
     const seed = (slug, title, tags, abstract, content) => {
       const rid = slug + "~1";
-      this.revs[rid] = {id:rid, slug, n:1, at, by:"you", summary:"Initial version", size:content.length, format:"md", status:"draft", title, tags, content, sha256:""};
-      this.pages[slug] = {slug, project:"general", title, tags, status:"draft", format:"md", abstract, revN:1, rev:rid, size:content.length, updatedAt:at, updatedBy:"you", createdAt:at, createdBy:"you"};
+      this.revs[rid] = {id:rid, slug, n:1, at, by:"you", summary:"Initial version", format:"md", status:"draft", title, tags, content};
+      this.pages[slug] = {slug, project:"general", title, tags, status:"draft", format:"md", abstract, revN:1, rev:rid, updatedAt:at, updatedBy:"you", createdAt:at, createdBy:"you"};
       this.projects.general.items.push({type:"page", id:slug});
     };
     seed("welcome", "Welcome", ["Lamassu"], "How to use this wiki.", "## Welcome\n\nThis is the development build: data lives in this tab only.\n");
@@ -1529,10 +1522,9 @@ class MemoryStore{
     const page = this.pages[slug] || {};
     const project = this.pages[slug] ? page.project : this.needProject(place);
     if(!this.pages[slug]) this.placeInProject(place, {type:"page", id:slug}); const n = (page.revN||0) + 1; const rid = `${slug}~${n}`; const at = new Date().toISOString();
-    const size = utf8len(d.content);
-    this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, size, format:d.format, status:d.status, title:d.title, tags:d.tags||[], content:d.content, sha256:await sha256(d.content)};
+    this.revs[rid] = {id:rid, slug, n, at, by:"you", summary:d.summary, format:d.format, status:d.status, title:d.title, tags:d.tags||[], content:d.content};
     this.pages[slug] = {slug, project, title:d.title, tags:d.tags||[], status:d.status, format:d.format, abstract:d.abstract||"",
-      revN:n, rev:rid, size, updatedAt:at, updatedBy:"you", createdAt:page.createdAt||at, createdBy:page.createdBy||"you"};
+      revN:n, rev:rid, updatedAt:at, updatedBy:"you", createdAt:page.createdAt||at, createdBy:page.createdBy||"you"};
     return {rev:rid, n, conflict: baseRevN != null && (page.revN||0) !== baseRevN};
   }
 }
@@ -1939,7 +1931,7 @@ function bindTools(ctx){
       location.hash = `#/wiki/${ctx.slug}?rev=${enc(rev.id)}`;
     } else if(act === "cite"){
       const url = location.href.split("#")[0] + `#/wiki/${ctx.slug}?rev=${enc(rev.id)}`;
-      const cite = `${SITE} contributors, “${ctx.page.title}”, ${SITE}, revision ${rev.n}, ${fmtDay(rev.at)}. ${url}${rev.sha256?` (SHA-256 ${rev.sha256.slice(0,16)}…)`:""}`;
+      const cite = `${SITE} contributors, “${ctx.page.title}”, ${SITE}, revision ${rev.n}, ${fmtDay(rev.at)}. ${url}`;
       try{ await navigator.clipboard.writeText(cite); toast("Citation copied to the clipboard."); }catch{ toast(cite, 10000); }
     } else if(act === "source"){
       const fmt = rev.format || ctx.page.format;
@@ -1962,7 +1954,6 @@ function footer(lines){
     <nav aria-label="Site"><a href="#/help">About ${SITE}</a><a href="#/help?s=s-editing">Help</a><a href="#/recent">Recent changes</a><a href="#/automation">Automation</a></nav></footer>`;
 }
 const ambox = (kind, icon, html) => `<div class="ambox ${kind}"><span class="ms" aria-hidden="true">${icon}</span><div>${html}</div></div>`;
-const deltaSpan = d => `<span class="delta ${d>0?"pos":d<0?"neg":"zero"}${Math.abs(d)>=500?" big":""}">(${d>0?"+":""}${fmtNum(d)})</span>`;
 
 /* ---------------------------------------------------------------- views */
 async function viewHome(){
@@ -2065,9 +2056,9 @@ function enhanceSelect(sel){
   if(lab){ lab.id = lab.id || sel.id + "-lbl"; btn.setAttribute("aria-labelledby", lab.id); lab.addEventListener("click", e => { e.preventDefault(); btn.focus(); }); }
   else if(sel.getAttribute("aria-label")) btn.setAttribute("aria-label", sel.getAttribute("aria-label"));
   const val = btn.firstChild;
-  const refresh = () => { const o = sel.selectedOptions[0]; val.textContent = o ? o.textContent : "Select…"; val.classList.toggle("ph", !o || !o.value && !o.textContent.trim()); btn.disabled = sel.disabled; };
+  const refresh = () => { const o = sel.selectedOptions[0]; if(o && o.dataset.rich) val.innerHTML = o.dataset.rich; else val.textContent = o ? o.textContent : "Select…"; val.classList.toggle("ph", !o || !o.value && !o.textContent.trim()); btn.disabled = sel.disabled; };
   Object.defineProperty(sel, "value", {configurable:true, get(){ return selectDesc.get.call(this); }, set(v){ selectDesc.set.call(this, v); refresh(); }});
-  new MutationObserver(refresh).observe(sel, {childList:true, subtree:true, attributes:true, attributeFilter:["disabled", "selected", "label"], characterData:true});
+  new MutationObserver(refresh).observe(sel, {childList:true, subtree:true, attributes:true, attributeFilter:["disabled", "selected", "label", "data-rich"], characterData:true});
   sel.addEventListener("change", refresh); refresh();
   const choose = o => { closeSelect(true); if(o.disabled || sel.value === o.value) return; sel.value = o.value; sel.dispatchEvent(new Event("input", {bubbles:true})); sel.dispatchEvent(new Event("change", {bubbles:true})); };
   const open = () => {
@@ -2075,7 +2066,7 @@ function enhanceSelect(sel){
     const pop = document.createElement("div"); pop.className = "ui-select-pop"; pop.setAttribute("role", "listbox"); pop.id = (sel.id || "sel") + "-pop";
     const items = [];
     const add = (o, host) => { const d = document.createElement("div"); d.className = "ui-opt"; d.setAttribute("role", "option"); d.id = pop.id + "-" + items.length; d.setAttribute("aria-selected", o.selected ? "true" : "false");
-      if(o.disabled) d.setAttribute("aria-disabled", "true"); d.innerHTML = `<span class="ms" aria-hidden="true">check</span>`; d.append(o.textContent); d._o = o; items.push(d); host.appendChild(d); };
+      if(o.disabled) d.setAttribute("aria-disabled", "true"); d.innerHTML = `<span class="ms" aria-hidden="true">check</span>`; if(o.dataset.rich) d.insertAdjacentHTML("beforeend", o.dataset.rich); else d.append(o.textContent); d._o = o; items.push(d); host.appendChild(d); };
     for(const c of sel.children){
       if(c.tagName === "OPTGROUP"){ const g = document.createElement("div"); g.className = "ui-grp"; g.textContent = c.label; pop.appendChild(g); [...c.children].forEach(o => add(o, pop)); }
       else if(c.tagName === "OPTION") add(c, pop);
@@ -2162,7 +2153,9 @@ function mountChanges(slug, rev, revs, prose){
   const bar = document.createElement("div"); bar.className = "chgbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Changes in this revision");
   $("#main").appendChild(bar);
   let against = older[0], changes = [], cur = -1, off = lsGet("kb.chg") === "0", token = 0;
-  const label = r => `rev ${r.n} · ${nameOf(r.by)} · ${fmtDay(r.at)}${r.summary ? " — " + r.summary : ""}`.slice(0, 120);
+  const label = r => `rev ${r.n} · ${nameOf(r.by)} · ${fmtAgo(r.at)}${r.summary ? " — " + r.summary : ""}`.slice(0, 120);
+  const rich = r => `<span class="opt-r">${avatarHtml(r.by)}<span class="opt-t">rev ${r.n} · ${esc(nameOf(r.by))}${r.summary ? " — " + esc(r.summary.slice(0, 80)) : ""}</span><span class="opt-ago">${esc(fmtAgo(r.at))}</span></span>`;
+  const sw = on => `<button type="button" class="chg-sw" role="switch" aria-label="Show changes" aria-checked="${on}" data-a="toggle"><span class="sw-track" aria-hidden="true"><span class="sw-thumb"></span></span>${on ? "" : "<span>Show changes</span>"}</button>`;
   const clear = () => {
     $$(".chg-ghost, .chg-del", prose).forEach(g => g.remove());
     $$(".chg-ins", prose).forEach(g => g.replaceWith(...g.childNodes));
@@ -2239,13 +2232,12 @@ function mountChanges(slug, rev, revs, prose){
   const draw = () => {
     const n = changes.length;
     bar.innerHTML = off
-      ? `<button type="button" data-a="on"><span class="ms" aria-hidden="true">difference</span>Show changes</button>`
-      : `<span class="chg-l"><span class="ms" aria-hidden="true">difference</span><b>Changes vs</b></span>
-         <select aria-label="Compare with an earlier revision">${older.map(r => `<option value="${esc(r.id)}" ${r.id === against.id ? "selected" : ""}>${esc(label(r))}</option>`).join("")}</select>
+      ? sw(false)
+      : `${sw(true)}<span class="chg-l"><span class="ms" aria-hidden="true">difference</span><b>Changes vs</b></span>
+         <select aria-label="Compare with an earlier revision">${older.map(r => `<option value="${esc(r.id)}" data-rich="${esc(rich(r))}" ${r.id === against.id ? "selected" : ""}>${esc(label(r))}</option>`).join("")}</select>
          <span class="chg-n" aria-live="polite">${n ? (cur >= 0 ? cur + 1 : "–") + " / " + n : "none"}</span>
          <button type="button" data-a="prev" aria-label="Previous change" title="Previous change" ${n ? "" : "disabled"}><span class="ms" aria-hidden="true">arrow_upward</span></button>
-         <button type="button" data-a="next" aria-label="Next change" title="Next change" ${n ? "" : "disabled"}><span class="ms" aria-hidden="true">arrow_downward</span></button>
-         <button type="button" data-a="off" aria-label="Hide changes" title="Hide changes"><span class="ms" aria-hidden="true">close</span></button>`;
+         <button type="button" data-a="next" aria-label="Next change" title="Next change" ${n ? "" : "disabled"}><span class="ms" aria-hidden="true">arrow_downward</span></button>`;
   };
   const go = d => {
     if(!changes.length) return;
@@ -2261,7 +2253,7 @@ function mountChanges(slug, rev, revs, prose){
     draw();
   };
   bar.onclick = e => { const a = e.target.closest("[data-a]"); if(!a) return; const k = a.dataset.a;
-    if(k === "next") go(1); else if(k === "prev") go(-1); else { off = k === "off"; lsSet("kb.chg", off ? "0" : "1"); load(); } };
+    if(k === "next") go(1); else if(k === "prev") go(-1); else { off = !off; lsSet("kb.chg", off ? "0" : "1"); load(); } };
   bar.onchange = e => { if(e.target.tagName !== "SELECT") return; against = older.find(r => r.id === e.target.value) || against; load(); };
   load().catch(err => { console.warn(err); bar.remove(); });
 }
@@ -2304,7 +2296,6 @@ async function viewArticle(slug, revId){
         ${people.length > 1 ? `<div class="sc-row"><dt>Contributors</dt><dd><span class="sc-stack" aria-label="${people.length} contributors">${stack}</span><small class="sc-sub">${people.length} people · ${revs.length || page.revN} edits</small></dd></div>` : ""}
         <div class="sc-row"><dt>Last edit</dt><dd>${personChip(rev.by, `${timeAgo(rev.at)}${prevRev ? ` · <a href="#/diff/${slug}/${enc(prevRev.id)}/${enc(rev.id)}">changes</a>` : ""}`)}</dd></div>
         <div class="sc-row"><dt>Revision</dt><dd><span class="badge outline mono">${rev.n} / ${page.revN}</span> <a class="sc-link" href="#/history/${slug}">history</a></dd></div>
-        ${rev.sha256?`<div class="sc-row"><dt>SHA-256</dt><dd class="sc-sha"><code title="${esc(rev.sha256)}">${esc(rev.sha256.slice(0,12))}…</code><button type="button" class="sc-icon" data-copy="${esc(rev.sha256)}" title="Copy SHA-256" aria-label="Copy SHA-256"><span class="ms" aria-hidden="true">content_copy</span><span class="noicon">Copy</span></button></dd></div>`:""}
       </dl>
     </aside>`;
   const oldNote = isOld ? ambox("warn","history",`<p>This is an old revision of this page, as edited by ${personSpan(rev.by)} at ${fmtMW(rev.at)}. It may differ significantly from the <a href="#/wiki/${slug}">current revision</a>.</p>
@@ -2355,12 +2346,12 @@ async function viewHistory(slug){
   const revs = await S.store.listRevs(slug);
   await resolveNames(revs.map(r=>r.by));
   const rows = revs.map((r,i) => {
-    const prev = revs[i+1]; const delta = prev ? (r.size||0) - (prev.size||0) : (r.size||0);
+    const prev = revs[i+1];
     const cur = i===0 ? `<span class="disabled">cur</span>` : `<a href="#/diff/${slug}/${enc(r.id)}/cur">cur</a>`;
     const prv = prev ? `<a href="#/diff/${slug}/prev/${enc(r.id)}">prev</a>` : `<span class="disabled">prev</span>`;
     return `<li>(${cur} | ${prv}) <input type="radio" name="a" value="${esc(r.id)}" aria-label="Compare from revision ${r.n}" ${i===1?"checked":""}><input type="radio" name="b" value="${esc(r.id)}" aria-label="Compare to revision ${r.n}" ${i===0?"checked":""}>
       <a href="#/wiki/${slug}?rev=${enc(r.id)}">${fmtMW(r.at)}</a> ${personSpan(r.by)} <span class="sep">. .</span>
-      <span class="muted">(${fmtNum(r.size)} bytes)</span> ${deltaSpan(delta)} <span class="sep">. .</span> ${pill(r.status, true)}
+      ${pill(r.status, true)}
       ${r.summary?`<span class="summary-text">(${esc(r.summary)})</span>`:""}
       ${i>0 && canEditPage(page) ? `(<a href="#/diff/${slug}/${enc(r.id)}/cur" title="Compare with the current revision; restore from there">restore</a>)` : ""}
       ${i===0?'<span class="muted">(current)</span>':""}</li>`;
@@ -2455,7 +2446,6 @@ async function viewInfo(slug){
       ${row("Display title", esc(page.title))}
       ${row("Address", `<span class="mono">#/wiki/${esc(slug)}</span>`)}
       ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : "Markdown")}
-      ${row("Page length (in bytes)", fmtNum(page.size))}
       ${row("Maturity", pill(page.status, true))}
       ${row("Tags", (page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—")}
       ${row("Abstract", esc(page.abstract||"—"))}
@@ -2469,7 +2459,6 @@ async function viewInfo(slug){
       ${row("Total number of edits", fmtNum(revs.length))}
       ${row("Total number of distinct authors", fmtNum(authors.size))}
       ${row("Latest revision ID", `<span class="mono">${esc(String(latest.id||page.rev||""))}</span>`)}
-      ${row("Content SHA-256", latest.sha256 ? `<span class="mono">${esc(latest.sha256)}</span>` : "—")}
     </tbody></table>${footer()}`);
   bindTools({slug, page});
 }
@@ -2483,10 +2472,9 @@ async function viewRecent(){
   for(const r of revs){ (days[fmtDay(r.at)] ||= []).push(r); }
   const li = r => {
     const prev = revs.find(x => x.slug===r.slug && x.n===r.n-1);
-    const delta = r.n===1 ? (r.size||0) : prev ? (r.size||0)-(prev.size||0) : null;
     return `<li>(${r.n>1?`<a href="#/diff/${r.slug}/prev/${enc(r.id)}">diff</a>`:'<span class="disabled">diff</span>'} | <a href="#/history/${r.slug}">hist</a>) <span class="sep">. .</span>
       ${r.n===1?'<abbr class="newpage" title="This edit created a new page">N</abbr> ':""}<a href="#/wiki/${r.slug}">${esc(r.title||r.slug)}</a>; <span class="mono">${fmtTime(r.at)}</span>
-      <span class="sep">. .</span> ${delta==null?"":deltaSpan(delta)+' <span class="sep">. .</span>'} ${personSpan(r.by)} ${r.summary?`<span class="summary-text">(${esc(r.summary)})</span>`:""} ${pill(r.status, true)}</li>`;
+      <span class="sep">. .</span> ${personSpan(r.by)} ${r.summary?`<span class="summary-text">(${esc(r.summary)})</span>`:""} ${pill(r.status, true)}</li>`;
   };
   setMainFor(nav, `<h1 class="title">Recent changes</h1>
     <p style="font-size:16px;margin:0 0 4px">Track the most recent changes to ${SITE} on this page.</p>
@@ -2533,7 +2521,7 @@ async function viewSearch(q){
     if(nav !== S.nav) return;
     $("#sr").innerHTML = hits.map(r => `<li><div class="h"><a href="#/wiki/${r.slug}">${hilite(r.title, q)}</a></div>
       ${r.snippet?`<div class="snip">${hilite(r.snippet, q)}</div>`:""}
-      <div class="meta">${esc((r.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.status))} · ${fmtBytes(r.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.revN}) · ${fmtMW(r.updatedAt)}</div></li>`).join("");
+      <div class="meta">${esc((r.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.status))} · (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.revN}) · ${fmtMW(r.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = hits.length ? `Results 1 – ${hits.length} of ${hits.length}` : "There were no results matching the query.";
     return;
   }
@@ -2547,7 +2535,7 @@ async function viewSearch(q){
     const list = [...res.values()].sort((a,b)=>b.score-a.score || a.p.title.localeCompare(b.p.title));
     $("#sr").innerHTML = list.map(r => `<li><div class="h"><a href="#/wiki/${r.p.slug}">${hilite(r.p.title, q)}</a></div>
       ${r.snip?`<div class="snip">${hilite(r.snip, q)}</div>`:""}
-      <div class="meta">${esc((r.p.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.p.status))} · ${fmtBytes(r.p.size||0)} (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.p.revN}) · ${fmtMW(r.p.updatedAt)}</div></li>`).join("");
+      <div class="meta">${esc((r.p.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.p.status))} · (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.p.revN}) · ${fmtMW(r.p.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = (list.length ? `Results 1 – ${list.length} of ${list.length}` : "There were no results matching the query.") + (final ? "" : " · searching article text…");
   };
   draw(false);
@@ -2687,7 +2675,6 @@ async function viewEdit(slug, params){
           <div class="sp">
             <label class="btn small" for="f-file" style="margin:0"><span class="ms" aria-hidden="true">upload_file</span>Load from file</label>
             <input type="file" id="f-file" accept=".md,.markdown,.txt,.html,.htm" class="visually-hidden">
-            <span class="hint" id="sizev" style="margin:0"></span>
           </div>
         </div>
         <label for="f-body" class="visually-hidden">Content</label><textarea id="f-body" spellcheck="${d.format==="md"}"></textarea>
@@ -2701,19 +2688,17 @@ async function viewEdit(slug, params){
           ${isNew?"":`<button class="btn" type="button" id="chBtn"><span class="ms" aria-hidden="true">difference</span>Show changes</button>`}
           <a href="${isNew?"#/":"#/wiki/"+slug}">Cancel</a>
         </div>
-        <div class="hint" style="margin:0">Publishing never overwrites: it adds revision ${baseRevN+1} with your name, the time and a SHA-256 of the content.</div>
+        <div class="hint" style="margin:0">Publishing never overwrites: it adds revision ${baseRevN+1} with your name and the time.</div>
       </div>
     </form>`);
   const body = $("#f-body"); body.value = d.content; S.editing = {body, initial:d.content};
   let fmt = d.format;
-  const updSize = () => { $("#sizev").textContent = fmtBytes(utf8len(body.value)); };
   const syncFmt = () => {
     $("#tb").style.display = fmt==="md" ? "" : "none";
     $("#fmt-help").innerHTML = fmt==="md" ? "Markdown with tables and code blocks. Link articles with <span class='mono'>[[Article title]]</span>." :
       "A complete, self-contained HTML document (charts and scripts allowed). It is rendered in a sandboxed frame.";
-    body.spellcheck = fmt==="md"; updSize();
+    body.spellcheck = fmt==="md";
   };
-  body.addEventListener("input", updSize);
   $$(".ed-bar .seg button").forEach(b => b.onclick = () => { fmt = b.dataset.f; $$(".ed-bar .seg button").forEach(x=>x.classList.toggle("on", x===b)); syncFmt(); });
   $("#f-status").onchange = e => { $("#st-help").textContent = STATUS[e.target.value].help; $("#ed-mat").className = "maturity "+e.target.value; };
   if(isNew){ const upd = () => $("#slugv").textContent = "#/wiki/" + slugify($("#f-title").value || "untitled"); $("#f-title").addEventListener("input", upd); upd(); }
@@ -2723,7 +2708,7 @@ async function viewEdit(slug, params){
     let sel = v.slice(s, e) || ph; let pre = before;
     if(block && s > 0 && v[s-1] !== "\n") pre = "\n" + pre;
     body.setRangeText(pre + sel + after, s, e, "end");
-    const st = s + pre.length; body.setSelectionRange(st, st + sel.length); body.focus(); updSize();
+    const st = s + pre.length; body.setSelectionRange(st, st + sel.length); body.focus();
   };
   $("#tb").onclick = e => {
     const b = e.target.closest("[data-tb]"); if(!b) return;
@@ -3485,7 +3470,7 @@ async function viewAutomation(){
 \`\`\`
 tags.json                                       {"tags": ["Lamassu", "PKI", ...]}
 projects/<id>/project.json                      title, description, tags, intro, items (order and nesting)
-projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, size, sha256, ...
+projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, ...
 projects/<id>/pages/<slug>/content.md           (or content.html, as meta.format says)
 projects/<id>/links/<id>.json                   an external link
 projects/<id>/files/<name>.pdf                  a PDF
@@ -3493,7 +3478,7 @@ projects/<id>/files/<name>.pdf                  a PDF
 - Everything lives inside a project. Slugs, link ids and file names are unique across all projects.
 - \`slug\`: lowercase letters, digits and hyphens, up to 80 characters.
 - \`tags\`: one to twenty entries, all present in \`tags.json\`.
-- \`revN\` goes up by one with every save; \`sha256\` and \`size\` are those of the content (UTF-8).
+- \`revN\` goes up by one with every save.
 
 ## With git
 \`\`\`
@@ -3503,8 +3488,7 @@ git add projects/general/pages/my-article
 git commit -m "Update PQC notes" -m "Know-how-Page: my-article
 Know-how-Project: general
 Know-how-Revision: 4
-Know-how-Status: draft
-Content-SHA256: <sha256 of the content>"
+Know-how-Status: draft"
 git push
 \`\`\`
 The trailers are what *Recent changes* reads: a commit without \`Know-how-Page\` does not appear there.

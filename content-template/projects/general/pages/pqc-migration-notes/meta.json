@@ -8,8 +8,6 @@
   "format": "md",
   "abstract": "Skeleton for notes on moving the PKI to post-quantum algorithms.",
   "revN": 1,
-  "size": 165,
-  "sha256": "5118702a0675cbf48a17e552e4fd7f25ecff3e277cd9e95473a9b1677283d30a",
   "updatedAt": "2026-10-07T00:00:00.000Z",
   "updatedBy": "lamassu-research",
   "createdAt": "2026-10-07T00:00:00.000Z",

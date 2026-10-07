@@ -18,7 +18,7 @@ projects/<id>/files/<nombre>.pdf            PDFs (manuales, especificaciones), h
 **Todo vive dentro de un proyecto.** No hay `pages/`, `links/` ni `files/` en la raíz (el validador los rechaza). Los slugs, los ids de enlace y los nombres de PDF son únicos en todo el repositorio (no solo dentro de su proyecto), y el id de un proyecto no puede coincidir con el slug de un artículo.
 
 - **slug:** `^[a-z0-9][a-z0-9-]{0,79}$`.
-- **meta.json:** `title`, `tags` (hasta 20, todas en `tags.json`; la app ya no las pide: las etiquetas las llevan los proyectos), `status` (`draft`, `reviewed`, `validated` o `deprecated`), `format` (`md` o `html`), `abstract` (hasta 240 caracteres), `revN` (empieza en 1 y sube de uno en uno en cada guardado), `size` (bytes UTF-8 del contenido), `sha256` (hex del contenido), `updatedAt`, `updatedBy`, `createdAt`, `createdBy`. No hay `category`: solo etiquetas.
+- **meta.json:** `title`, `tags` (hasta 20, todas en `tags.json`; la app ya no las pide: las etiquetas las llevan los proyectos), `status` (`draft`, `reviewed`, `validated` o `deprecated`), `format` (`md` o `html`), `abstract` (hasta 240 caracteres), `revN` (empieza en 1 y sube de uno en uno en cada guardado), `updatedAt`, `updatedBy`, `createdAt`, `createdBy`. No hay `category`: solo etiquetas.
 - **project.json:** `title`, `description` (opcional), `tags` (opcional, de `tags.json`; si hay, el proyecto se indexa en esas etiquetas y sus páginas no), `intro` (opcional, Markdown de hasta 50 000 caracteres que se muestra en la portada del proyecto, bajo las tarjetas de acceso rápido), `items` (árbol: `{"type": "page"|"link"|"file", "id": ..., "children": [...]}`; solo las páginas tienen `children`; el orden del array es el orden que se muestra; profundidad máxima 8), `createdAt/By`, `updatedAt/By`. **La pertenencia a un proyecto la da la carpeta**; el árbol solo ordena y anida. Un elemento que está en la carpeta pero no en el árbol se muestra al final; uno que el árbol nombra pero no está en la carpeta es un error del validador. Trailer de commit: `Know-how-Project: <id>`.
 - **links:** un `.json` por enlace, id `^[a-z0-9][a-z0-9-]{0,79}$`: `url` (http/https, sin usuario ni contraseña), `title` (hasta 200), `description` (hasta 300, opcional), `kind` (`news`, `blog`, `paper`, `video`, `docs` u `other`), `tags` (hasta 20, en `tags.json`; opcionales), `addedAt`, `addedBy`, `updatedAt`, `updatedBy`. Se pueden borrar (el historial de git lo conserva). Trailer de commit: `Know-how-Link: <id>`.
 - **files:** solo PDFs, sin subcarpetas, nombre `^[a-z0-9][a-z0-9._-]{0,95}\.pdf$`. Subir un archivo con el mismo nombre crea una versión nueva; las anteriores quedan en el historial (y ocupan espacio en el repo para siempre: evita subir versiones innecesarias de PDFs grandes). Mensaje de commit con el trailer `Know-how-File: <nombre>`.
@@ -37,7 +37,6 @@ Know-how-Page: pqc-migration-notes
 Know-how-Project: general
 Know-how-Revision: 2
 Know-how-Status: draft
-Content-SHA256: <sha256 del contenido>
 ```
 
 La Action `validate` comprueba la estructura en cada push y abre un issue si falla en `main`. En local: `node scripts/validate.mjs`.

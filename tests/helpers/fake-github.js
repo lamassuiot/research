@@ -61,7 +61,7 @@ function seedFromTemplate(repo) {
       const dir = path.join(pagesDir, slug), changes = {};
       for (const f of fs.readdirSync(dir)) changes[`projects/${pid}/pages/${slug}/${f}`] = fs.readFileSync(path.join(dir, f), "utf8");
       const meta = JSON.parse(changes[`projects/${pid}/pages/${slug}/meta.json`]);
-      repo.add(`Initial version\n\nKnow-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: 1\nKnow-how-Status: ${meta.status}\nContent-SHA256: ${meta.sha256}`, changes);
+      repo.add(`Initial version\n\nKnow-how-Page: ${slug}\nKnow-how-Project: ${pid}\nKnow-how-Revision: 1\nKnow-how-Status: ${meta.status}`, changes);
     }
   }
   return repo;
@@ -276,7 +276,7 @@ function projectJson(over) {
 /* An article for tests, as the files of one page folder: pageFiles("p", "slug", {title, content, ...meta}) */
 function pageFiles(project, slug, o = {}) {
   const content = o.content ?? "## Section\n\nSome text.\n", format = o.format || "md", at = "2026-10-07T00:00:00.000Z";
-  const meta = { title: slug, tags: ["PQC"], status: "draft", format, abstract: "", revN: 1, size: Buffer.byteLength(content), sha256: crypto.createHash("sha256").update(content).digest("hex"),
+  const meta = { title: slug, tags: ["PQC"], status: "draft", format, abstract: "", revN: 1,
     updatedAt: at, updatedBy: "ada", createdAt: at, createdBy: "ada", ...(o.meta || {}) };
   return { [`projects/${project}/pages/${slug}/content.${format}`]: content, [`projects/${project}/pages/${slug}/meta.json`]: JSON.stringify(meta, null, 2) + "\n" };
 }

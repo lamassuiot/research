@@ -1,6 +1,5 @@
 // The wiki on top of the simulated GitHub. Serial: the tests of a block share one in-memory repository.
 const { test, expect } = require("@playwright/test");
-const crypto = require("node:crypto");
 const { installFakeGitHub, createRepo, seedFromTemplate } = require("../helpers/fake-github");
 const { watch } = require("../helpers/watch");
 
@@ -45,11 +44,12 @@ test.describe("editor", () => {
     expect(repo.commits.length).toBe(before + 1);
     const c = repo.head();
     expect(c.author.login).toBe("ada");
-    expect(c.message).toBe(`Initial draft\n\nKnow-how-Page: my-rfc-notes\nKnow-how-Project: general\nKnow-how-Revision: 1\nKnow-how-Status: draft\nContent-SHA256: ${crypto.createHash("sha256").update(BODY1).digest("hex")}`);
+    expect(c.message).toBe(`Initial draft\n\nKnow-how-Page: my-rfc-notes\nKnow-how-Project: general\nKnow-how-Revision: 1\nKnow-how-Status: draft`);
     const meta = JSON.parse(c.files.get("projects/general/pages/my-rfc-notes/meta.json"));
     expect(meta).toMatchObject({ title: "My RFC notes", tags: [], status: "draft", format: "md",
-      revN: 1, size: Buffer.byteLength(BODY1), createdBy: "ada", updatedBy: "ada" });
-    expect(meta.sha256).toBe(crypto.createHash("sha256").update(BODY1).digest("hex"));
+      revN: 1, createdBy: "ada", updatedBy: "ada" });
+    expect(meta).not.toHaveProperty("sha256");
+    expect(meta).not.toHaveProperty("size");
     expect(meta).not.toHaveProperty("category");
     expect(c.files.get("projects/general/pages/my-rfc-notes/content.md")).toBe(BODY1);
     expect(gh.unexpected).toEqual([]);
@@ -106,9 +106,9 @@ test.describe("editor", () => {
     await expect(page.locator("#prose .chg-cur")).toHaveCount(1);
     await bar.locator("select").selectOption({ index: options - 1 });              // against the first revision
     await expect(page.locator("#prose .chg-add, #prose .chg-mod").first()).toBeVisible();
-    await bar.locator('[data-a="off"]').click();
+    await bar.locator('[data-a="toggle"]').click();
     await expect(page.locator("#prose .chg-add, #prose .chg-mod, #prose .chg-ghost")).toHaveCount(0);
-    await bar.locator('[data-a="on"]').click();
+    await bar.locator('[data-a="toggle"]').click();
     await expect(bar.locator("select")).toBeVisible();
   });
 

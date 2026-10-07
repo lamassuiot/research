@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { validate } from "./validate.mjs";
 
@@ -36,13 +35,10 @@ test("a leftover category fails", () => {
   const errs = validate(fixture((d) => editMeta(d, (m) => { m.category = "PKI"; })));
   assert.ok(errs.some((e) => e.includes("category is not used")), errs.join("\n"));
 });
-test("a wrong sha256 fails", () => {
-  const errs = validate(fixture((d) => editMeta(d, (m) => { m.sha256 = "0".repeat(64); })));
-  assert.ok(errs.some((e) => e.includes("sha256 does not match")), errs.join("\n"));
-});
-test("a wrong size fails", () => {
-  const errs = validate(fixture((d) => editMeta(d, (m) => { m.size = 1; })));
-  assert.ok(errs.some((e) => e.includes("size is 1")), errs.join("\n"));
+test("size and sha256 are not part of meta.json: neither is required, and old values are ignored", () => {
+  const bare = fixture((d) => editMeta(d, (m) => { delete m.size; delete m.sha256; }));
+  assert.deepEqual(validate(bare), []);
+  assert.deepEqual(validate(fixture((d) => editMeta(d, (m) => { m.size = 1; m.sha256 = "0".repeat(64); }))), []);
 });
 test("two content files fail", () => {
   const errs = validate(fixture((d) => fs.writeFileSync(path.join(d, G("pages", "welcome", "content.html")), "<p>x</p>")));
@@ -72,15 +68,6 @@ test("an invalid status fails", () => {
   const errs = validate(fixture((d) => editMeta(d, (m) => { m.status = "final"; })));
   assert.ok(errs.some((e) => e.includes("status must be one of")), errs.join("\n"));
 });
-test("an article whose content matches a recomputed hash passes", () => {
-  const d = fixture((dir) => {
-    const buf = Buffer.from("## Changed\n");
-    fs.writeFileSync(path.join(dir, G("pages", "welcome", "content.md")), buf);
-    editMeta(dir, (m) => { m.size = buf.length; m.sha256 = crypto.createHash("sha256").update(buf).digest("hex"); });
-  });
-  assert.deepEqual(validate(d), []);
-});
-
 test("a valid PDF in files/ passes", () => {
   assert.deepEqual(validate(fixture((d) => { fs.mkdirSync(path.join(d, G("files"))); fs.writeFileSync(path.join(d, G("files", "tpm-2.0-spec.pdf")), "%PDF-1.4\n%%EOF\n"); })), []);
 });
