@@ -17,7 +17,7 @@
 :root{
   box-sizing:border-box;
   /* Lamassu design tokens: brand blue is the logo's #0100f8 */
-  --lamassu-brand:#0100f8; --lamassu-brand-soft:#0100f814; --lamassu-brand-soft-strong:#0100f822; --lamassu-brand-border:#0100f866; --lamassu-brand-selection:#0100f833;
+  --on-brand:#ffffff; --lamassu-brand:#0100f8; --lamassu-brand-soft:#0100f814; --lamassu-brand-soft-strong:#0100f822; --lamassu-brand-border:#0100f866; --lamassu-brand-selection:#0100f833;
   --bg:#f4f4f4; --paper:#ffffff; --surface:#f4f4f4; --surface-2:#11111106;
   --ink:#111111; --ink-2:#333333; --ink-3:#4d4d4d; --ink-4:#7c7c7c;
   --rule:#dbdbdb; --rule-2:#b3b3b3; --shadow:#11111114; --shadow-modal:#11111138;
@@ -33,7 +33,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --lamassu-brand:#7e9cff; --lamassu-brand-soft:#7e9cff1f; --lamassu-brand-soft-strong:#7e9cff33; --lamassu-brand-border:#7e9cff80; --lamassu-brand-selection:#7e9cff4d;
+    --on-brand:#111111; --lamassu-brand:#7e9cff; --lamassu-brand-soft:#7e9cff1f; --lamassu-brand-soft-strong:#7e9cff33; --lamassu-brand-border:#7e9cff80; --lamassu-brand-selection:#7e9cff4d;
     --bg:#111111; --paper:#1a1a1a; --surface:#222222; --surface-2:#ffffff08;
     --ink:#f4f4f4; --ink-2:#dbdbdb; --ink-3:#b3b3b3; --ink-4:#9a9a9a;
     --rule:#333333; --rule-2:#4d4d4d; --shadow:#00000059; --shadow-modal:#000000a6;
@@ -45,7 +45,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --lamassu-brand:#7e9cff; --lamassu-brand-soft:#7e9cff1f; --lamassu-brand-soft-strong:#7e9cff33; --lamassu-brand-border:#7e9cff80; --lamassu-brand-selection:#7e9cff4d;
+  --on-brand:#111111; --lamassu-brand:#7e9cff; --lamassu-brand-soft:#7e9cff1f; --lamassu-brand-soft-strong:#7e9cff33; --lamassu-brand-border:#7e9cff80; --lamassu-brand-selection:#7e9cff4d;
   --bg:#111111; --paper:#1a1a1a; --surface:#222222; --surface-2:#ffffff08;
   --ink:#f4f4f4; --ink-2:#dbdbdb; --ink-3:#b3b3b3; --ink-4:#9a9a9a;
   --rule:#333333; --rule-2:#4d4d4d; --shadow:#00000059; --shadow-modal:#000000a6;
@@ -170,11 +170,14 @@ h1.title .ns{font-weight:400;color:var(--ink-3)}
 .dd-menu a,.dd-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;border:0;background:none;border-radius:10px;color:var(--ink-2);font-size:16px;text-align:left;cursor:pointer}
 .dd-menu a:hover,.dd-menu button:hover{background:var(--surface);text-decoration:none;color:var(--ink)}
 .dd-menu .ms{font-size:20px;color:var(--ink-3)}
-.maturity{height:4px;margin:0 0 10px;border-radius:0 0 4px 4px;background:transparent}
-.maturity.validated{background:var(--lamassu-brand)}
-.maturity.reviewed{background:var(--info-border)}
-.maturity.draft{background:repeating-linear-gradient(90deg,var(--warn-strong) 0 14px,transparent 14px 22px)}
-.maturity.deprecated{background:var(--rule-2)}
+/* The line under the tabs is the tab bar's own bottom edge: solid brand colour, flush with the tabs. Maturity is shown by its badge. */
+.maturity{height:2px;margin:0 0 14px;background:var(--lamassu-brand);border-radius:2px}
+.tabs:has(+ .maturity){border-bottom:0}
+.tabs:has(+ .maturity) a,.tabs:has(+ .maturity) summary{margin-bottom:0;border-bottom:0;border-radius:8px 8px 0 0;padding:8px 12px}
+.tabs:has(+ .maturity) a:hover,.tabs:has(+ .maturity) summary:hover{background:var(--surface)}
+.tabs:has(+ .maturity) a.on{background:var(--lamassu-brand);color:var(--on-brand);font-weight:600}
+.tabs:has(+ .maturity) a.on:hover{background:var(--lamassu-brand);color:var(--on-brand)}
+.tabs:has(+ .maturity) a.on .ms{color:inherit}
 .sitesub{font-size:15px;color:var(--ink-3);margin:0 0 14px}
 .subhead{font-size:15px;color:var(--ink-3);margin:-6px 0 16px}
 
