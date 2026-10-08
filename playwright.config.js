@@ -1,4 +1,4 @@
-// Web tests: npm run test:web  (builds public/index.test.html from tests/config.test.json first)
+// Web tests: pnpm run test:web  (builds public/index.test.html from tests/config.test.json first)
 // GitHub, the OAuth page and the Cloudflare Worker are simulated with page.route() (tests/helpers/fake-github.js).
 const { defineConfig, devices } = require("@playwright/test");
 

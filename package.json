@@ -2,10 +2,11 @@
   "name": "lama-library",
   "private": true,
   "description": "Lamassu Research: git-backed wiki served from GitHub Pages. No runtime dependencies; this file only defines build and tests.",
+  "packageManager": "pnpm@10.15.1",
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "python3 frontend/build.py && python3 frontend/build.py --dev",
-    "test": "npm run test:unit && npm run test:web",
+    "test": "pnpm run test:unit && pnpm run test:web",
     "test:unit": "node --test \"worker/test/*.test.js\" \"content-template/scripts/*.test.mjs\"",
     "test:web": "python3 frontend/build.py --config tests/config.test.json --out public/index.test.html && playwright test",
     "test:web:install": "playwright install chromium"

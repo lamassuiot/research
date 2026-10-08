@@ -9,4 +9,4 @@ CONTENT_REPO = "lamassuiot/research-content"
 GITHUB_CLIENT_ID = "Iv23li9ykunNUIBv7qWr"
 
 # The client secret is NOT stored here. Set it once with:
-#   npx wrangler secret put GITHUB_CLIENT_SECRET
+#   pnpm dlx wrangler secret put GITHUB_CLIENT_SECRET

@@ -179,7 +179,7 @@ Hazlos en orden. Cada uno termina con sus criterios de aceptación en verde y un
    - Sin dependencias de ejecución; `devDependencies: {"@playwright/test": "1.63.0"}` (la misma versión que ik-library).
    - Scripts:
      - `build`: `python3 frontend/build.py && python3 frontend/build.py --dev`
-     - `test`: `npm run test:unit && npm run test:web`
+     - `test`: `pnpm run test:unit && pnpm run test:web`
      - `test:unit`: `node --test worker/test/ content-template/scripts/`
      - `test:web`: `playwright test`
 4. **`frontend/build.py`:**
@@ -187,7 +187,7 @@ Hazlos en orden. Cada uno termina con sus criterios de aceptación en verde y un
    - Acepta `--dev`.
    - Copia `index.html` a `public/404.html`.
 
-**Aceptación:** `npm run build` genera `public/index.html`, `public/index.dev.html` y `public/404.html` sin errores.
+**Aceptación:** `pnpm run build` genera `public/index.html`, `public/index.dev.html` y `public/404.html` sin errores.
 
 ### M2. Quitar categorías: solo etiquetas
 
@@ -446,15 +446,15 @@ El repo en memoria arranca con el contenido de `content-template/` (lee `tags.js
 18. El HTML servido no contiene "IKERLAN" ni "category".
 19. No hay errores de JavaScript ni de CSP en ningún test (`pageerror` + mensajes de consola con "Content Security Policy").
 
-**Aceptación:** `npm test` en verde.
+**Aceptación:** `pnpm test` en verde.
 
 ### M10. Workflows de GitHub Actions
 
 **`.github/workflows/pages.yml`:** en `push` a `main` y `workflow_dispatch`.
-- **Job `test`:** `actions/checkout`, `actions/setup-node` (22), `npm ci`, `npx playwright install --with-deps chromium`, `npm run build`, `git diff --exit-code public/` (el build commiteado debe estar al día) y `npm test`.
+- **Job `test`:** `actions/checkout`, `pnpm/action-setup`, `actions/setup-node` (22), `pnpm install --frozen-lockfile`, `pnpm exec playwright install --with-deps chromium`, `pnpm run build`, `git diff --exit-code public/` (el build commiteado debe estar al día) y `pnpm test`.
 - **Job `deploy`:** necesita `test`; permisos `pages: write`, `id-token: write`; usa `actions/configure-pages`, `actions/upload-pages-artifact` con `path: public` (excluye `index.dev.html` e `index.test.html` copiando a un directorio aparte) y `actions/deploy-pages`.
 
-**`.github/workflows/worker.yml`:** solo `workflow_dispatch`. Ejecuta `npx wrangler@3 deploy` en `worker/` con el secreto `CLOUDFLARE_API_TOKEN`. Comentario: el secreto del cliente se configura una vez con `wrangler secret put`.
+**`.github/workflows/worker.yml`:** solo `workflow_dispatch`. Ejecuta `pnpm dlx wrangler@3 deploy` en `worker/` con el secreto `CLOUDFLARE_API_TOKEN`. Comentario: el secreto del cliente se configura una vez con `wrangler secret put`.
 
 **Aceptación:** YAML válido (`python3 -c "import yaml,sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]" .github/workflows/*.yml`; si falta PyYAML, anótalo). No se puede probar sin GitHub: indícalo en `REPORT.md`.
 
@@ -473,8 +473,8 @@ El repo en memoria arranca con el contenido de `content-template/` (lee `tags.js
       - Instalable solo en esta cuenta.
       - Instalarla **solo** en `research-content`.
       - Generar el client secret.
-   6. Cloudflare: cuenta, `npx wrangler login`, `npx wrangler secret put GITHUB_CLIENT_SECRET`, poner el client ID en `wrangler.toml` y `npx wrangler deploy`. Anotar la URL `*.workers.dev`.
-   7. Rellenar `frontend/config.json` (`githubClientId`, `authWorkerUrl`), `npm run build` y commit.
+   6. Cloudflare: cuenta, `pnpm dlx wrangler login`, `pnpm dlx wrangler secret put GITHUB_CLIENT_SECRET`, poner el client ID en `wrangler.toml` y `pnpm dlx wrangler deploy`. Anotar la URL `*.workers.dev`.
+   7. Rellenar `frontend/config.json` (`githubClientId`, `authWorkerUrl`), `pnpm run build` y commit.
    8. En `research`: *Settings → Pages → Source: GitHub Actions*, y el secreto `CLOUDFLARE_API_TOKEN` si se usa `worker.yml`. Hacer push.
    9. **Verificación con tres cuentas:**
       - miembro del team → entra;
@@ -486,12 +486,12 @@ El repo en memoria arranca con el contenido de `content-template/` (lee `tags.js
        - `createCommitOnBranch` con un HTML de más de 400 KB.
        - El mensaje de error real cuando `expectedHeadOid` está desfasado. Si no contiene `point to`, ajustar la detección de M5 paso 5.
        - `file(path:)` devuelve el meta en `ListRevs`.
-2. **`README.md`** (español): qué es, la arquitectura (diagrama de PLAN.md), cómo desarrollar (`npm run build`, abrir `public/index.dev.html` con el servidor estático y `npm test`) y la estructura.
+2. **`README.md`** (español): qué es, la arquitectura (diagrama de PLAN.md), cómo desarrollar (`pnpm run build`, abrir `public/index.dev.html` con el servidor estático y `pnpm test`) y la estructura.
 3. **`CLAUDE.md`:** contexto para futuros agentes. Arquitectura, convenciones (editar la plantilla y regenerar `public/`; commits en inglés; token solo en memoria), contrato de datos (enlace a la sección 4 de TASK.md) y comandos.
 
 ### M12. Cierre
 
-1. `npm run build && npm test` en verde, y `git status` limpio.
+1. `pnpm run build && pnpm test` en verde, y `git status` limpio.
 2. Escribe **`REPORT.md`** (sección 9).
 
 ---
@@ -516,7 +516,7 @@ El repo en memoria arranca con el contenido de `content-template/` (lee `tags.js
 ## 8. Definición de terminado
 
 - [ ] Todos los hitos M1-M12 hechos, con un commit cada uno.
-- [ ] `npm run build && npm test` en verde, y `git diff --exit-code public/` limpio tras el build.
+- [ ] `pnpm run build && pnpm test` en verde, y `git diff --exit-code public/` limpio tras el build.
 - [ ] `grep -riE "ikerlan|cyberbrain" --exclude=PLAN.md --exclude=TASK.md -l .` vacío (sin contar `.git` y `node_modules`).
 - [ ] `grep -ci categor frontend/index.template.html` da 0 (o solo el texto de ayuda).
 - [ ] `public/index.html` sin `"devMemoryStore":true`.

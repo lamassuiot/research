@@ -14,8 +14,8 @@
 
 ## 2. Tests
 
-- `npm test` en verde: **25 tests unitarios** (12 del Worker, 13 del validador) y **20 tests Playwright** (9 de login, 8 de wiki, 3 de seguridad).
-- `npm run build` genera `public/index.html`, `index.dev.html` y `404.html`. `public/index.html` no contiene `devMemoryStore":true`.
+- `pnpm test` en verde: **25 tests unitarios** (12 del Worker, 13 del validador) y **20 tests Playwright** (9 de login, 8 de wiki, 3 de seguridad).
+- `pnpm run build` genera `public/index.html`, `index.dev.html` y `404.html`. `public/index.html` no contiene `devMemoryStore":true`.
 - Comprobado a mano con el build de desarrollo y capturas: portada, etiquetas, editor con chips y marca Lamassu en modo claro.
 - Los workflows se han leído y parseado como YAML, pero **no se han ejecutado** (necesitan GitHub).
 
@@ -44,7 +44,7 @@ Todo lo de `docs/SETUP.md` §7:
 - **Avatar** del usuario en la cabecera: se carga desde `avatars.githubusercontent.com`, permitido en `img-src`.
 - **El servidor estático de los tests** sirve `index.test.html` como `/research/` y también `index.dev.html` por nombre.
 - **`.gitignore`:** se ignoran `node_modules/`, `test-results/`, `playwright-report/` y `public/index.test.html`. Se commitean `public/index.html`, `404.html` e `index.dev.html`.
-- **`package-lock.json`** commiteado para que `npm ci` funcione en el CI.
+- **`pnpm-lock.yaml`** commiteado para que `pnpm install --frozen-lockfile` funcione en el CI.
 
 ## 5. Diferencias con TASK.md
 
@@ -175,5 +175,5 @@ Medido con el GitHub simulado (cuenta las peticiones) y con llamadas reales a la
 - **Interfaz:** al pegar o cambiar la dirección se obtiene el preview, se rellenan solo los campos vacíos (no se pisa lo ya escrito), y se muestra la tarjeta tal como quedará. *Fetch preview* repite la consulta. Si no hay preview se avisa y el enlace se añade a mano con la tarjeta generada.
 - **Validador:** comprueba `image` e `icon` (http(s), hasta 600 caracteres, sin credenciales) y `siteName` (1-80).
 - **Tests:** 14 del Worker (lectura de metadatos, respaldos, permisos, caché del token, SSRF y redirecciones, tamaños, SVG) y 4 de Playwright (preview y relleno, no pisar lo escrito, fallo del preview, lectores con imágenes una sola vez).
-- **Para activarlo hay que volver a desplegar el Worker** (`cd worker && npx wrangler deploy`): ahora usa la variable `CONTENT_REPO` de `wrangler.toml`. Sin eso, la app funciona igual pero sin previews.
+- **Para activarlo hay que volver a desplegar el Worker** (`cd worker && pnpm dlx wrangler deploy`): ahora usa la variable `CONTENT_REPO` de `wrangler.toml`. Sin eso, la app funciona igual pero sin previews.
 - **Sin verificar con servicios reales:** el comportamiento del `fetch` de Cloudflare con webs reales (algunas bloquean a los robots o no publican Open Graph), la caché `caches.default`, y que el límite de 100 000 peticiones al día baste con muchas tarjetas con imagen.

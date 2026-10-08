@@ -28,15 +28,15 @@ En *Organization settings → Developer settings → GitHub Apps → New GitHub 
 > Una GitHub App (y no una OAuth App) hace que el token solo sirva para `research-content`, no para el resto de repositorios privados de cada persona.
 
 ## 4. Cloudflare Worker
-- [ ] Cuenta de Cloudflare (el plan gratuito basta) y `cd worker && npx wrangler login`.
+- [ ] Cuenta de Cloudflare (el plan gratuito basta) y `cd worker && pnpm dlx wrangler login`.
 - [ ] En `worker/wrangler.toml`, poner el Client ID en `GITHUB_CLIENT_ID`.
-- [ ] `npx wrangler secret put GITHUB_CLIENT_SECRET` y pegar el secret **a mano** (nunca en el chat ni en git).
-- [ ] `npx wrangler deploy`. Anotar la URL `https://research-auth.<cuenta>.workers.dev`.
+- [ ] `pnpm dlx wrangler secret put GITHUB_CLIENT_SECRET` y pegar el secret **a mano** (nunca en el chat ni en git).
+- [ ] `pnpm dlx wrangler deploy`. Anotar la URL `https://research-auth.<cuenta>.workers.dev`.
 - [ ] Opcional: secreto `CLOUDFLARE_API_TOKEN` en el repo `research` para usar el workflow `worker.yml`.
 
 ## 5. Configurar y publicar la app
 - [ ] En `frontend/config.json`: `githubClientId` (el Client ID) y `authWorkerUrl` (la URL del Worker).
-- [ ] `npm install && npm run build` y commit de `public/`.
+- [ ] `pnpm install && pnpm run build` y commit de `public/`.
 - [ ] En `lamassuiot/research`: *Settings → Pages → Source: GitHub Actions*.
 - [ ] Hacer push de este código a `lamassuiot/research` (`main`). El workflow `pages` ejecuta los tests y publica.
 

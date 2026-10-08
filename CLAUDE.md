@@ -18,8 +18,8 @@ Wiki versionada de investigación de Lamassu, copiada del frontend de `ik-librar
 Ver la sección 4 de `TASK.md` y `content-template/README.md`: `tags.json`, `pages/<slug>/meta.json` + `content.md|html`, y trailers `Know-how-*` en cada commit. `content-template/scripts/validate.mjs` lo comprueba.
 
 ## Comandos
-- `npm run build`: genera `public/index.html`, `index.dev.html` y `404.html`.
-- `npm test`: tests unitarios (Worker y validador) + Playwright con GitHub simulado (`tests/helpers/fake-github.js`).
+- `pnpm run build`: genera `public/index.html`, `index.dev.html` y `404.html`.
+- `pnpm test`: tests unitarios (Worker y validador) + Playwright con GitHub simulado (`tests/helpers/fake-github.js`).
 - Para probar a mano: `node tests/helpers/static.js 8301` y abrir `http://127.0.0.1:8301/research/index.dev.html`.
 
 ## Tarjetas
@@ -34,7 +34,7 @@ Todas las tarjetas (enlaces, accesos rápidos, proyectos, PDF incrustado) usan `
 
 ## Convenciones
 - Commits en inglés, en imperativo.
-- Cambios de UI: editar la plantilla, `npm run build` y commitear la plantilla junto con `public/` (el CI comprueba `git diff --exit-code public/`).
+- Cambios de UI: editar la plantilla, `pnpm run build` y commitear la plantilla junto con `public/` (el CI comprueba `git diff --exit-code public/`).
 - No añadir dependencias de ejecución ni CDNs nuevos; no relajar la CSP ni `sandbox`.
 - La UI está en inglés; la documentación para personas en español.
 - No hacer push ni desplegar sin que lo pida una persona: los pasos manuales están en `docs/SETUP.md`.

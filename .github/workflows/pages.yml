@@ -19,23 +19,24 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # No --with-deps: it runs apt-get, which can hang on the runner; the image already has Chromium's system libraries.
       - uses: actions/cache@v4
         id: pw
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx playwright install chromium
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install chromium
         timeout-minutes: 5
-      - run: npm run build
+      - run: pnpm run build
       - name: The committed build must be up to date
         run: git diff --exit-code public/
-      - run: npm test
+      - run: pnpm test
 
   deploy:
     needs: test

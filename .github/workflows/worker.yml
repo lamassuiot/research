@@ -1,5 +1,5 @@
 name: worker
-# Manual only. The OAuth client secret is configured once with `npx wrangler secret put GITHUB_CLIENT_SECRET`
+# Manual only. The OAuth client secret is configured once with `pnpm dlx wrangler secret put GITHUB_CLIENT_SECRET`
 # (see docs/SETUP.md); it is never stored in this repository or in this workflow.
 on:
   workflow_dispatch:
@@ -15,9 +15,10 @@ jobs:
         working-directory: worker
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npx wrangler@3 deploy
+      - run: pnpm dlx wrangler@3 deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

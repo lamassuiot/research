@@ -1,4 +1,4 @@
-// Sign-in with GitHub (simulated). Run: npm run test:web
+// Sign-in with GitHub (simulated). Run: pnpm run test:web
 const { test, expect } = require("@playwright/test");
 const { installFakeGitHub } = require("../helpers/fake-github");
 const { watch } = require("../helpers/watch");

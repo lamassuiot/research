@@ -21,15 +21,17 @@ Navegador ──▶ www.lamassu.io/research (GitHub Pages: solo la app, sin cont
 El token vive solo en una variable JavaScript: no se guarda en `localStorage`, `sessionStorage`, cookies ni en la URL. Al recargar, GitHub devuelve uno nuevo sin preguntar.
 
 ## Desarrollo
+Requiere Node.js >=20 y pnpm 10.15.1 (fijado en `package.json`). Con Corepack instalado, ejecuta `corepack enable` para activar pnpm.
+
 ```bash
-npm install                          # solo @playwright/test
-npx playwright install chromium      # la primera vez
-python3 frontend/build.py            # public/index.html (+ 404.html)
-python3 frontend/build.py --dev      # public/index.dev.html: datos en memoria, sin login
-node tests/helpers/static.js 8301    # sirve public/ en http://127.0.0.1:8301/research/ (index.dev.html para probar)
-npm test                             # worker + validador (node:test) y Playwright con un GitHub simulado
+pnpm install                           # solo @playwright/test
+pnpm exec playwright install chromium  # la primera vez
+python3 frontend/build.py               # public/index.html (+ 404.html)
+python3 frontend/build.py --dev         # public/index.dev.html: datos en memoria, sin login
+node tests/helpers/static.js 8301       # sirve public/ en http://127.0.0.1:8301/research/ (index.dev.html para probar)
+pnpm test                              # worker + validador (node:test) y Playwright con un GitHub simulado
 ```
-`public/index.html` es una salida del build pero se commitea. Tras editar `frontend/index.template.html`, ejecuta `npm run build` y commitea la plantilla junto con `public/`.
+`public/index.html` es una salida del build pero se commitea. Tras editar `frontend/index.template.html`, ejecuta `pnpm run build` y commitea la plantilla junto con `public/`.
 
 ## Estructura
 - `public/vendor/pdfjs/`: pdf.js 6.4.299 (build *legacy*, Apache-2.0), copiado sin cambios del paquete npm; se carga solo al abrir un PDF.
