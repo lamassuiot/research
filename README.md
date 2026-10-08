@@ -35,9 +35,14 @@ pnpm test                              # worker + validador (node:test) y Playwr
 
 ## Estructura
 - `public/vendor/pdfjs/`: pdf.js 6.4.299 (build *legacy*, Apache-2.0), copiado sin cambios del paquete npm; se carga solo al abrir un PDF.
+- `public/vendor/mermaid/`: Mermaid Tiny 12.1.0 (MIT), copiado sin cambios de `@mermaid-js/tiny`; se carga al mostrar bloques Markdown con lenguaje `mermaid`, también en las vistas previas. Los diagramas siguen el tema claro/oscuro; si no se pueden renderizar, se muestra su código. Tiny no incluye mindmaps, diagramas de arquitectura, KaTeX ni ELK.
 - `frontend/`: plantilla de la UI (`index.template.html`), `build.py`, `config.json`, logos y librerías (`vendor/`: marked, DOMPurify, jsdiff).
 - `worker/`: Cloudflare Worker (`src/index.js`) y sus tests.
 - `content-template/`: contenido inicial de `research-content`, con su validador y workflow.
 - `tests/`: Playwright, con `helpers/fake-github.js` (GitHub, OAuth y Worker simulados).
 - `docs/SETUP.md`: pasos manuales en GitHub y Cloudflare.
 - `PLAN.md`, `TASK.md`: diseño y tarea de implementación. `REPORT.md`: resultado de la implementación.
+
+Los botones **Structure** y **Contents** permiten contraer cada índice. En escritorio, arrastra el separador entre ambos para repartir el ancho de la barra lateral; también admite las flechas del teclado. Doble clic o **Home** restablece la proporción. Estas preferencias se recuerdan en el navegador.
+
+Los enlaces Markdown locales, por ejemplo `[Servicios](certificate-lifecycle-services.md)`, se resuelven a la dirección de la página con su proyecto y sus páginas padre (`#/wiki/<proyecto>/<padre>/<página>`). También se reconocen los enlaces publicados bajo `https://www.lamassu.io/research/`. Los fragmentos como `#renewal` se conservan como destinos de sección. Los enlaces externos y a archivos no se modifican.

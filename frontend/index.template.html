@@ -607,15 +607,15 @@ body.proj-mode .proj-tree:hover::-webkit-scrollbar-thumb,body.proj-mode .toc-sid
 .tree-toggle:hover{background:var(--paper)}
 .tree-toggle .ms{font-size:20px;color:var(--ink-3);transition:transform .15s}
 .tree-toggle .tt-fb{color:var(--ink-3)}
-body.tree-off .tree-toggle .ms{transform:rotate(-90deg)}
+body.tree-off .proj-tree .tree-toggle .ms{transform:rotate(-90deg)}
 body.tree-off.proj-mode .proj-tree #sideTree{display:none}
 body.tree-off.proj-mode.has-toc{--side-w:clamp(330px,26vw,640px)}
 body.tree-off.proj-mode.has-toc .side{grid-template-columns:46px minmax(0,1fr);column-gap:12px}
 body.tree-off.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0;overflow:visible;-webkit-mask-image:none;mask-image:none}
-body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:column;justify-content:flex-start;gap:10px;padding:10px 0;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
-body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:vertical-rl;letter-spacing:.2em}
-body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow::before{display:none}
-body.tree-off.proj-mode.has-toc .tree-toggle:hover{border-color:var(--lamassu-brand)}
+body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle{flex-direction:column;justify-content:flex-start;gap:10px;padding:10px 0;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
+body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle .eyebrow{writing-mode:vertical-rl;letter-spacing:.2em}
+body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle .eyebrow::before{display:none}
+body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle:hover{border-color:var(--lamassu-brand)}
 body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:none}
 body.proj-mode.menu-off,body.proj-mode.menu-off.has-toc{--side-w:248px}
 body.proj-mode.menu-off .shell{grid-template-columns:248px minmax(0,1fr)}
@@ -629,9 +629,9 @@ body.proj-mode.menu-off.side-empty .shell{grid-template-columns:minmax(0,1fr)}
   body.proj-mode .proj-tree,body.proj-mode.has-toc .proj-tree{border-right:0;padding-right:0}
   body.proj-mode .proj-tree,body.proj-mode .toc-side{overflow:visible;-webkit-mask-image:none;mask-image:none;padding-bottom:0}
   body.proj-mode .toc-side{margin-top:16px}
-  body.tree-off.proj-mode.has-toc .tree-toggle{flex-direction:row;justify-content:space-between;background:var(--bg);border:0;border-radius:8px;padding:6px 8px}
-  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow{writing-mode:horizontal-tb;letter-spacing:.16em}
-  body.tree-off.proj-mode.has-toc .tree-toggle .eyebrow::before{display:block}
+  body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle{flex-direction:row;justify-content:space-between;background:var(--bg);border:0;border-radius:8px;padding:6px 8px}
+  body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle .eyebrow{writing-mode:horizontal-tb;letter-spacing:.16em}
+  body.tree-off.proj-mode.has-toc .proj-tree .tree-toggle .eyebrow::before{display:block}
   body.tree-off.proj-mode .side .mode{display:block}
   body.proj-mode .side .menu,body.proj-mode.menu-off .side .menu{display:none}
   body.proj-mode.menu-off .proj-head,body.proj-mode.menu-off .proj-tree{display:block}
@@ -729,10 +729,36 @@ body.resizing{cursor:col-resize;user-select:none}
 body.resizing iframe{pointer-events:none}
 body.resizing .shell,body.resizing .shell *{transition:none!important}
 @media (min-width:1001px){
+  body.proj-mode.has-toc.menu-off .side{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "toc"}
   body.sw-n:not(.proj-mode):not(.side-empty):not(.wide) .shell{grid-template-columns:var(--sidew-n) minmax(0,1fr)}
   body.sw-p.proj-mode:not(.menu-off):not(.wide) .shell{grid-template-columns:var(--sidew-p) minmax(0,1fr);max-width:none}
   body.sw-p.proj-mode:not(.menu-off):not(.wide) .top-in{max-width:none}
 }
+/* Structure / Contents split and collapsed Contents rail. */
+.split-resizer{display:none;grid-area:split;cursor:col-resize;touch-action:none;position:relative;outline:none}
+.split-resizer::after{content:"";position:absolute;inset:0 6px;background:var(--rule);border-radius:2px}
+.split-resizer:hover::after,.split-resizer:focus-visible::after{background:var(--lamassu-brand)}
+body.toc-off #tocIndex{display:none}
+body.toc-off .toc-toggle .ms{transform:rotate(-90deg)}
+body.tree-off .toc-toggle .ms{transform:none}
+body.tree-off.toc-off .toc-toggle .ms{transform:rotate(-90deg)}
+@media (min-width:1001px){
+  body.proj-mode.has-toc:not(.menu-off) .side{grid-template-columns:minmax(0,var(--structure-share,.474fr)) 14px minmax(0,var(--contents-share,.526fr));grid-template-areas:"head head head" "tree split toc";column-gap:4px}
+  body.proj-mode.has-toc:not(.menu-off):not(.tree-off):not(.toc-off) .split-resizer:not([hidden]){display:block}
+  body.tree-off.proj-mode.has-toc:not(.menu-off) .side{grid-template-columns:46px 14px minmax(0,1fr)}
+  body.toc-off.proj-mode.has-toc:not(.menu-off) .side{grid-template-columns:minmax(0,1fr) 14px 46px}
+  body.tree-off.toc-off.proj-mode.has-toc:not(.menu-off) .side{grid-template-columns:46px 14px 46px}
+  body.toc-off.proj-mode.has-toc .toc-side{overflow:visible;mask-image:none;-webkit-mask-image:none;scrollbar-gutter:auto}
+  body.toc-off.proj-mode.has-toc .toc-toggle{flex-direction:column;justify-content:flex-start;gap:10px;padding:10px 0;background:var(--paper);border:1px solid var(--rule);border-radius:12px}
+  body.toc-off.proj-mode.has-toc .toc-toggle .eyebrow{writing-mode:vertical-rl;letter-spacing:.2em}
+  body.toc-off.proj-mode.has-toc .toc-toggle .eyebrow::before{display:none}
+}
+.prose pre.mermaid-block{white-space:normal;clear:both;background:var(--paper);border:1px solid var(--rule);padding:16px}
+.prose pre.mermaid-block > code{display:block;white-space:pre;overflow:auto}
+.prose pre.mermaid-ready > code{display:none}
+.mermaid-diagram{min-width:0;overflow:auto;text-align:center}
+.mermaid-diagram svg{display:block;margin:auto;max-width:100%;height:auto}
+.mermaid-error{display:block;color:var(--err);font:14px/1.5 Manrope,sans-serif;margin-top:8px}
 /* ---------- PDF files ---------- */
 .file-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 12px}
 .file-bar .sp,.pdfv-bar .sp{flex:1}
@@ -794,6 +820,7 @@ table.files td .ms{font-size:20px;vertical-align:-4px;color:var(--err)}
     </nav>
     <div class="proj-head" id="sideProjHead" hidden><a class="ph-back" href="#/projects"><span class="ms" aria-hidden="true">arrow_back</span>Projects</a><a class="ph-title" id="sideProjectT" href="#"></a></div>
     <nav class="proj-tree" id="sideProject" aria-label="Project structure" hidden><button type="button" class="tree-toggle" id="treeToggle" aria-expanded="true" aria-controls="sideTree" title="Hide the project structure"><span class="eyebrow">Structure</span><span class="ms tt-chev" aria-hidden="true">expand_more</span><span class="noicon tt-fb" aria-hidden="true">▾</span></button><ul id="sideTree" class="ptree compact"></ul></nav>
+    <div class="split-resizer" id="splitResizer" role="separator" aria-orientation="vertical" aria-label="Resize Structure and Contents" title="Drag to resize Structure and Contents (double-click to reset)" tabindex="0" hidden></div>
     <nav class="toc-side" id="tocSide" aria-label="Contents" hidden></nav>
     <div class="mode" id="modeNote"></div>
   </aside>
@@ -1689,11 +1716,13 @@ function markNav(){
   $$(".side .menu a[data-nav]").forEach(a => a.classList.toggle("cur", a.dataset.nav === key));
 }
 let placeResizer = () => {};
+let syncSplit = () => {};
 function syncSide(){
   const tocHidden = $("#tocSide").hidden;
   document.body.classList.toggle("side-empty", document.body.classList.contains("menu-off") && tocHidden);
   document.body.classList.toggle("has-toc", !tocHidden);
   placeResizer();
+  syncSplit();
   $("#menuBtn").setAttribute("aria-expanded", String(isNarrow() ? $("#side").classList.contains("open") : !document.body.classList.contains("menu-off")));
 }
 const isNarrow = () => matchMedia("(max-width:1000px)").matches;
@@ -1705,9 +1734,14 @@ function setSideToc(items, onGo){
   const box = $("#tocSide"); S.spy = null;
   if(!items || !items.length){ box.hidden = true; box.innerHTML = ""; syncSide(); return; }
   box.hidden = false;
-  box.innerHTML = `<div class="side-h"><span class="eyebrow">Contents</span></div><ul><li><a href="#" data-top class="on">(Top)</a></li>${
+  const off = document.body.classList.contains("toc-off");
+  box.innerHTML = `<button type="button" class="tree-toggle toc-toggle" id="tocToggle" aria-expanded="${!off}" aria-controls="tocIndex" title="${off ? "Show" : "Hide"} the contents index"><span class="eyebrow">Contents</span><span class="ms" aria-hidden="true">expand_more</span><span class="noicon" aria-hidden="true">▾</span></button><ul id="tocIndex"><li><a href="#" data-top class="on">(Top)</a></li>${
     items.map(it => `<li class="lv${it.level}"><a href="#" data-go="${esc(it.id)}">${esc(it.text)}</a></li>`).join("")}</ul>`;
   box.onclick = e => {
+    if(e.target.closest("#tocToggle")){
+      const off = document.body.classList.toggle("toc-off"); lsSet("kb.toc", off ? "off" : "on");
+      const b = $("#tocToggle"); b.setAttribute("aria-expanded", String(!off)); b.title = `${off ? "Show" : "Hide"} the contents index`; syncSide(); return;
+    }
     const a = e.target.closest("a"); if(!a) return; e.preventDefault(); closeDrawer();
     if(a.hasAttribute("data-top")) scrollTo({top:0, behavior:"smooth"}); else onGo(a.dataset.go);
   };
@@ -1717,7 +1751,43 @@ let spyRaf = 0;
 addEventListener("scroll", () => { if(!S.spy || spyRaf) return; spyRaf = requestAnimationFrame(() => { spyRaf = 0; S.spy && S.spy(); }); }, {passive:true});
 
 /* ---------------------------------------------------------------- markdown */
-function renderMarkdown(src){
+function localArticleHref(href, projectId){
+  if(!href) return null;
+  const base = new URL(CONFIG.basePath || "./", location.href);
+  let url, path;
+  if(href.startsWith("#/wiki/")){
+    url = new URL(href.slice(1), base.origin); path = url.pathname.slice("/wiki/".length);
+  } else {
+    if(href.startsWith("#")) return null;
+    try{ url = new URL(href, base); }catch{ return null; }
+    const absolute = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href);
+    if(!["http:","https:"].includes(url.protocol)) return null;
+    if(absolute && url.origin !== base.origin && !["www.lamassu.io","lamassu.io"].includes(url.hostname)) return null;
+    if(absolute || href.startsWith("/")){
+      if(!url.pathname.startsWith(base.pathname)) return null;
+      path = url.pathname.slice(base.pathname.length);
+    } else path = href.split(/[?#]/)[0];
+  }
+  let parts;
+  try{ parts = path.split("/").filter(Boolean).map(decodeURIComponent); }catch{ return null; }
+  let leaf = parts.at(-1) || "";
+  const source = /\.(?:md|markdown|html?)$/i.test(leaf);
+  if(!source && !href.startsWith("#/wiki/")){
+    if(!S.loc.has(leaf) && !projectOf(leaf)) return null;
+  }
+  if(/^content\.(?:md|markdown|html?)$/i.test(leaf) && parts.length > 1) leaf = parts.at(-2);
+  const slug = leaf.replace(/\.(?:md|markdown|html?)$/i, "");
+  if(!slug || [".",".."].includes(slug)) return null;
+  const explicitProject = parts.find(p => projectOf(p));
+  const owner = explicitProject || projectId;
+  const target = S.loc.has(slug) ? wikiHref(slug) : projectOf(slug) ? "#/wiki/" + enc(slug)
+    : source && owner ? "#/wiki/" + enc(owner) + "/" + enc(slug) : null;
+  if(!target) return null;
+  const params = new URLSearchParams(url.search);
+  if(url.hash){ try{ params.set("section", decodeURIComponent(url.hash.slice(1))); }catch{ return null; } }
+  return target + (params.size ? "?" + params.toString() : "");
+}
+function renderMarkdown(src, projectId=projectContext()?.pr?.id){
   let html;
   if(window.marked){ html = marked.parse(src || "", {gfm:true, breaks:false}); }
   else { html = "<pre>"+esc(src)+"</pre>"; }
@@ -1735,12 +1805,57 @@ function renderMarkdown(src){
       return `<a href="${wikiHref(slug)}" class="${exists?"":"new"}" title="${exists?esc(target):esc(target)+" (page does not exist)"}">${esc(label||target)}</a>`;
     });
   });
+  // Repository-local Markdown/HTML links use the canonical project and parent path.
+  wrap.querySelectorAll("a[href]").forEach(a => {
+    const href = localArticleHref(a.getAttribute("href"), projectId);
+    if(href) a.setAttribute("href", href);
+  });
   // heading ids
   const used = {};
   wrap.querySelectorAll("h2,h3").forEach(h => { let id = slugify(h.textContent); used[id]=(used[id]||0)+1; if(used[id]>1) id += "-"+used[id]; h.id = "s-"+id; });
   return wrap;
 }
 const tocItems = wrap => $$("h2,h3", wrap).map(h => ({id:h.id, text:h.textContent, level:h.tagName==="H2"?2:3}));
+/* Load the locally hosted Mermaid Tiny bundle only when a Markdown diagram is shown.
+   Keep the original code node for revision comparisons and failed-render fallback. */
+let mermaidLoading, mermaidQueue = Promise.resolve(), mermaidId = 0;
+function loadMermaid(){
+  if(!mermaidLoading) mermaidLoading = new Promise((resolve, reject) => {
+    const s = document.createElement("script"); s.src = "vendor/mermaid/mermaid.tiny.js";
+    s.onload = () => resolve(window.mermaid); s.onerror = () => { s.remove(); mermaidLoading = null; reject(new Error("Could not load Mermaid")); };
+    document.head.appendChild(s);
+  });
+  return mermaidLoading;
+}
+function hydrateMermaid(root=document){
+  $$(".prose pre > code.language-mermaid", root).forEach(code => {
+    const pre = code.parentElement, theme = currentTheme();
+    if(pre.dataset.mermaidTheme === theme) return;
+    pre.dataset.mermaidTheme = theme; pre.classList.add("mermaid-block");
+    mermaidQueue = mermaidQueue.then(async () => {
+      if(!pre.isConnected || pre.dataset.mermaidTheme !== theme) return;
+      pre.querySelectorAll(".mermaid-diagram,.mermaid-error").forEach(n => n.remove()); pre.classList.remove("mermaid-ready");
+      try{
+        const m = await loadMermaid();
+        m.initialize({startOnLoad:false, securityLevel:"strict", theme, fontFamily:"Arial, sans-serif", htmlLabels:false,
+          flowchart:{htmlLabels:false}, suppressErrorRendering:true});
+        if(!await m.parse(code.textContent, {suppressErrors:true})) throw new Error("Invalid Mermaid syntax");
+        const {svg} = await m.render("kb-mermaid-" + (++mermaidId), code.textContent);
+        if(!pre.isConnected || pre.dataset.mermaidTheme !== theme) return;
+        const diagram = document.createElement("div"); diagram.className = "mermaid-diagram";
+        diagram.innerHTML = DOMPurify.sanitize(svg, {USE_PROFILES:{svg:true, svgFilters:true}, ADD_TAGS:["style"]});
+        pre.appendChild(diagram); pre.classList.add("mermaid-ready");
+      }catch(e){
+        if(!pre.isConnected || pre.dataset.mermaidTheme !== theme) return;
+        const error = document.createElement("span"); error.className = "mermaid-error";
+        error.textContent = "Could not render this Mermaid diagram. Check the source above."; pre.appendChild(error);
+      }
+    });
+  });
+}
+new MutationObserver(ms => {
+  if(ms.some(m => [...m.addedNodes].some(n => n.nodeType === 1 && (n.matches(".prose,pre,code.language-mermaid") || n.querySelector(".prose,code.language-mermaid"))))) hydrateMermaid();
+}).observe(document.body, {childList:true, subtree:true});
 const mdText = s => String(s||"").replace(/\s+/g," ").trim();
 function htmlText(s){
   try{ const d = new DOMParser().parseFromString(s, "text/html"); d.querySelectorAll("script,style,noscript,template").forEach(n=>n.remove()); return (d.body?.textContent||"").replace(/\s+/g," ").trim(); }
@@ -1876,7 +1991,7 @@ function route(){
     case "all":        return go(viewList("All articles", () => true, "", "Every article in "+SITE+", in alphabetical order."));
     case "status":     return go(viewList(statusLabel(seg[1]), p => p.status === seg[1], "Maturity", STATUS[seg[1]]?.help));
     case "tag":        return go(viewList(seg[1], p => (p.tags||[]).includes(seg[1]), "Tag"));
-    case "random":     return go(refreshPages().then(ps => { if(!ps.length){ location.replace("#/"); return; } location.replace("#/wiki/"+ps[Math.floor(Math.random()*ps.length)].slug); }));
+    case "random":     return go(refreshPages().then(ps => { if(!ps.length){ location.replace("#/"); return; } location.replace(wikiHref(ps[Math.floor(Math.random()*ps.length)].slug)); }));
     default:           setMain(`<h1 class="title">Bad title</h1><div class="ambox warn"><span class="ms" aria-hidden="true">warning</span><p>There is no page or view called “${esc(seg[0])}”. <a href="#/">Return to the main page</a>.</p></div>`);
   }
 }
@@ -1888,10 +2003,10 @@ function setMainFor(nav, html){ if(nav !== S.nav) throw STALE; setMain(html); }
 function tabs(slug, on, exists=true, page=null){
   const L = (k, label, href, icon) => `<a href="${href}" class="${on===k?"on":""}"${on===k?' aria-current="page"':""}>${icon?`<span class="ms" aria-hidden="true">${icon}</span>`:""}${label}</a>`;
   const right = exists
-    ? L("read","Read","#/wiki/"+slug) + (canEditPage(page) ? L("edit","Edit","#/edit/"+slug) : "") + L("history","View history","#/history/"+slug)
+    ? L("read","Read",wikiHref(slug)) + (canEditPage(page) ? L("edit","Edit","#/edit/"+slug) : "") + L("history","View history","#/history/"+slug)
       + `<details class="dd" id="tools"><summary>Tools<span class="ms" aria-hidden="true">expand_more</span></summary><div class="dd-menu" role="menu">
           <p class="eyebrow">Actions</p>
-          <a href="#/wiki/${slug}" data-act="permalink" role="menuitem"><span class="ms" aria-hidden="true">link</span>Permanent link</a>
+          <a href="${wikiHref(slug)}" data-act="permalink" role="menuitem"><span class="ms" aria-hidden="true">link</span>Permanent link</a>
           <a href="#/info/${slug}" role="menuitem"><span class="ms" aria-hidden="true">info</span>Page information</a>
           <button type="button" data-act="cite" role="menuitem"><span class="ms" aria-hidden="true">format_quote</span>Cite this page</button>
           <p class="eyebrow">Export</p>
@@ -1900,7 +2015,7 @@ function tabs(slug, on, exists=true, page=null){
           ${canEditPage(page) ? `<p class="eyebrow">Manage</p><button type="button" data-act="delete" role="menuitem"><span class="ms" aria-hidden="true">delete</span>Delete page</button>` : ""}
         </div></details>`
     : (S.me.canWrite ? L("edit","Create","#/new?title="+enc(slug.replace(/-/g," "))) : "");
-  return `<div class="tabs"><nav aria-label="Namespaces">${L(["read","edit","history","diff","info","access"].includes(on)?"x":"article","Article","#/wiki/"+slug)}${on==="access"?L("access",'<span class="ms" aria-hidden="true">shield_lock</span>Permissions',"#/access/"+slug):""}</nav><nav aria-label="Views">${right}</nav></div>`;
+  return `<div class="tabs"><nav aria-label="Namespaces">${L(["read","edit","history","diff","info","access"].includes(on)?"x":"article","Article",wikiHref(slug))}${on==="access"?L("access",'<span class="ms" aria-hidden="true">shield_lock</span>Permissions',"#/access/"+slug):""}</nav><nav aria-label="Views">${right}</nav></div>`;
 }
 /* Tools menu actions. ctx = {slug, page, rev} of the page on screen. */
 function bindTools(ctx){
@@ -1917,11 +2032,11 @@ function bindTools(ctx){
     const rev = ctx.rev || (ctx.page && await S.store.getRev(ctx.slug, ctx.page.rev));
     if(act === "permalink"){
       e.preventDefault();
-      const url = location.href.split("#")[0] + `#/wiki/${ctx.slug}?rev=${enc(rev.id)}`;
+      const url = location.href.split("#")[0] + `${wikiHref(ctx.slug)}?rev=${enc(rev.id)}`;
       try{ await navigator.clipboard.writeText(url); toast("Permanent link to revision "+rev.n+" copied."); }catch{ toast(url, 8000); }
-      location.hash = `#/wiki/${ctx.slug}?rev=${enc(rev.id)}`;
+      location.hash = `${wikiHref(ctx.slug)}?rev=${enc(rev.id)}`;
     } else if(act === "cite"){
-      const url = location.href.split("#")[0] + `#/wiki/${ctx.slug}?rev=${enc(rev.id)}`;
+      const url = location.href.split("#")[0] + `${wikiHref(ctx.slug)}?rev=${enc(rev.id)}`;
       const cite = `${SITE} contributors, “${ctx.page.title}”, ${SITE}, revision ${rev.n}, ${fmtDay(rev.at)}. ${url}`;
       try{ await navigator.clipboard.writeText(cite); toast("Citation copied to the clipboard."); }catch{ toast(cite, 10000); }
     } else if(act === "source"){
@@ -1975,8 +2090,8 @@ async function viewHome(){
     ${pages.length ? `<div class="mp-grid">
       <div class="mp-col">
         ${featured ? `<section class="mp-box t-brand"><h2>${featured.status==="validated"?"Featured know-how":"Latest article"}</h2><div class="in">
-          <h3 style="margin:0 0 6px;font-weight:700;font-size:21px;letter-spacing:-.02em"><a href="#/wiki/${featured.slug}">${esc(featured.title)}</a></h3>
-          <p style="margin:0 0 10px">${esc(featured.abstract||"")} <a href="#/wiki/${featured.slug}">(Full article…)</a></p>
+          <h3 style="margin:0 0 6px;font-weight:700;font-size:21px;letter-spacing:-.02em"><a href="${wikiHref(featured.slug)}">${esc(featured.title)}</a></h3>
+          <p style="margin:0 0 10px">${esc(featured.abstract||"")} <a href="${wikiHref(featured.slug)}">(Full article…)</a></p>
           ${pill(featured.status)} <span class="muted" style="font-size:15px"> ${(featured.tags||[]).map(t=>esc(t)).join(", ")} · revision ${featured.revN}</span></div></section>` : ""}
         <section class="mp-box t-slate"><h2>Browse by tag</h2><div class="in cat-list">
           ${allTags().filter(t => byTag[t]).map(t => `<section><h3><a href="#/tag/${enc(t)}">${esc(t)}</a></h3><ul>${byTag[t].sort((a,b)=>a.title.localeCompare(b.title)).map(p=>`<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.project ? ' <span class="muted" style="font-size:13px">(project)</span>' : ""}</li>`).join("")}</ul></section>`).join("")}
@@ -1984,7 +2099,7 @@ async function viewHome(){
       </div>
       <div class="mp-col">
         <section class="mp-box t-info"><h2>Recently updated</h2><div class="in"><ul>
-          ${latest.map(r => `<li><a href="#/wiki/${r.slug}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>'}
+          ${latest.map(r => `<li><a href="${wikiHref(r.slug)}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>'}
         </ul><p style="margin:10px 0 0;font-size:15px"><a href="#/recent">All recent changes →</a></p></div></section>
         <section class="mp-box t-warn"><h2>Maturity levels</h2><div class="in"><ul class="mat-list">
           ${STATUS_ORDER.map(s => `<li><a href="#/status/${s}" style="text-decoration:none">${pill(s)}</a><span>${esc(STATUS[s].help)}</span></li>`).join("")}
@@ -1998,7 +2113,7 @@ function groupedList(pages){
   const g = {};
   for(const p of pages){ const k = (p.title.trim()[0]||"#").toUpperCase(); (g[k] ||= []).push(p); }
   return `<div class="mw-cols">${Object.keys(g).sort((a,b)=>a.localeCompare(b)).map(k => `<div class="grp"><h3>${esc(k)}</h3><ul>${
-    g[k].map(p => `<li><a href="#/wiki/${p.slug}" title="${esc(p.abstract||"")}">${esc(p.title)}</a> ${pill(p.status, true)}</li>`).join("")}</ul></div>`).join("")}</div>`;
+    g[k].map(p => `<li><a href="${wikiHref(p.slug)}" title="${esc(p.abstract||"")}">${esc(p.title)}</a> ${pill(p.status, true)}</li>`).join("")}</ul></div>`).join("")}</div>`;
 }
 async function viewList(title, pred, kind, help){
   const nav = S.nav;
@@ -2139,7 +2254,7 @@ function mountChanges(slug, rev, revs, prose){
   const unitsOf = root => [...root.children].flatMap(el => /^(UL|OL)$/.test(el.tagName) ? [...el.children].filter(c => c.tagName === "LI")
     : el.tagName === "TABLE" ? [...el.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tr")] : [el]);
   const kindOf = (el, root) => el.parentElement === root ? "TOP" : el.parentElement.tagName;
-  const keyOf = el => el.tagName + "|" + (el.tagName === "TR" ? [...el.cells].map(c => c.textContent.replace(/\s+/g, " ").trim()).join("\t") : el.textContent.replace(/\s+/g, " ").trim());
+  const keyOf = el => el.tagName + "|" + (el.querySelector("code.language-mermaid")?.textContent || (el.tagName === "TR" ? [...el.cells].map(c => c.textContent.replace(/\s+/g, " ").trim()).join("\t") : el.textContent.replace(/\s+/g, " ").trim()));
   const blocks = unitsOf(prose), keys = blocks.map(keyOf);
   const bar = document.createElement("div"); bar.className = "chgbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Changes in this revision");
   $("#main").appendChild(bar);
@@ -2161,7 +2276,7 @@ function mountChanges(slug, rev, revs, prose){
       return true;
     }
     const a = oldBlock.textContent, b = block.textContent;
-    if(a.length + b.length > 20000 || block.querySelector(".pdf-embed")) return false;
+    if(a.length + b.length > 20000 || block.querySelector(".pdf-embed,code.language-mermaid")) return false;
     const toks = groupDiff(Diff.diffWordsWithSpace(a, b)).map(t => Object.assign(t, {rem:t.text.length}));
     const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT), nodes = []; for(let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
     const piece = (type, text) => { if(type === "same") return document.createTextNode(text); const e = document.createElement(type === "add" ? "ins" : "del"); e.className = type === "add" ? "chg-ins" : "chg-del"; e.textContent = text; return e; };
@@ -2289,8 +2404,8 @@ async function viewArticle(slug, revId){
         <div class="sc-row"><dt>Revision</dt><dd><span class="badge outline mono">${rev.n} / ${page.revN}</span> <a class="sc-link" href="#/history/${slug}">history</a></dd></div>
       </dl>
     </aside>`;
-  const oldNote = isOld ? ambox("warn","history",`<p>This is an old revision of this page, as edited by ${personSpan(rev.by)} at ${fmtMW(rev.at)}. It may differ significantly from the <a href="#/wiki/${slug}">current revision</a>.</p>
-    <p style="margin-top:4px">(<a href="#/diff/${slug}/prev/${enc(rev.id)}">diff</a>) ← Previous revision | <a href="#/wiki/${slug}">Latest revision</a> (<a href="#/diff/${slug}/${enc(rev.id)}/cur">diff</a>)</p>`) : "";
+  const oldNote = isOld ? ambox("warn","history",`<p>This is an old revision of this page, as edited by ${personSpan(rev.by)} at ${fmtMW(rev.at)}. It may differ significantly from the <a href="${wikiHref(slug)}">current revision</a>.</p>
+    <p style="margin-top:4px">(<a href="#/diff/${slug}/prev/${enc(rev.id)}">diff</a>) ← Previous revision | <a href="${wikiHref(slug)}">Latest revision</a> (<a href="#/diff/${slug}/${enc(rev.id)}/cur">diff</a>)</p>`) : "";
   const statusNote = status==="draft" ? ambox("warn","edit_note",`<p><b>This article is a draft.</b> ${STATUS.draft.help}</p>`)
                    : status==="deprecated" ? ambox("slate","archive",`<p><b>This article is deprecated.</b> ${STATUS.deprecated.help}</p>`) : "";
   const tagsHtml = (page.tags||[]).map(t=>`<a href="#/tag/${enc(t)}">${esc(t)}</a>`).join('<span class="sep">|</span>');
@@ -2341,7 +2456,7 @@ async function viewHistory(slug){
     const cur = i===0 ? `<span class="disabled">cur</span>` : `<a href="#/diff/${slug}/${enc(r.id)}/cur">cur</a>`;
     const prv = prev ? `<a href="#/diff/${slug}/prev/${enc(r.id)}">prev</a>` : `<span class="disabled">prev</span>`;
     return `<li>(${cur} | ${prv}) <input type="radio" name="a" value="${esc(r.id)}" aria-label="Compare from revision ${r.n}" ${i===1?"checked":""}><input type="radio" name="b" value="${esc(r.id)}" aria-label="Compare to revision ${r.n}" ${i===0?"checked":""}>
-      <a href="#/wiki/${slug}?rev=${enc(r.id)}">${fmtMW(r.at)}</a> ${personSpan(r.by)} <span class="sep">. .</span>
+      <a href="${wikiHref(slug)}?rev=${enc(r.id)}">${fmtMW(r.at)}</a> ${personSpan(r.by)} <span class="sep">. .</span>
       ${pill(r.status, true)}
       ${r.summary?`<span class="summary-text">(${esc(r.summary)})</span>`:""}
       ${i>0 && canEditPage(page) ? `(<a href="#/diff/${slug}/${enc(r.id)}/cur" title="Compare with the current revision; restore from there">restore</a>)` : ""}
@@ -2377,7 +2492,7 @@ async function viewDiff(slug, aId, bId){
   if(!bId || bId === "cur") bId = page.rev;
   if(aId === "prev"){
     const i = idx(bId);
-    if(i < 0 || !revs[i+1]){ location.replace(`#/wiki/${slug}?rev=${enc(bId)}`); return; }
+    if(i < 0 || !revs[i+1]){ location.replace(`${wikiHref(slug)}?rev=${enc(bId)}`); return; }
     aId = revs[i+1].id;
   }
   const [a, b] = await Promise.all([S.store.getRev(slug, aId), S.store.getRev(slug, bId)]);
@@ -2394,9 +2509,9 @@ async function viewDiff(slug, aId, bId){
   let mode = lsGet("kb.diffmode") || (isNarrow() ? "inl" : "sxs");
   setMainFor(nav, `<h1 class="title">${esc(page.title)}: Difference between revisions</h1>${tabs(slug,"diff",true,page)}<div class="maturity ${page.status}"></div>
     <table class="diff-head"><tbody><tr>
-      <td class="old"><b><a href="#/wiki/${slug}?rev=${enc(a.id)}">Revision as of ${fmtMW(a.at)}</a></b> (rev ${a.n})<br>${personSpan(a.by)}<br>
+      <td class="old"><b><a href="${wikiHref(slug)}?rev=${enc(a.id)}">Revision as of ${fmtMW(a.at)}</a></b> (rev ${a.n})<br>${personSpan(a.by)}<br>
         ${a.summary?`<span class="summary-text">(${esc(a.summary)})</span><br>`:""}${older?`<a href="#/diff/${slug}/prev/${enc(a.id)}">← Older edit</a>`:'<span class="muted">First revision</span>'}</td>
-      <td class="new"><b><a href="#/wiki/${slug}?rev=${enc(b.id)}">${isLatest?"Latest revision":"Revision"} as of ${fmtMW(b.at)}</a></b> (rev ${b.n})${canEditPage(page)&&isLatest?` (<a href="#/edit/${slug}">edit</a>)`:""}<br>${personSpan(b.by)}<br>
+      <td class="new"><b><a href="${wikiHref(slug)}?rev=${enc(b.id)}">${isLatest?"Latest revision":"Revision"} as of ${fmtMW(b.at)}</a></b> (rev ${b.n})${canEditPage(page)&&isLatest?` (<a href="#/edit/${slug}">edit</a>)`:""}<br>${personSpan(b.by)}<br>
         ${b.summary?`<span class="summary-text">(${esc(b.summary)})</span><br>`:""}${newer?`<a href="#/diff/${slug}/${enc(b.id)}/${enc(newer.id)}">Newer edit →</a>`:'<span class="muted">Latest revision</span>'}</td>
     </tr></tbody></table>
     ${metaChanges.length?ambox("slate","tune",`<p>Metadata changed: ${metaChanges.join("; ")}</p>`):""}
@@ -2415,7 +2530,7 @@ async function viewDiff(slug, aId, bId){
     try{
       await S.store.save(slug, {title:a.title||page.title, tags:(a.tags && a.tags.length ? a.tags : page.tags), status:a.status||page.status,
         format:a.format||page.format, abstract:page.abstract, summary:`Restored revision ${a.n}`, content:a.content}, page.revN);
-      toast(`Restored revision ${a.n}.`); invalidatePages(); location.hash = "#/wiki/"+slug;
+      toast(`Restored revision ${a.n}.`); invalidatePages(); location.hash = wikiHref(slug);
     }catch(err){ toast(err.message||String(err), 6000); }
   };
   bindTools({slug, page, rev:b});
@@ -2435,7 +2550,7 @@ async function viewInfo(slug){
     <h2 style="font-size:20px;font-weight:700;margin:14px 0 8px">Basic information</h2>
     <table class="data"><tbody>
       ${row("Display title", esc(page.title))}
-      ${row("Address", `<span class="mono">#/wiki/${esc(slug)}</span>`)}
+      ${row("Address", `<span class="mono">${esc(wikiHref(slug))}</span>`)}
       ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : "Markdown")}
       ${row("Maturity", pill(page.status, true))}
       ${row("Tags", (page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—")}
@@ -2464,7 +2579,7 @@ async function viewRecent(){
   const li = r => {
     const prev = revs.find(x => x.slug===r.slug && x.n===r.n-1);
     return `<li>(${r.n>1?`<a href="#/diff/${r.slug}/prev/${enc(r.id)}">diff</a>`:'<span class="disabled">diff</span>'} | <a href="#/history/${r.slug}">hist</a>) <span class="sep">. .</span>
-      ${r.n===1?'<abbr class="newpage" title="This edit created a new page">N</abbr> ':""}<a href="#/wiki/${r.slug}">${esc(r.title||r.slug)}</a>; <span class="mono">${fmtTime(r.at)}</span>
+      ${r.n===1?'<abbr class="newpage" title="This edit created a new page">N</abbr> ':""}<a href="${wikiHref(r.slug)}">${esc(r.title||r.slug)}</a>; <span class="mono">${fmtTime(r.at)}</span>
       <span class="sep">. .</span> ${personSpan(r.by)} ${r.summary?`<span class="summary-text">(${esc(r.summary)})</span>`:""} ${pill(r.status, true)}</li>`;
   };
   setMainFor(nav, `<h1 class="title">Recent changes</h1>
@@ -2505,12 +2620,12 @@ async function viewSearch(q){
   const t = q.toLowerCase();
   const exact = pages.find(p => p.title.toLowerCase() === t || p.slug === slugify(q));
   $("#sr-top").innerHTML = exact
-    ? ambox("ok","check_circle",`<p>There is a page named “<a href="#/wiki/${exact.slug}">${esc(exact.title)}</a>” on this wiki.</p>`)
+    ? ambox("ok","check_circle",`<p>There is a page named “<a href="${wikiHref(exact.slug)}">${esc(exact.title)}</a>” on this wiki.</p>`)
     : (S.me.canWrite ? ambox("slate","add_circle",`<p><b>Create the page “<a class="new" href="#/new?title=${enc(q)}">${esc(q)}</a>” on this wiki!</b></p>`) : "");
   if(S.store.search){   // self-hosted server: one request, full text searched server-side with permissions applied
     const hits = await S.store.search(q);
     if(nav !== S.nav) return;
-    $("#sr").innerHTML = hits.map(r => `<li><div class="h"><a href="#/wiki/${r.slug}">${hilite(r.title, q)}</a></div>
+    $("#sr").innerHTML = hits.map(r => `<li><div class="h"><a href="${wikiHref(r.slug)}">${hilite(r.title, q)}</a></div>
       ${r.snippet?`<div class="snip">${hilite(r.snippet, q)}</div>`:""}
       <div class="meta">${esc((r.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.status))} · (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.revN}) · ${fmtMW(r.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = hits.length ? `Results 1 – ${hits.length} of ${hits.length}` : "There were no results matching the query.";
@@ -2524,7 +2639,7 @@ async function viewSearch(q){
   const draw = (final) => {
     if(nav !== S.nav) return;
     const list = [...res.values()].sort((a,b)=>b.score-a.score || a.p.title.localeCompare(b.p.title));
-    $("#sr").innerHTML = list.map(r => `<li><div class="h"><a href="#/wiki/${r.p.slug}">${hilite(r.p.title, q)}</a></div>
+    $("#sr").innerHTML = list.map(r => `<li><div class="h"><a href="${wikiHref(r.p.slug)}">${hilite(r.p.title, q)}</a></div>
       ${r.snip?`<div class="snip">${hilite(r.snip, q)}</div>`:""}
       <div class="meta">${esc((r.p.tags||[]).join(", ")||"no tags")} · ${esc(statusLabel(r.p.status))} · (${r.hits?`${r.hits} match${r.hits>1?"es":""} in text · `:""}revision ${r.p.revN}) · ${fmtMW(r.p.updatedAt)}</div></li>`).join("");
     $("#sr-status").textContent = (list.length ? `Results 1 – ${list.length} of ${list.length}` : "There were no results matching the query.") + (final ? "" : " · searching article text…");
@@ -2620,7 +2735,7 @@ async function viewEdit(slug, params){
   await refreshPages();
   let page = slug ? await S.store.getPage(slug) : null;
   if(page && !canEditPage(page)){
-    setMainFor(nav, `<h1 class="title">Permission error</h1>${ambox("warn","lock",`<p>You can read “<a href="#/wiki/${slug}">${esc(page.title)}</a>” but you cannot edit it. Editing needs Write permission on the content repository: see <a href="#/access">Access</a>.</p>`)}`);
+    setMainFor(nav, `<h1 class="title">Permission error</h1>${ambox("warn","lock",`<p>You can read “<a href="${wikiHref(slug)}">${esc(page.title)}</a>” but you cannot edit it. Editing needs Write permission on the content repository: see <a href="#/access">Access</a>.</p>`)}`);
     return;
   }
   let cur = page ? await S.store.getRev(slug, page.rev) : null;
@@ -2677,7 +2792,7 @@ async function viewEdit(slug, params){
           <button class="btn primary" type="submit" id="saveBtn"><span class="ms" aria-hidden="true">publish</span><span>${isNew?"Create article":"Publish changes"}</span></button>
           <button class="btn" type="button" id="pvBtn"><span class="ms" aria-hidden="true">visibility</span>Show preview</button>
           ${isNew?"":`<button class="btn" type="button" id="chBtn"><span class="ms" aria-hidden="true">difference</span>Show changes</button>`}
-          <a href="${isNew?"#/":"#/wiki/"+slug}">Cancel</a>
+          <a href="${isNew?"#/":wikiHref(slug)}">Cancel</a>
         </div>
         <div class="hint" style="margin:0">Publishing never overwrites: it adds revision ${baseRevN+1} with your name and the time.</div>
       </div>
@@ -2724,7 +2839,7 @@ async function viewEdit(slug, params){
   $("#pvBtn").onclick = () => {
     activeFrame = null;
     if(fmt === "md"){
-      const w = renderMarkdown(body.value);
+      const w = renderMarkdown(body.value, $("#f-proj")?.value || projectContext()?.pr?.id);
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<div class="prose">${w.innerHTML}</div>`;
     } else {
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<iframe class="report-frame" id="pvf" title="Preview" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
@@ -3434,7 +3549,13 @@ async function openWiki(path, params){
   if(S.pages.some(p => p.slug === slug) && path.join("/") !== want){
     const q = params.toString(); location.replace("#/wiki/" + pagePath(slug).map(enc).join("/") + (q ? "?" + q : "")); return;
   }
-  return viewArticle(slug, params.get("rev"));
+  await viewArticle(slug, params.get("rev"));
+  if(nav !== S.nav) return;
+  const section = params.get("section");
+  if(section){
+    if(activeFrame) activeFrame.contentWindow?.postMessage({kbGo:section}, "*");
+    else (document.getElementById(section) || document.getElementById("s-" + slugify(section)))?.scrollIntoView();
+  }
 }
 
 /* ---------------------------------------------------------------- access and automation */
@@ -3509,7 +3630,7 @@ function setupSearch(){
       return {p, score};
     }).filter(h=>h.score).sort((a,b)=>b.score-a.score).slice(0,8);
     sel = -1;
-    box.innerHTML = hits.map(h=>`<a href="#/wiki/${h.p.slug}" role="option">${hilite(h.p.title, raw)}<small>${esc((h.p.tags||[]).join(", "))} · ${esc(statusLabel(h.p.status))}</small></a>`).join("")
+    box.innerHTML = hits.map(h=>`<a href="${wikiHref(h.p.slug)}" role="option">${hilite(h.p.title, raw)}<small>${esc((h.p.tags||[]).join(", "))} · ${esc(statusLabel(h.p.status))}</small></a>`).join("")
       + `<a href="#/search?q=${enc(raw)}" class="sr-more" role="option"><span class="ms" aria-hidden="true">search</span> Search for pages containing <b>${esc(raw)}</b></a>`
       + (S.me.canWrite && !S.pages.some(p=>p.slug===slugify(raw)) ? `<a href="#/new?title=${enc(raw)}" role="option"><small>Create the page “${esc(raw)}”</small></a>` : "");
     box.classList.add("open");
@@ -3530,7 +3651,7 @@ function setupSearch(){
     const items = $$("a", box); const raw = q.value.trim();
     let href;
     if(sel >= 0 && items[sel] && box.classList.contains("open")) href = items[sel].getAttribute("href");
-    else if(raw){ const ex = S.pages.find(p => p.title.toLowerCase() === raw.toLowerCase()); href = ex ? "#/wiki/"+ex.slug : "#/search?q="+enc(raw); }
+    else if(raw){ const ex = S.pages.find(p => p.title.toLowerCase() === raw.toLowerCase()); href = ex ? wikiHref(ex.slug) : "#/search?q="+enc(raw); }
     if(href){ location.hash = href; q.value = ""; close(); q.blur(); }
   });
   box.addEventListener("click", () => { q.value=""; close(); });
@@ -3600,14 +3721,38 @@ function setupTree(){
   const b = $("#treeToggle");
   const apply = off => { document.body.classList.toggle("tree-off", off); b.setAttribute("aria-expanded", String(!off)); b.title = off ? "Show the project structure" : "Hide the project structure"; };
   apply(lsGet("kb.tree") === "off");
-  b.onclick = () => { const off = !document.body.classList.contains("tree-off"); lsSet("kb.tree", off ? "off" : "on"); apply(off); };
+  b.onclick = () => { const off = !document.body.classList.contains("tree-off"); lsSet("kb.tree", off ? "off" : "on"); apply(off); syncSide(); };
+}
+function setupSplit(){
+  const h = $("#splitResizer"), side = $("#side"), body = document.body, root = document.documentElement;
+  let share = Number(lsGet("kb.split")) || .474, drag = false;
+  const set = (v, save=false) => {
+    share = Math.max(.2, Math.min(.8, v));
+    root.style.setProperty("--structure-share", share + "fr"); root.style.setProperty("--contents-share", (1 - share) + "fr");
+    h.setAttribute("aria-valuemin", "20"); h.setAttribute("aria-valuemax", "80"); h.setAttribute("aria-valuenow", String(Math.round(share * 100)));
+    if(save) lsSet("kb.split", String(share));
+  };
+  const end = () => { if(!drag) return; drag = false; body.classList.remove("resizing"); lsSet("kb.split", String(share)); };
+  syncSplit = () => {
+    h.hidden = isNarrow() || !body.classList.contains("proj-mode") || !body.classList.contains("has-toc") || ["tree-off","toc-off","menu-off","wide"].some(c => body.classList.contains(c));
+    if(h.hidden) end();
+  };
+  h.onpointerdown = e => { if(e.button !== 0) return; e.preventDefault(); drag = true; h.setPointerCapture(e.pointerId); body.classList.add("resizing"); };
+  h.onpointermove = e => { if(!drag) return; const r = side.getBoundingClientRect(); set((e.clientX - r.left - 11) / (r.width - 22)); };
+  h.onpointerup = h.onpointercancel = h.onlostpointercapture = end;
+  h.ondblclick = () => set(.474, true);
+  h.onkeydown = e => {
+    if(e.key === "Home"){ e.preventDefault(); set(.474, true); }
+    else if(e.key === "ArrowLeft" || e.key === "ArrowRight"){ e.preventDefault(); set(share + (e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? .1 : .02), true); }
+  };
+  body.classList.toggle("toc-off", lsGet("kb.toc") === "off"); set(share); syncSplit();
 }
 function setupTheme(){
   $("#themeBtn").onclick = () => {
     const next = currentTheme() === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next); lsSet("kb.theme", next); syncThemeBtn();
+    document.documentElement.setAttribute("data-theme", next); lsSet("kb.theme", next); syncThemeBtn(); hydrateMermaid();
   };
-  matchMedia("(prefers-color-scheme:dark)").addEventListener?.("change", syncThemeBtn);
+  matchMedia("(prefers-color-scheme:dark)").addEventListener?.("change", () => { syncThemeBtn(); hydrateMermaid(); });
   syncThemeBtn();
 }
 
@@ -3616,7 +3761,7 @@ function checkIcons(){
   try{ document.fonts && document.fonts.load('20px "Material Symbols Rounded"', "search").then(f => { if(f && f.length) document.documentElement.classList.add("icons"); }); }catch{}
 }
 (async function boot(){
-  setupTheme(); setupTree(); setupResizer();
+  setupTheme(); setupTree(); setupSplit(); setupResizer();
   if(lsGet("kb.menu") === "off") document.body.classList.add("menu-off");
   $("#menuBtn").onclick = () => {
     if(isNarrow()){ openDrawer(!$("#side").classList.contains("open")); return; }
