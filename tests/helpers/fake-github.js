@@ -78,7 +78,7 @@ async function installFakeGitHub(page, opts = {}) {
     read: { admin: false, maintain: false, push: false, triage: false, pull: true } };
 
   const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
-    "access-control-allow-headers": "authorization, content-type, x-github-api-version, accept", "access-control-expose-headers": "x-ratelimit-remaining, x-ratelimit-reset" };
+    "access-control-allow-headers": "authorization, content-type, x-github-api-version, accept, if-none-match", "access-control-expose-headers": "x-ratelimit-remaining, x-ratelimit-reset, etag" };
   const json = (route, status, body, headers) => route.fulfill({ status, headers: { ...CORS, "content-type": "application/json", ...(headers || {}) }, body: JSON.stringify(body) });
   const text = (route, status, body) => route.fulfill({ status, headers: { ...CORS, "content-type": "text/plain; charset=utf-8" }, body });
 
@@ -93,7 +93,7 @@ async function installFakeGitHub(page, opts = {}) {
         body: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="hsl(${hue},55%,45%)"/><text x="32" y="42" font-size="30" font-family="sans-serif" text-anchor="middle" fill="#fff">${who[0].toUpperCase()}</text></svg>` });
     }
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
-    state.requests.push({ method, host: url.hostname, path: url.pathname });
+    state.requests.push({ method, host: url.hostname, path: url.pathname, etag:req.headers()["if-none-match"] });
 
     /* GitHub sign-in page: bounce straight back with a code (or an error) */
     if (url.hostname === "github.com" && url.pathname === "/login/oauth/authorize") {
@@ -149,7 +149,9 @@ async function installFakeGitHub(page, opts = {}) {
       if (m && method === "GET") {
         const content = repo.read(`${url.searchParams.get("ref")}:${decodeURIComponent(m[1])}`);
         if (content == null) return json(route, 404, { message: "Not Found" });
-        return Buffer.isBuffer(content) ? route.fulfill({ status: 200, headers: { ...CORS, "content-type": "application/octet-stream" }, body: content }) : text(route, 200, content);
+        const etag = '"' + sha1(content) + '"';
+        if(req.headers()["if-none-match"] === etag) return route.fulfill({status:304, headers:{...CORS, etag}});
+        return route.fulfill({status:200, headers:{...CORS, etag, "content-type":Buffer.isBuffer(content) ? "application/octet-stream" : "text/plain; charset=utf-8"}, body:content});
       }
       if (url.pathname === "/graphql" && method === "POST") return graphql(route, req.postDataJSON() || {});
       const g = url.pathname.match(new RegExp(`^/repos/${OWNER}/${REPO}/git/(.+)$`));
@@ -222,7 +224,8 @@ async function installFakeGitHub(page, opts = {}) {
           }
           return { name: pid, type: "tree", object: { entries: Object.values(top) } };
         });
-        data = { repository: { object: entries.length ? { entries } : null } }; break;
+        const oid = sha1([...files].filter(([p]) => p.startsWith("projects/")).sort(([a],[b]) => a.localeCompare(b)).map(([p,v]) => p + ":" + sha1(v)).join("\n"));
+        data = { repository: { ref:{target:{oid:repo.head().oid}}, object: entries.length ? { entries, oid } : null } }; break;
       }
       case "ProjectEntries": case "PageEntries": {
         const prefix = v.expr.split(":")[1] + "/", names = new Map();

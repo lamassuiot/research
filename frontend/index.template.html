@@ -1001,14 +1001,19 @@ const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
    project each one is in (filled by loadIndex and by our own writes). */
 class GitHubStore{
   constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; this._art = new Map(); this._content = new Map(); this._contentChars = 0;
+    this._rawReads = new Map(); this._latest = new Map(); this._latestChars = 0; this._readGen = 0; this._sessionGen = 0; this._index = null;
     this.where = {page:new Map(), link:new Map(), file:new Map()}; }
+  invalidateReads(){ this._art.clear(); this._latest.clear(); this._latestChars = 0; this._readGen++; }
+  clearCaches(){ this._sessionGen++; this.invalidateReads(); this._content.clear(); this._contentChars = 0; this._rawReads.clear(); this._index = null; }
   get full(){ return this.owner + "/" + this.repo; }
   async gh(path, opt){
     opt = opt || {};
     if(!AUTH.token || Date.now() > AUTH.expiresAt - 60000) await AUTH.reauth();
-    const r = await fetch("https://api.github.com" + path, Object.assign({}, opt, {headers:Object.assign({
+    const {allowNotModified, ...fetchOpt} = opt;
+    const r = await fetch("https://api.github.com" + path, Object.assign({}, fetchOpt, {headers:Object.assign({
       Authorization:"Bearer " + AUTH.token, "X-GitHub-Api-Version":"2022-11-28", Accept:"application/vnd.github+json"}, opt.headers || {})}));
     if(r.status === 401){ await AUTH.reauth(); }
+    if(r.status === 304 && allowNotModified) return r;
     if((r.status === 403 || r.status === 429) && r.headers.get("x-ratelimit-remaining") === "0"){
       const at = new Date(Number(r.headers.get("x-ratelimit-reset") || 0) * 1000);
       throw Object.assign(new Error("GitHub API rate limit reached, try again at " + String(at.getHours()).padStart(2,"0") + ":" + String(at.getMinutes()).padStart(2,"0")), {status:r.status, rateLimited:true});
@@ -1024,7 +1029,7 @@ class GitHubStore{
     const r = await this.gh("/graphql", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({query, variables, operationName})});
     const j = await r.json();
     if(j.errors && j.errors.length) throw Object.assign(new Error(j.errors[0].message), {gqlType:j.errors[0].type});
-    if(operationName === "CreateCommit") this._art.clear();          // our own commit: anything cached about articles may be stale
+    if(operationName === "CreateCommit") this.invalidateReads();
     return j.data;
   }
   v(extra){ return Object.assign({owner:this.owner, name:this.repo, ref:"refs/heads/" + this.branch}, extra); }
@@ -1062,9 +1067,19 @@ class GitHubStore{
   /* Everything the app lists, in two round trips: (1) the folder structure of projects/ (names and sizes, no contents);
      (2) the small JSON files (project.json, each link, each page's meta.json), in parallel chunks. */
   async loadIndex(){
-    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){
-        object(expression:$expr){ ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } } } } } } } }`,
-      {owner:this.owner, name:this.repo, expr:this.branch + ":projects"});
+    const session = this._sessionGen, empty = () => ({pages:[], files:[], projects:[], links:[]});
+    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$expr:String!,$ref:String!){ repository(owner:$owner,name:$name){
+        ref(qualifiedName:$ref){ target { oid } }
+        object(expression:$expr){ oid ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } } } } } } } }`,
+      this.v({expr:this.branch + ":projects"}));
+    const treeOid = d.repository?.object?.oid;
+    if(session !== this._sessionGen) return empty();
+    if(treeOid && this._index?.oid === treeOid){
+      this.where = structuredClone(this._index.where);
+      return structuredClone(this._index.data);
+    }
+    if(this._index && this._index.oid !== treeOid) this.invalidateReads();
+    const indexRef = d.repository?.ref?.target?.oid || this.branch;
     const kids = e => (e && e.object && e.object.entries) || [];
     const projectIds = [], pageRefs = [], linkRefs = [], files = [];
     for(const pe of kids({object:d.repository && d.repository.object})){
@@ -1082,7 +1097,7 @@ class GitHubStore{
     const chunks = []; for(let i = 0; i < wanted.length; i += 60) chunks.push(wanted.slice(i, i + 60));
     const got = (await Promise.all(chunks.map(async chunk => {
       const vars = {owner:this.owner, name:this.repo};
-      chunk.forEach((w, k) => vars["e" + k] = `${this.branch}:${w.path}`);
+      chunk.forEach((w, k) => vars["e" + k] = `${indexRef}:${w.path}`);
       const q = `query IndexBlobs($owner:String!,$name:String!${chunk.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${chunk.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
       const rr = (await this.gql("IndexBlobs", q, vars)).repository || {};
       return chunk.map((w, k) => ({w, m:metaOf(rr["m" + k] && rr["m" + k].text)}));
@@ -1096,8 +1111,11 @@ class GitHubStore{
     }
     const known = new Set(projects.map(p => p.id));
     const keep = files.filter(f => known.has(f.project) && !where.file.has(f.name) && where.file.set(f.name, f.project));
+    if(session !== this._sessionGen) return empty();
     this.where = where;
-    return {pages:pages.filter(p => known.has(p.project)), files:keep, projects, links:links.filter(l => known.has(l.project))};
+    const data = {pages:pages.filter(p => known.has(p.project)), files:keep, projects, links:links.filter(l => known.has(l.project))};
+    if(treeOid) this._index = {oid:treeOid, data:structuredClone(data), where:structuredClone(where)};
+    return data;
   }
   async getPageLight(slug){      // latest revision only (used by the search index)
     const dir = this.pageDir(slug);
@@ -1139,17 +1157,39 @@ class GitHubStore{
   async _readContent(slug, oid, format){
     const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
     if(hit !== undefined){ this._content.delete(key); this._content.set(key, hit); return hit; }
-    let res;
-    try{ res = await this.gh(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${oid}`, {headers:{Accept:"application/vnd.github.raw+json"}}); }
+    const gen = this._readGen;
+    const path = `/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${oid}`;
+    let text;
+    try{ text = await this._rawText(path, false); }
     catch(e){ if(e.status === 404) return null; throw e; }
-    const text = await res.text();
+    if(gen !== this._readGen) return text;
+    if(this._content.has(key)) return this._content.get(key);
     this._content.set(key, text); this._contentChars += text.length;
     while(this._contentChars > 24e6 && this._content.size > 1){ const [k, v] = this._content.entries().next().value; this._content.delete(k); this._contentChars -= v.length; }
     return text;
   }
   async getLatestContent(slug, format){    // for the search index: no commit id needed
-    const res = await this.gh(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, {headers:{Accept:"application/vnd.github.raw+json"}});
-    return res.text();
+    return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, true);
+  }
+  /* Mutable REST content: a short memory cache, then conditional revalidation.
+     In-flight reads share the same text promise; cached bodies are bounded and session-only. */
+  _rawText(path, latest){
+    const gen = this._readGen, key = gen + ":" + path, hit = latest && this._latest.get(path);
+    if(hit && Date.now() - hit.at < 30000){ this._latest.delete(path); this._latest.set(path, hit); return Promise.resolve(hit.text); }
+    if(this._rawReads.has(key)) return this._rawReads.get(key);
+    const run = (async () => {
+      const r = await this.gh(path, {allowNotModified:!!hit?.etag, cache:"no-store", headers:{Accept:"application/vnd.github.raw+json", ...(hit?.etag ? {"If-None-Match":hit.etag} : {})}});
+      const text = r.status === 304 ? hit.text : await r.text();
+      if(latest && gen === this._readGen){
+        const prev = this._latest.get(path); if(prev) this._latestChars -= prev.text.length;
+        this._latest.delete(path); this._latest.set(path, {text, etag:r.headers.get("etag") || (r.status === 304 ? hit.etag : null), at:Date.now()}); this._latestChars += text.length;
+        while(this._latestChars > 12e6 || this._latest.size > 200){ const [k,v] = this._latest.entries().next().value; this._latest.delete(k); this._latestChars -= v.text.length; }
+      }
+      return text;
+    })();
+    this._rawReads.set(key, run);
+    const clear = () => { if(this._rawReads.get(key) === run) this._rawReads.delete(key); };
+    run.then(clear, clear); return run;
   }
   revOf(c, m){
     const u = c.author && c.author.user;
@@ -1172,12 +1212,8 @@ class GitHubStore{
       {owner:this.owner, name:this.repo, sha, metaExpr:`${sha}:${dir}/meta.json`});
     const r = d.repository || {}, m = metaOf(r.meta && r.meta.text);
     if(!r.commit || !m) return null;
-    let res;
-    try{
-      // Raw REST read: GraphQL truncates large blobs and HTML reports can pass 400 KB.
-      res = await this.gh(`/repos/${this.full}/contents/${dir}/content.${m.format === "html" ? "html" : "md"}?ref=${r.commit.oid}`, {headers:{Accept:"application/vnd.github.raw+json"}});
-    }catch(e){ if(e.status === 404) return null; throw e; }
-    return Object.assign({slug}, this.revOf(r.commit, m), {content:await res.text()});
+    const content = await this._readContent(slug, r.commit.oid, m.format);
+    return content == null ? null : Object.assign({slug}, this.revOf(r.commit, m), {content});
   }
   async recent(limit, light){
     limit = limit || 60;
@@ -1283,7 +1319,7 @@ class GitHubStore{
       const commit = await this.gitPost("commits", {message, tree:tree.sha, parents:[head]});
       try{
         await this.gitPost(`refs/heads/${this.branch}`, {sha:commit.sha, force:false}, "PATCH");
-        this._art.clear(); this.where.file.set(name, pid);
+        this.invalidateReads(); this.where.file.set(name, pid);
         return {rev:commit.sha};
       }catch(e){
         if(e.status !== 422 && e.status !== 409) throw e;   // 422 "Update is not a fast forward": main moved meanwhile
@@ -1605,6 +1641,8 @@ function unsavedDialog(text){
   });
 }
 async function signOut(){
+  S.store?.clearCaches?.();
+  S.nav++; invalidatePages();
   const t = AUTH.token; AUTH.token = null; AUTH.expiresAt = 0;
   if(t){ try{ fetch(CONFIG.authWorkerUrl + "/revoke", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({access_token:t}), keepalive:true}).catch(() => {}); }catch{} }
   S.me = {id:null, canWrite:false}; S.pages = []; S.texts = {};
@@ -1659,7 +1697,7 @@ function refreshPages(force){
       if(gen === S.pagesGen){ S.pages = ix.pages; S.files = ix.files; S.projects = ix.projects; S.links = ix.links; S.pagesAt = Date.now(); indexProjects(); }
     }catch(e){ console.error(e); }
     finally{ if(pagesLoading === run) pagesLoading = null; }
-    if(gen !== S.pagesGen) return refreshPages(true);          // a write happened meanwhile: this answer is stale
+    if(gen !== S.pagesGen) return S.me.id ? refreshPages(true) : S.pages;
     renderSide();
     return S.pages;
   })();

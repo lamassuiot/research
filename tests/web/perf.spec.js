@@ -47,3 +47,78 @@ test("round trips per navigation stay within budget", async ({ page }) => {
   expect(save.filter(o => o === "GetArticle")).toHaveLength(1);
   w.check();
 });
+
+test("unchanged project trees reuse the index; external changes refresh it", async ({page}) => {
+  const w = watch(page), repo = seedFromTemplate(createRepo());
+  const gh = w.gh = await installFakeGitHub(page, {repo});
+  await page.goto("/research/#/projects");
+  await expect(page.locator(".linklist")).toBeVisible();
+  let start = gh.requests.length;
+  await page.evaluate(() => refreshPages(true));
+  expect(gh.requests.slice(start).filter(r => r.op).map(r => r.op)).toEqual(["Index"]);
+  const metaPath = "projects/general/pages/welcome/meta.json";
+  const m = JSON.parse(repo.head().files.get(metaPath));
+  repo.add("External edit", {[metaPath]:JSON.stringify({...m, title:"External welcome", revN:m.revN+1})});
+  start = gh.requests.length;
+  await page.evaluate(() => refreshPages(true));
+  expect(gh.requests.slice(start).filter(r => r.op).map(r => r.op)).toEqual(["Index", "IndexBlobs"]);
+  expect(await page.evaluate(() => S.pages.find(p => p.slug === "welcome").title)).toBe("External welcome");
+  w.check();
+});
+
+test("simultaneous content reads share a download and ETags revalidate expired bodies", async ({page}) => {
+  const w = watch(page), repo = seedFromTemplate(createRepo());
+  const gh = w.gh = await installFakeGitHub(page, {repo});
+  await page.goto("/research/#/projects");
+  await expect(page.locator(".linklist")).toBeVisible();
+  await page.clock.install();
+  const raw = () => gh.requests.filter(r => r.path.endsWith("/pages/welcome/content.md"));
+  const values = await page.evaluate(() => Promise.all(Array.from({length:4}, () => S.store.getLatestContent("welcome", "md"))));
+  expect(new Set(values).size).toBe(1); expect(raw()).toHaveLength(1);
+  expect(await page.evaluate(() => S.store.getLatestContent("welcome", "md"))).toBe(values[0]);
+  expect(raw()).toHaveLength(1);
+  await page.clock.fastForward(31000);
+  expect(await page.evaluate(() => S.store.getLatestContent("welcome", "md"))).toBe(values[0]);
+  expect(raw()).toHaveLength(2); expect(raw()[1].etag).toMatch(/^"[0-9a-f]+"$/);
+  repo.add("External content edit", {"projects/general/pages/welcome/content.md":"## New content\n"});
+  await page.evaluate(() => refreshPages(true));
+  expect(await page.evaluate(() => S.store.getLatestContent("welcome", "md"))).toBe("## New content\n");
+  expect(raw()).toHaveLength(3); expect(raw()[2].etag).toBeUndefined();
+  await page.evaluate(() => signOut());
+  expect(await page.evaluate(() => [S.store._latest.size, S.store._content.size, S.store._rawReads.size, S.store._index])).toEqual([0,0,0,null]);
+  w.check();
+});
+
+test("failed shared reads can be retried", async ({page}) => {
+  const w = watch(page); w.gh = await installFakeGitHub(page);
+  await page.goto("/research/#/projects"); await expect(page.locator(".linklist")).toBeVisible();
+  let calls = 0;
+  await page.route("https://api.github.com/**/contents/**", route => {
+    calls++; return calls === 1 ? route.fulfill({status:500, headers:{"access-control-allow-origin":"*"}, body:"temporary failure"}) : route.fallback();
+  });
+  expect(await page.evaluate(() => S.store.getLatestContent("welcome", "md").then(() => false, () => true))).toBe(true);
+  expect(await page.evaluate(() => S.store.getLatestContent("welcome", "md"))).toContain("## Maturity");
+  expect(calls).toBe(2); w.check();
+});
+
+test("responses arriving after sign-out cannot refill session caches or sign in again", async ({page}) => {
+  const w = watch(page); const gh = w.gh = await installFakeGitHub(page);
+  await page.goto("/research/#/projects"); await expect(page.locator(".linklist")).toBeVisible();
+  let release, arrived, held = 0;
+  const barrier = new Promise(resolve => { release = resolve; });
+  const ready = new Promise(resolve => { arrived = resolve; });
+  const wait = async () => { if(++held === 2) arrived(); await barrier; };
+  await page.route("https://api.github.com/**/contents/**", async route => {
+    await wait(); await route.fulfill({status:200, headers:{"access-control-allow-origin":"*"}, body:"Late private content"});
+  });
+  await page.route("https://api.github.com/graphql", async route => {
+    if(route.request().postDataJSON().operationName !== "Index") return route.fallback();
+    await wait(); await route.fulfill({status:200, headers:{"access-control-allow-origin":"*", "content-type":"application/json"},
+      body:JSON.stringify({data:{repository:{object:{oid:"late-tree", entries:[]}}}})});
+  });
+  const pending = page.evaluate(() => Promise.all([S.store.getLatestContent("welcome", "md"), refreshPages(true)]));
+  await ready; const logins = gh.authorizes.length;
+  await page.evaluate(() => signOut()); release(); await pending;
+  expect(await page.evaluate(() => [S.pages.length, S.store._latest.size, S.store._index])).toEqual([0,0,null]);
+  expect(gh.authorizes).toHaveLength(logins); await expect(page.locator("#gate")).toBeVisible(); w.check();
+});
