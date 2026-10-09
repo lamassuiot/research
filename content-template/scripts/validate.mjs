@@ -3,17 +3,17 @@
 //
 // Layout: everything lives inside a project.
 //   projects/<id>/project.json
-//   projects/<id>/pages/<slug>/meta.json + content.md|html
+//   projects/<id>/pages/<slug>/meta.json + content.md|html|json|yaml|yml
 //   projects/<id>/links/<id>.json
-//   projects/<id>/files/<name>.pdf
+//   projects/<id>/files/<name>.pdf|json|yaml|yml
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const STATUSES = ["draft", "reviewed", "validated", "deprecated"];
-const FORMATS = ["md", "html"];
-const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
+const FORMATS = ["md", "html", "json", "yaml", "yml"];
+const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.(?:pdf|json|yaml|yml)$/;
 const MAX_FILE = 50 * 1024 * 1024;
 const MAX_TREE_DEPTH = 8;
 const LINK_FILE_RE = /^[a-z0-9][a-z0-9-]{0,79}\.json$/;
@@ -58,9 +58,11 @@ export function validate(root) {
     return true;
   });
 
+  const projects = new Map();
   for (const id of projectIds) {
     const base = `projects/${id}`, rel = `${base}/project.json`;
     const pj = readJson(rel);
+    if (pj) projects.set(id, pj);
     for (const n of listDir(base)) if (!["project.json", "pages", "links", "files"].includes(n)) err(`${base}/${n}`, "unexpected entry in a project folder");
     if (pj) {
       if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
@@ -132,13 +134,15 @@ export function validate(root) {
     const fileNames = [];
     for (const name of listDir(`${base}/files`)) {
       const frel = `${base}/files/${name}`, full = path.join(root, frel);
-      if (!fs.statSync(full).isFile()) { err(frel, "only PDF files are allowed in files/ (no folders)"); continue; }
-      if (!FILE_RE.test(name)) { err(frel, "invalid file name (lowercase letters, digits, dots, hyphens and underscores, ending in .pdf)"); continue; }
+      if (!fs.statSync(full).isFile()) { err(frel, "only PDF, JSON and YAML files are allowed in files/ (no folders)"); continue; }
+      if (!FILE_RE.test(name)) { err(frel, "invalid file name (lowercase letters, digits, dots, hyphens and underscores, ending in .pdf, .json, .yaml or .yml)"); continue; }
       fileNames.push(name); claim("file", name, id, frel);
       const size = fs.statSync(full).size;
       if (size > MAX_FILE) err(frel, `is ${size} bytes; the limit is ${MAX_FILE}`);
-      const fd = fs.openSync(full, "r"), head = Buffer.alloc(5); fs.readSync(fd, head, 0, 5, 0); fs.closeSync(fd);
-      if (head.toString("latin1") !== "%PDF-") err(frel, "is not a PDF");
+      if (name.endsWith(".pdf")) {
+        const fd = fs.openSync(full, "r"), head = Buffer.alloc(5); fs.readSync(fd, head, 0, 5, 0); fs.closeSync(fd);
+        if (head.toString("latin1") !== "%PDF-") err(frel, "is not a PDF");
+      }
     }
 
     /* the structure: only items that live in this project, each at most once. Items missing from it are appended at the top level when read. */
@@ -157,6 +161,25 @@ export function validate(root) {
         }
       };
       walk(pj.items, 1, "items");
+    }
+  }
+
+  for (const [id, pj] of projects) {
+    if (pj.parentProject === undefined) continue;
+    const rel = `projects/${id}/project.json`;
+    if (typeof pj.parentProject !== 'string' || !SLUG_RE.test(pj.parentProject)) {
+      err(rel, 'parentProject must be a valid project id');
+      continue;
+    }
+    const seen = new Set([id]);
+    let parent = pj.parentProject;
+    while (parent) {
+      if (seen.has(parent)) { err(rel, 'parentProject creates a cycle'); break; }
+      seen.add(parent);
+      if (!projects.has(parent)) { err(rel, `parent project "${parent}" does not exist`); break; }
+      const next = projects.get(parent).parentProject;
+      if (next !== undefined && (typeof next !== 'string' || !SLUG_RE.test(next))) break;
+      parent = next;
     }
   }
 

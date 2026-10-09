@@ -19,7 +19,7 @@ s = (here / "index.template.html").read_text(encoding="utf-8")
 
 b64 = lambda f: "data:image/svg+xml;base64," + base64.b64encode((here / "assets" / f).read_bytes()).decode()
 s = s.replace("__LOGO_DARK_INK__", b64("lamassu_logo_blue.svg")).replace("__LOGO_WHITE_INK__", b64("lamassu_logo_white.svg"))
-for tag, f in [("VENDOR_MARKED", "marked.min.js"), ("VENDOR_PURIFY", "purify.min.js"), ("VENDOR_DIFF", "diff.min.js")]:
+for tag, f in [("VENDOR_MARKED", "marked.min.js"), ("VENDOR_PURIFY", "purify.min.js"), ("VENDOR_DIFF", "diff.min.js"), ("VENDOR_YAML", "js-yaml.min.js")]:
     s = s.replace(f"/*{tag}*/", (here / "vendor" / f).read_text(encoding="utf-8"))
 
 u = urlparse(cfg["authWorkerUrl"])

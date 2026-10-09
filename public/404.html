@@ -27,6 +27,9 @@
 //# sourceMappingURL=purify.min.js.map
 </script>
 <script>!function(e,n){"object"==typeof exports&&"undefined"!=typeof module?n(exports):"function"==typeof define&&define.amd?define(["exports"],n):n((e=e||self).Diff={})}(this,function(e){"use strict";function t(){}t.prototype={diff:function(s,a,e){var n,t=2<arguments.length&&void 0!==e?e:{},r=t.callback;"function"==typeof t&&(r=t,t={}),this.options=t;var u=this;function d(e){return r?(setTimeout(function(){r(void 0,e)},0),!0):e}s=this.castInput(s),a=this.castInput(a),s=this.removeEmpty(this.tokenize(s));var f=(a=this.removeEmpty(this.tokenize(a))).length,c=s.length,p=1,i=f+c;t.maxEditLength&&(i=Math.min(i,t.maxEditLength));var o=null!==(n=t.timeout)&&void 0!==n?n:1/0,l=Date.now()+o,h=[{oldPos:-1,lastComponent:void 0}],v=this.extractCommon(h[0],a,s,0);if(h[0].oldPos+1>=c&&f<=v+1)return d([{value:this.join(a),count:a.length}]);var m=-1/0,g=1/0;function w(){for(var e=Math.max(m,-p);e<=Math.min(g,p);e+=2){var n=void 0,t=h[e-1],r=h[e+1];t&&(h[e-1]=void 0);var i,o=!1;r&&(i=r.oldPos-e,o=r&&0<=i&&i<f);var l=t&&t.oldPos+1<c;if(o||l){if(n=!l||o&&t.oldPos+1<r.oldPos?u.addToPath(r,!0,void 0,0):u.addToPath(t,void 0,!0,1),v=u.extractCommon(n,a,s,e),n.oldPos+1>=c&&f<=v+1)return d(function(e,n,t,r,i){var o,l=[];for(;n;)l.push(n),o=n.previousComponent,delete n.previousComponent,n=o;l.reverse();for(var s=0,a=l.length,u=0,d=0;s<a;s++){var f,c,p=l[s];p.removed?(p.value=e.join(r.slice(d,d+p.count)),d+=p.count,s&&l[s-1].added&&(f=l[s-1],l[s-1]=l[s],l[s]=f)):(!p.added&&i?(c=(c=t.slice(u,u+p.count)).map(function(e,n){var t=r[d+n];return t.length>e.length?t:e}),p.value=e.join(c)):p.value=e.join(t.slice(u,u+p.count)),u+=p.count,p.added||(d+=p.count))}var h=l[a-1];1<a&&"string"==typeof h.value&&(h.added||h.removed)&&e.equals("",h.value)&&(l[a-2].value+=h.value,l.pop());return l}(u,n.lastComponent,a,s,u.useLongestToken));(h[e]=n).oldPos+1>=c&&(g=Math.min(g,e-1)),f<=v+1&&(m=Math.max(m,e+1))}else h[e]=void 0}p++}if(r)!function e(){setTimeout(function(){return i<p||Date.now()>l?r():void(w()||e())},0)}();else for(;p<=i&&Date.now()<=l;){var y=w();if(y)return y}},addToPath:function(e,n,t,r){var i=e.lastComponent;return i&&i.added===n&&i.removed===t?{oldPos:e.oldPos+r,lastComponent:{count:i.count+1,added:n,removed:t,previousComponent:i.previousComponent}}:{oldPos:e.oldPos+r,lastComponent:{count:1,added:n,removed:t,previousComponent:i}}},extractCommon:function(e,n,t,r){for(var i=n.length,o=t.length,l=e.oldPos,s=l-r,a=0;s+1<i&&l+1<o&&this.equals(n[s+1],t[l+1]);)s++,l++,a++;return a&&(e.lastComponent={count:a,previousComponent:e.lastComponent}),e.oldPos=l,s},equals:function(e,n){return this.options.comparator?this.options.comparator(e,n):e===n||this.options.ignoreCase&&e.toLowerCase()===n.toLowerCase()},removeEmpty:function(e){for(var n=[],t=0;t<e.length;t++)e[t]&&n.push(e[t]);return n},castInput:function(e){return e},tokenize:function(e){return e.split("")},join:function(e){return e.join("")}};var r=new t;function i(e,n){if("function"==typeof e)n.callback=e;else if(e)for(var t in e)e.hasOwnProperty(t)&&(n[t]=e[t]);return n}var o=/^[A-Za-z\xC0-\u02C6\u02C8-\u02D7\u02DE-\u02FF\u1E00-\u1EFF]+$/,l=/\S/,s=new t;s.equals=function(e,n){return this.options.ignoreCase&&(e=e.toLowerCase(),n=n.toLowerCase()),e===n||this.options.ignoreWhitespace&&!l.test(e)&&!l.test(n)},s.tokenize=function(e){for(var n=e.split(/([^\S\r\n]+|[()[\]{}'"\r\n]|\b)/),t=0;t<n.length-1;t++)!n[t+1]&&n[t+2]&&o.test(n[t])&&o.test(n[t+2])&&(n[t]+=n[t+2],n.splice(t+1,2),t--);return n};var a=new t;function L(e,n,t){return a.diff(e,n,t)}a.tokenize=function(e){this.options.stripTrailingCr&&(e=e.replace(/\r\n/g,"\n"));var n=[],t=e.split(/(\n|\r\n)/);t[t.length-1]||t.pop();for(var r=0;r<t.length;r++){var i=t[r];r%2&&!this.options.newlineIsToken?n[n.length-1]+=i:(this.options.ignoreWhitespace&&(i=i.trim()),n.push(i))}return n};var u=new t;u.tokenize=function(e){return e.split(/(\S.+?[.!?])(?=\s+|$)/)};var d=new t;function f(e){return(f="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e})(e)}function n(n,e){var t,r=Object.keys(n);return Object.getOwnPropertySymbols&&(t=Object.getOwnPropertySymbols(n),e&&(t=t.filter(function(e){return Object.getOwnPropertyDescriptor(n,e).enumerable})),r.push.apply(r,t)),r}function c(i){for(var e=1;e<arguments.length;e++){var o=null!=arguments[e]?arguments[e]:{};e%2?n(Object(o),!0).forEach(function(e){var n,t,r;n=i,r=o[t=e],t in n?Object.defineProperty(n,t,{value:r,enumerable:!0,configurable:!0,writable:!0}):n[t]=r}):Object.getOwnPropertyDescriptors?Object.defineProperties(i,Object.getOwnPropertyDescriptors(o)):n(Object(o)).forEach(function(e){Object.defineProperty(i,e,Object.getOwnPropertyDescriptor(o,e))})}return i}function x(e){return function(e){if(Array.isArray(e))return p(e)}(e)||function(e){if("undefined"!=typeof Symbol&&Symbol.iterator in Object(e))return Array.from(e)}(e)||function(e,n){if(!e)return;if("string"==typeof e)return p(e,n);var t=Object.prototype.toString.call(e).slice(8,-1);"Object"===t&&e.constructor&&(t=e.constructor.name);if("Map"===t||"Set"===t)return Array.from(e);if("Arguments"===t||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t))return p(e,n)}(e)||function(){throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.")}()}function p(e,n){(null==n||n>e.length)&&(n=e.length);for(var t=0,r=new Array(n);t<n;t++)r[t]=e[t];return r}d.tokenize=function(e){return e.split(/([{}:;,]|\s+)/)};var h=Object.prototype.toString,v=new t;function m(e,n,t,r,i){var o,l;for(n=n||[],t=t||[],r&&(e=r(i,e)),o=0;o<n.length;o+=1)if(n[o]===e)return t[o];if("[object Array]"===h.call(e)){for(n.push(e),l=new Array(e.length),t.push(l),o=0;o<e.length;o+=1)l[o]=m(e[o],n,t,r,i);return n.pop(),t.pop(),l}if(e&&e.toJSON&&(e=e.toJSON()),"object"===f(e)&&null!==e){n.push(e),l={},t.push(l);var s,a=[];for(s in e)e.hasOwnProperty(s)&&a.push(s);for(a.sort(),o=0;o<a.length;o+=1)l[s=a[o]]=m(e[s],n,t,r,s);n.pop(),t.pop()}else l=e;return l}v.useLongestToken=!0,v.tokenize=a.tokenize,v.castInput=function(e){var n=this.options,t=n.undefinedReplacement,r=n.stringifyReplacer,i=void 0===r?function(e,n){return void 0===n?t:n}:r;return"string"==typeof e?e:JSON.stringify(m(e,null,null,i),i,"  ")},v.equals=function(e,n){return t.prototype.equals.call(v,e.replace(/,([\r\n])/g,"$1"),n.replace(/,([\r\n])/g,"$1"))};var g=new t;function C(e){var l=1<arguments.length&&void 0!==arguments[1]?arguments[1]:{},s=e.split(/\r\n|[\n\v\f\r\x85]/),a=e.match(/\r\n|[\n\v\f\r\x85]/g)||[],i=[],u=0;function n(){var e={};for(i.push(e);u<s.length;){var n=s[u];if(/^(\-\-\-|\+\+\+|@@)\s/.test(n))break;var t=/^(?:Index:|diff(?: -r \w+)+)\s+(.+?)\s*$/.exec(n);t&&(e.index=t[1]),u++}for(o(e),o(e),e.hunks=[];u<s.length;){var r=s[u];if(/^(Index:|diff|\-\-\-|\+\+\+)\s/.test(r))break;if(/^@@/.test(r))e.hunks.push(function(){var e=u,n=s[u++].split(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/),t={oldStart:+n[1],oldLines:void 0===n[2]?1:+n[2],newStart:+n[3],newLines:void 0===n[4]?1:+n[4],lines:[],linedelimiters:[]};0===t.oldLines&&(t.oldStart+=1);0===t.newLines&&(t.newStart+=1);for(var r=0,i=0;u<s.length&&!(0===s[u].indexOf("--- ")&&u+2<s.length&&0===s[u+1].indexOf("+++ ")&&0===s[u+2].indexOf("@@"));u++){var o=0==s[u].length&&u!=s.length-1?" ":s[u][0];if("+"!==o&&"-"!==o&&" "!==o&&"\\"!==o)break;t.lines.push(s[u]),t.linedelimiters.push(a[u]||"\n"),"+"===o?r++:"-"===o?i++:" "===o&&(r++,i++)}r||1!==t.newLines||(t.newLines=0);i||1!==t.oldLines||(t.oldLines=0);if(l.strict){if(r!==t.newLines)throw new Error("Added line count did not match for hunk at line "+(e+1));if(i!==t.oldLines)throw new Error("Removed line count did not match for hunk at line "+(e+1))}return t}());else{if(r&&l.strict)throw new Error("Unknown line "+(u+1)+" "+JSON.stringify(r));u++}}}function o(e){var n,t,r,i=/^(---|\+\+\+)\s+(.*)$/.exec(s[u]);i&&(n="---"===i[1]?"old":"new",r=(t=i[2].split("\t",2))[0].replace(/\\\\/g,"\\"),/^".*"$/.test(r)&&(r=r.substr(1,r.length-2)),e[n+"FileName"]=r,e[n+"Header"]=(t[1]||"").trim(),u++)}for(;u<s.length;)n();return i}function w(e,n){var t=2<arguments.length&&void 0!==arguments[2]?arguments[2]:{};if("string"==typeof n&&(n=C(n)),Array.isArray(n)){if(1<n.length)throw new Error("applyPatch only works with a single input.");n=n[0]}var r,i,l=e.split(/\r\n|[\n\v\f\r\x85]/),o=e.match(/\r\n|[\n\v\f\r\x85]/g)||[],s=n.hunks,a=t.compareLine||function(e,n,t,r){return n===r},u=0,d=t.fuzzFactor||0,f=0,c=0;for(var p=0;p<s.length;p++){for(var h=s[p],v=l.length-h.oldLines,m=0,g=c+h.oldStart-1,w=function(n,t,r){var i=!0,o=!1,l=!1,s=1;return function e(){if(i&&!l){if(o?s++:i=!1,n+s<=r)return s;l=!0}if(!o)return l||(i=!0),t<=n-s?-s++:(o=!0,e())}}(g,f,v);void 0!==m;m=w())if(function(e,n){for(var t=0;t<e.lines.length;t++){var r=e.lines[t],i=0<r.length?r[0]:" ",o=0<r.length?r.substr(1):r;if(" "===i||"-"===i){if(!a(n+1,l[n],i,o)&&d<++u)return;n++}}return 1}(h,g+m)){h.offset=c+=m;break}if(void 0===m)return!1;f=h.offset+h.oldStart+h.oldLines}for(var y=0,L=0;L<s.length;L++){var x=s[L],S=x.oldStart+x.offset+y-1;y+=x.newLines-x.oldLines;for(var b=0;b<x.lines.length;b++){var k,F=x.lines[b],N=0<F.length?F[0]:" ",P=0<F.length?F.substr(1):F,j=x.linedelimiters&&x.linedelimiters[b]||"\n";" "===N?S++:"-"===N?(l.splice(S,1),o.splice(S,1)):"+"===N?(l.splice(S,0,P),o.splice(S,0,j),S++):"\\"===N&&("+"===(k=x.lines[b-1]?x.lines[b-1][0]:null)?r=!0:"-"===k&&(i=!0))}}if(r)for(;!l[l.length-1];)l.pop(),o.pop();else i&&(l.push(""),o.push("\n"));for(var O=0;O<l.length-1;O++)l[O]=l[O]+o[O];return l.join("")}function y(e,n,u,d,t,r,f){void 0===(f=f||{}).context&&(f.context=4);var c=L(u,d,f);if(c){c.push({value:"",lines:[]});for(var p=[],h=0,v=0,m=[],g=1,w=1,i=0;i<c.length;i++)!function(e){var n,t,r,i,o,l,s=c[e],a=s.lines||s.value.replace(/\n$/,"").split("\n");s.lines=a,s.added||s.removed?(h||(n=c[e-1],h=g,v=w,n&&(m=0<f.context?y(n.lines.slice(-f.context)):[],h-=m.length,v-=m.length)),m.push.apply(m,x(a.map(function(e){return(s.added?"+":"-")+e}))),s.added?w+=a.length:g+=a.length):(h&&(a.length<=2*f.context&&e<c.length-2?m.push.apply(m,x(y(a))):(t=Math.min(a.length,f.context),m.push.apply(m,x(y(a.slice(0,t)))),r={oldStart:h,oldLines:g-h+t,newStart:v,newLines:w-v+t,lines:m},e>=c.length-2&&a.length<=f.context&&(i=/\n$/.test(u),o=/\n$/.test(d),l=0==a.length&&m.length>r.oldLines,!i&&l&&0<u.length&&m.splice(r.oldLines,0,"\\ No newline at end of file"),(i||l)&&o||m.push("\\ No newline at end of file")),p.push(r),v=h=0,m=[])),g+=a.length,w+=a.length)}(i);return{oldFileName:e,newFileName:n,oldHeader:t,newHeader:r,hunks:p}}function y(e){return e.map(function(e){return" "+e})}}function S(e){if(Array.isArray(e))return e.map(S).join("\n");var n=[];e.oldFileName==e.newFileName&&n.push("Index: "+e.oldFileName),n.push("==================================================================="),n.push("--- "+e.oldFileName+(void 0===e.oldHeader?"":"\t"+e.oldHeader)),n.push("+++ "+e.newFileName+(void 0===e.newHeader?"":"\t"+e.newHeader));for(var t=0;t<e.hunks.length;t++){var r=e.hunks[t];0===r.oldLines&&--r.oldStart,0===r.newLines&&--r.newStart,n.push("@@ -"+r.oldStart+","+r.oldLines+" +"+r.newStart+","+r.newLines+" @@"),n.push.apply(n,r.lines)}return n.join("\n")+"\n"}function b(e,n,t,r,i,o,l){return S(y(e,n,t,r,i,o,l))}function k(e,n){if(n.length>e.length)return!1;for(var t=0;t<n.length;t++)if(n[t]!==e[t])return!1;return!0}function F(e){var n=function r(e){var i=0;var o=0;e.forEach(function(e){var n,t;"string"!=typeof e?(n=r(e.mine),t=r(e.theirs),void 0!==i&&(n.oldLines===t.oldLines?i+=n.oldLines:i=void 0),void 0!==o&&(n.newLines===t.newLines?o+=n.newLines:o=void 0)):(void 0===o||"+"!==e[0]&&" "!==e[0]||o++,void 0===i||"-"!==e[0]&&" "!==e[0]||i++)});return{oldLines:i,newLines:o}}(e.lines),t=n.oldLines,r=n.newLines;void 0!==t?e.oldLines=t:delete e.oldLines,void 0!==r?e.newLines=r:delete e.newLines}function N(e,n){if("string"!=typeof e)return e;if(/^@@/m.test(e)||/^Index:/m.test(e))return C(e)[0];if(!n)throw new Error("Must provide a base reference or pass in a patch");return y(void 0,void 0,n,e)}function P(e){return e.newFileName&&e.newFileName!==e.oldFileName}function j(e,n,t){return n===t?n:(e.conflict=!0,{mine:n,theirs:t})}function O(e,n){return e.oldStart<n.oldStart&&e.oldStart+e.oldLines<n.oldStart}function H(e,n){return{oldStart:e.oldStart,oldLines:e.oldLines,newStart:e.newStart+n,newLines:e.newLines,lines:e.lines}}function A(e,n,t,r){var i,o=M(n),l=function(e,n){var t=[],r=[],i=0,o=!1,l=!1;for(;i<n.length&&e.index<e.lines.length;){var s=e.lines[e.index],a=n[i];if("+"===a[0])break;if(o=o||" "!==s[0],r.push(a),i++,"+"===s[0])for(l=!0;"+"===s[0];)t.push(s),s=e.lines[++e.index];a.substr(1)===s.substr(1)?(t.push(s),e.index++):l=!0}"+"===(n[i]||"")[0]&&o&&(l=!0);if(l)return t;for(;i<n.length;)r.push(n[i++]);return{merged:r,changes:t}}(t,o);l.merged?(i=e.lines).push.apply(i,x(l.merged)):E(e,r?l:o,r?o:l)}function E(e,n,t){e.conflict=!0,e.lines.push({conflict:!0,mine:n,theirs:t})}function z(e,n,t){for(;n.offset<t.offset&&n.index<n.lines.length;){var r=n.lines[n.index++];e.lines.push(r),n.offset++}}function T(e,n){for(;n.index<n.lines.length;){var t=n.lines[n.index++];e.lines.push(t)}}function M(e){for(var n=[],t=e.lines[e.index][0];e.index<e.lines.length;){var r=e.lines[e.index];if("-"===t&&"+"===r[0]&&(t="+"),t!==r[0])break;n.push(r),e.index++}return n}function D(e){return e.reduce(function(e,n){return e&&"-"===n[0]},!0)}function I(e,n,t){for(var r=0;r<t;r++){var i=n[n.length-t+r].substr(1);if(e.lines[e.index+r]!==" "+i)return}return e.index+=t,1}g.tokenize=function(e){return e.slice()},g.join=g.removeEmpty=function(e){return e},e.Diff=t,e.applyPatch=w,e.applyPatches=function(e,o){"string"==typeof e&&(e=C(e));var n=0;!function r(){var i=e[n++];if(!i)return o.complete();o.loadFile(i,function(e,n){if(e)return o.complete(e);var t=w(n,i,o);o.patched(i,t,function(e){return e?o.complete(e):void r()})})}()},e.canonicalize=m,e.convertChangesToDMP=function(e){for(var n,t,r=[],i=0;i<e.length;i++)t=(n=e[i]).added?1:n.removed?-1:0,r.push([t,n.value]);return r},e.convertChangesToXML=function(e){for(var n,t=[],r=0;r<e.length;r++){var i=e[r];i.added?t.push("<ins>"):i.removed&&t.push("<del>"),t.push((n=i.value,n.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"))),i.added?t.push("</ins>"):i.removed&&t.push("</del>")}return t.join("")},e.createPatch=function(e,n,t,r,i,o){return b(e,e,n,t,r,i,o)},e.createTwoFilesPatch=b,e.diffArrays=function(e,n,t){return g.diff(e,n,t)},e.diffChars=function(e,n,t){return r.diff(e,n,t)},e.diffCss=function(e,n,t){return d.diff(e,n,t)},e.diffJson=function(e,n,t){return v.diff(e,n,t)},e.diffLines=L,e.diffSentences=function(e,n,t){return u.diff(e,n,t)},e.diffTrimmedLines=function(e,n,t){var r=i(t,{ignoreWhitespace:!0});return a.diff(e,n,r)},e.diffWords=function(e,n,t){return t=i(t,{ignoreWhitespace:!0}),s.diff(e,n,t)},e.diffWordsWithSpace=function(e,n,t){return s.diff(e,n,t)},e.formatPatch=S,e.merge=function(e,n,t){e=N(e,t),n=N(n,t);var r={};(e.index||n.index)&&(r.index=e.index||n.index),(e.newFileName||n.newFileName)&&(P(e)?P(n)?(r.oldFileName=j(r,e.oldFileName,n.oldFileName),r.newFileName=j(r,e.newFileName,n.newFileName),r.oldHeader=j(r,e.oldHeader,n.oldHeader),r.newHeader=j(r,e.newHeader,n.newHeader)):(r.oldFileName=e.oldFileName,r.newFileName=e.newFileName,r.oldHeader=e.oldHeader,r.newHeader=e.newHeader):(r.oldFileName=n.oldFileName||e.oldFileName,r.newFileName=n.newFileName||e.newFileName,r.oldHeader=n.oldHeader||e.oldHeader,r.newHeader=n.newHeader||e.newHeader)),r.hunks=[];for(var i=0,o=0,l=0,s=0;i<e.hunks.length||o<n.hunks.length;){var a,u=e.hunks[i]||{oldStart:1/0},d=n.hunks[o]||{oldStart:1/0};O(u,d)?(r.hunks.push(H(u,l)),i++,s+=u.newLines-u.oldLines):O(d,u)?(r.hunks.push(H(d,s)),o++,l+=d.newLines-d.oldLines):(function(e,n,t,r,i){var o,l,s={offset:n,lines:t,index:0},a={offset:r,lines:i,index:0};z(e,s,a),z(e,a,s);for(;s.index<s.lines.length&&a.index<a.lines.length;){var u=s.lines[s.index],d=a.lines[a.index];"-"!==u[0]&&"+"!==u[0]||"-"!==d[0]&&"+"!==d[0]?"+"===u[0]&&" "===d[0]?(o=e.lines).push.apply(o,x(M(s))):"+"===d[0]&&" "===u[0]?(l=e.lines).push.apply(l,x(M(a))):"-"===u[0]&&" "===d[0]?A(e,s,a):"-"===d[0]&&" "===u[0]?A(e,a,s,!0):u===d?(e.lines.push(u),s.index++,a.index++):E(e,M(s),M(a)):function(e,n,t){var r,i,o,l=M(n),s=M(t);if(D(l)&&D(s)){if(k(l,s)&&I(t,l,l.length-s.length))return(r=e.lines).push.apply(r,x(l));if(k(s,l)&&I(n,s,s.length-l.length))return(i=e.lines).push.apply(i,x(s))}else if(function(e,n){return e.length===n.length&&k(e,n)}(l,s))return(o=e.lines).push.apply(o,x(l));E(e,l,s)}(e,s,a)}T(e,s),T(e,a),F(e)}(a={oldStart:Math.min(u.oldStart,d.oldStart),oldLines:0,newStart:Math.min(u.newStart+l,d.oldStart+s),newLines:0,lines:[]},u.oldStart,u.lines,d.oldStart,d.lines),o++,i++,r.hunks.push(a))}return r},e.parsePatch=C,e.reversePatch=function e(n){return Array.isArray(n)?n.map(e).reverse():c(c({},n),{},{oldFileName:n.newFileName,oldHeader:n.newHeader,newFileName:n.oldFileName,newHeader:n.oldHeader,hunks:n.hunks.map(function(e){return{oldLines:e.newLines,oldStart:e.newStart,newLines:e.oldLines,newStart:e.oldStart,linedelimiters:e.linedelimiters,lines:e.lines.map(function(e){return e.startsWith("-")?"+".concat(e.slice(1)):e.startsWith("+")?"-".concat(e.slice(1)):e})}})})},e.structuredPatch=y,Object.defineProperty(e,"__esModule",{value:!0})});</script>
+<script>/*! js-yaml 4.1.1 https://github.com/nodeca/js-yaml @license MIT */
+!function(e,t){"object"==typeof exports&&"undefined"!=typeof module?t(exports):"function"==typeof define&&define.amd?define(["exports"],t):t((e="undefined"!=typeof globalThis?globalThis:e||self).jsyaml={})}(this,function(e){"use strict";function t(e){return null==e}var n={isNothing:t,isObject:function(e){return"object"==typeof e&&null!==e},toArray:function(e){return Array.isArray(e)?e:t(e)?[]:[e]},repeat:function(e,t){var n,i="";for(n=0;n<t;n+=1)i+=e;return i},isNegativeZero:function(e){return 0===e&&Number.NEGATIVE_INFINITY===1/e},extend:function(e,t){var n,i,r,o;if(t)for(n=0,i=(o=Object.keys(t)).length;n<i;n+=1)e[r=o[n]]=t[r];return e}};function i(e,t){var n="",i=e.reason||"(unknown reason)";return e.mark?(e.mark.name&&(n+='in "'+e.mark.name+'" '),n+="("+(e.mark.line+1)+":"+(e.mark.column+1)+")",!t&&e.mark.snippet&&(n+="\n\n"+e.mark.snippet),i+" "+n):i}function r(e,t){Error.call(this),this.name="YAMLException",this.reason=e,this.mark=t,this.message=i(this,!1),Error.captureStackTrace?Error.captureStackTrace(this,this.constructor):this.stack=(new Error).stack||""}r.prototype=Object.create(Error.prototype),r.prototype.constructor=r,r.prototype.toString=function(e){return this.name+": "+i(this,e)};var o=r;function a(e,t,n,i,r){var o="",a="",l=Math.floor(r/2)-1;return i-t>l&&(t=i-l+(o=" ... ").length),n-i>l&&(n=i+l-(a=" ...").length),{str:o+e.slice(t,n).replace(/\t/g,"→")+a,pos:i-t+o.length}}function l(e,t){return n.repeat(" ",t-e.length)+e}var c=function(e,t){if(t=Object.create(t||null),!e.buffer)return null;t.maxLength||(t.maxLength=79),"number"!=typeof t.indent&&(t.indent=1),"number"!=typeof t.linesBefore&&(t.linesBefore=3),"number"!=typeof t.linesAfter&&(t.linesAfter=2);for(var i,r=/\r?\n|\r|\0/g,o=[0],c=[],s=-1;i=r.exec(e.buffer);)c.push(i.index),o.push(i.index+i[0].length),e.position<=i.index&&s<0&&(s=o.length-2);s<0&&(s=o.length-1);var u,p,f="",d=Math.min(e.line+t.linesAfter,c.length).toString().length,h=t.maxLength-(t.indent+d+3);for(u=1;u<=t.linesBefore&&!(s-u<0);u++)p=a(e.buffer,o[s-u],c[s-u],e.position-(o[s]-o[s-u]),h),f=n.repeat(" ",t.indent)+l((e.line-u+1).toString(),d)+" | "+p.str+"\n"+f;for(p=a(e.buffer,o[s],c[s],e.position,h),f+=n.repeat(" ",t.indent)+l((e.line+1).toString(),d)+" | "+p.str+"\n",f+=n.repeat("-",t.indent+d+3+p.pos)+"^\n",u=1;u<=t.linesAfter&&!(s+u>=c.length);u++)p=a(e.buffer,o[s+u],c[s+u],e.position-(o[s]-o[s+u]),h),f+=n.repeat(" ",t.indent)+l((e.line+u+1).toString(),d)+" | "+p.str+"\n";return f.replace(/\n$/,"")},s=["kind","multi","resolve","construct","instanceOf","predicate","represent","representName","defaultStyle","styleAliases"],u=["scalar","sequence","mapping"];var p=function(e,t){if(t=t||{},Object.keys(t).forEach(function(t){if(-1===s.indexOf(t))throw new o('Unknown option "'+t+'" is met in definition of "'+e+'" YAML type.')}),this.options=t,this.tag=e,this.kind=t.kind||null,this.resolve=t.resolve||function(){return!0},this.construct=t.construct||function(e){return e},this.instanceOf=t.instanceOf||null,this.predicate=t.predicate||null,this.represent=t.represent||null,this.representName=t.representName||null,this.defaultStyle=t.defaultStyle||null,this.multi=t.multi||!1,this.styleAliases=function(e){var t={};return null!==e&&Object.keys(e).forEach(function(n){e[n].forEach(function(e){t[String(e)]=n})}),t}(t.styleAliases||null),-1===u.indexOf(this.kind))throw new o('Unknown kind "'+this.kind+'" is specified for "'+e+'" YAML type.')};function f(e,t){var n=[];return e[t].forEach(function(e){var t=n.length;n.forEach(function(n,i){n.tag===e.tag&&n.kind===e.kind&&n.multi===e.multi&&(t=i)}),n[t]=e}),n}function d(e){return this.extend(e)}d.prototype.extend=function(e){var t=[],n=[];if(e instanceof p)n.push(e);else if(Array.isArray(e))n=n.concat(e);else{if(!e||!Array.isArray(e.implicit)&&!Array.isArray(e.explicit))throw new o("Schema.extend argument should be a Type, [ Type ], or a schema definition ({ implicit: [...], explicit: [...] })");e.implicit&&(t=t.concat(e.implicit)),e.explicit&&(n=n.concat(e.explicit))}t.forEach(function(e){if(!(e instanceof p))throw new o("Specified list of YAML types (or a single Type object) contains a non-Type object.");if(e.loadKind&&"scalar"!==e.loadKind)throw new o("There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.");if(e.multi)throw new o("There is a multi type in the implicit list of a schema. Multi tags can only be listed as explicit.")}),n.forEach(function(e){if(!(e instanceof p))throw new o("Specified list of YAML types (or a single Type object) contains a non-Type object.")});var i=Object.create(d.prototype);return i.implicit=(this.implicit||[]).concat(t),i.explicit=(this.explicit||[]).concat(n),i.compiledImplicit=f(i,"implicit"),i.compiledExplicit=f(i,"explicit"),i.compiledTypeMap=function(){var e,t,n={scalar:{},sequence:{},mapping:{},fallback:{},multi:{scalar:[],sequence:[],mapping:[],fallback:[]}};function i(e){e.multi?(n.multi[e.kind].push(e),n.multi.fallback.push(e)):n[e.kind][e.tag]=n.fallback[e.tag]=e}for(e=0,t=arguments.length;e<t;e+=1)arguments[e].forEach(i);return n}(i.compiledImplicit,i.compiledExplicit),i};var h=d,g=new p("tag:yaml.org,2002:str",{kind:"scalar",construct:function(e){return null!==e?e:""}}),m=new p("tag:yaml.org,2002:seq",{kind:"sequence",construct:function(e){return null!==e?e:[]}}),y=new p("tag:yaml.org,2002:map",{kind:"mapping",construct:function(e){return null!==e?e:{}}}),b=new h({explicit:[g,m,y]});var A=new p("tag:yaml.org,2002:null",{kind:"scalar",resolve:function(e){if(null===e)return!0;var t=e.length;return 1===t&&"~"===e||4===t&&("null"===e||"Null"===e||"NULL"===e)},construct:function(){return null},predicate:function(e){return null===e},represent:{canonical:function(){return"~"},lowercase:function(){return"null"},uppercase:function(){return"NULL"},camelcase:function(){return"Null"},empty:function(){return""}},defaultStyle:"lowercase"});var v=new p("tag:yaml.org,2002:bool",{kind:"scalar",resolve:function(e){if(null===e)return!1;var t=e.length;return 4===t&&("true"===e||"True"===e||"TRUE"===e)||5===t&&("false"===e||"False"===e||"FALSE"===e)},construct:function(e){return"true"===e||"True"===e||"TRUE"===e},predicate:function(e){return"[object Boolean]"===Object.prototype.toString.call(e)},represent:{lowercase:function(e){return e?"true":"false"},uppercase:function(e){return e?"TRUE":"FALSE"},camelcase:function(e){return e?"True":"False"}},defaultStyle:"lowercase"});function w(e){return 48<=e&&e<=57||65<=e&&e<=70||97<=e&&e<=102}function k(e){return 48<=e&&e<=55}function C(e){return 48<=e&&e<=57}var x=new p("tag:yaml.org,2002:int",{kind:"scalar",resolve:function(e){if(null===e)return!1;var t,n=e.length,i=0,r=!1;if(!n)return!1;if("-"!==(t=e[i])&&"+"!==t||(t=e[++i]),"0"===t){if(i+1===n)return!0;if("b"===(t=e[++i])){for(i++;i<n;i++)if("_"!==(t=e[i])){if("0"!==t&&"1"!==t)return!1;r=!0}return r&&"_"!==t}if("x"===t){for(i++;i<n;i++)if("_"!==(t=e[i])){if(!w(e.charCodeAt(i)))return!1;r=!0}return r&&"_"!==t}if("o"===t){for(i++;i<n;i++)if("_"!==(t=e[i])){if(!k(e.charCodeAt(i)))return!1;r=!0}return r&&"_"!==t}}if("_"===t)return!1;for(;i<n;i++)if("_"!==(t=e[i])){if(!C(e.charCodeAt(i)))return!1;r=!0}return!(!r||"_"===t)},construct:function(e){var t,n=e,i=1;if(-1!==n.indexOf("_")&&(n=n.replace(/_/g,"")),"-"!==(t=n[0])&&"+"!==t||("-"===t&&(i=-1),t=(n=n.slice(1))[0]),"0"===n)return 0;if("0"===t){if("b"===n[1])return i*parseInt(n.slice(2),2);if("x"===n[1])return i*parseInt(n.slice(2),16);if("o"===n[1])return i*parseInt(n.slice(2),8)}return i*parseInt(n,10)},predicate:function(e){return"[object Number]"===Object.prototype.toString.call(e)&&e%1==0&&!n.isNegativeZero(e)},represent:{binary:function(e){return e>=0?"0b"+e.toString(2):"-0b"+e.toString(2).slice(1)},octal:function(e){return e>=0?"0o"+e.toString(8):"-0o"+e.toString(8).slice(1)},decimal:function(e){return e.toString(10)},hexadecimal:function(e){return e>=0?"0x"+e.toString(16).toUpperCase():"-0x"+e.toString(16).toUpperCase().slice(1)}},defaultStyle:"decimal",styleAliases:{binary:[2,"bin"],octal:[8,"oct"],decimal:[10,"dec"],hexadecimal:[16,"hex"]}}),I=new RegExp("^(?:[-+]?(?:[0-9][0-9_]*)(?:\\.[0-9_]*)?(?:[eE][-+]?[0-9]+)?|\\.[0-9_]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$");var S=/^[-+]?[0-9]+e/;var O=new p("tag:yaml.org,2002:float",{kind:"scalar",resolve:function(e){return null!==e&&!(!I.test(e)||"_"===e[e.length-1])},construct:function(e){var t,n;return n="-"===(t=e.replace(/_/g,"").toLowerCase())[0]?-1:1,"+-".indexOf(t[0])>=0&&(t=t.slice(1)),".inf"===t?1===n?Number.POSITIVE_INFINITY:Number.NEGATIVE_INFINITY:".nan"===t?NaN:n*parseFloat(t,10)},predicate:function(e){return"[object Number]"===Object.prototype.toString.call(e)&&(e%1!=0||n.isNegativeZero(e))},represent:function(e,t){var i;if(isNaN(e))switch(t){case"lowercase":return".nan";case"uppercase":return".NAN";case"camelcase":return".NaN"}else if(Number.POSITIVE_INFINITY===e)switch(t){case"lowercase":return".inf";case"uppercase":return".INF";case"camelcase":return".Inf"}else if(Number.NEGATIVE_INFINITY===e)switch(t){case"lowercase":return"-.inf";case"uppercase":return"-.INF";case"camelcase":return"-.Inf"}else if(n.isNegativeZero(e))return"-0.0";return i=e.toString(10),S.test(i)?i.replace("e",".e"):i},defaultStyle:"lowercase"}),j=b.extend({implicit:[A,v,x,O]}),T=j,N=new RegExp("^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$"),F=new RegExp("^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$");var E=new p("tag:yaml.org,2002:timestamp",{kind:"scalar",resolve:function(e){return null!==e&&(null!==N.exec(e)||null!==F.exec(e))},construct:function(e){var t,n,i,r,o,a,l,c,s=0,u=null;if(null===(t=N.exec(e))&&(t=F.exec(e)),null===t)throw new Error("Date resolve error");if(n=+t[1],i=+t[2]-1,r=+t[3],!t[4])return new Date(Date.UTC(n,i,r));if(o=+t[4],a=+t[5],l=+t[6],t[7]){for(s=t[7].slice(0,3);s.length<3;)s+="0";s=+s}return t[9]&&(u=6e4*(60*+t[10]+ +(t[11]||0)),"-"===t[9]&&(u=-u)),c=new Date(Date.UTC(n,i,r,o,a,l,s)),u&&c.setTime(c.getTime()-u),c},instanceOf:Date,represent:function(e){return e.toISOString()}});var M=new p("tag:yaml.org,2002:merge",{kind:"scalar",resolve:function(e){return"<<"===e||null===e}}),L="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r";var _=new p("tag:yaml.org,2002:binary",{kind:"scalar",resolve:function(e){if(null===e)return!1;var t,n,i=0,r=e.length,o=L;for(n=0;n<r;n++)if(!((t=o.indexOf(e.charAt(n)))>64)){if(t<0)return!1;i+=6}return i%8==0},construct:function(e){var t,n,i=e.replace(/[\r\n=]/g,""),r=i.length,o=L,a=0,l=[];for(t=0;t<r;t++)t%4==0&&t&&(l.push(a>>16&255),l.push(a>>8&255),l.push(255&a)),a=a<<6|o.indexOf(i.charAt(t));return 0===(n=r%4*6)?(l.push(a>>16&255),l.push(a>>8&255),l.push(255&a)):18===n?(l.push(a>>10&255),l.push(a>>2&255)):12===n&&l.push(a>>4&255),new Uint8Array(l)},predicate:function(e){return"[object Uint8Array]"===Object.prototype.toString.call(e)},represent:function(e){var t,n,i="",r=0,o=e.length,a=L;for(t=0;t<o;t++)t%3==0&&t&&(i+=a[r>>18&63],i+=a[r>>12&63],i+=a[r>>6&63],i+=a[63&r]),r=(r<<8)+e[t];return 0===(n=o%3)?(i+=a[r>>18&63],i+=a[r>>12&63],i+=a[r>>6&63],i+=a[63&r]):2===n?(i+=a[r>>10&63],i+=a[r>>4&63],i+=a[r<<2&63],i+=a[64]):1===n&&(i+=a[r>>2&63],i+=a[r<<4&63],i+=a[64],i+=a[64]),i}}),D=Object.prototype.hasOwnProperty,U=Object.prototype.toString;var q=new p("tag:yaml.org,2002:omap",{kind:"sequence",resolve:function(e){if(null===e)return!0;var t,n,i,r,o,a=[],l=e;for(t=0,n=l.length;t<n;t+=1){if(i=l[t],o=!1,"[object Object]"!==U.call(i))return!1;for(r in i)if(D.call(i,r)){if(o)return!1;o=!0}if(!o)return!1;if(-1!==a.indexOf(r))return!1;a.push(r)}return!0},construct:function(e){return null!==e?e:[]}}),Y=Object.prototype.toString;var R=new p("tag:yaml.org,2002:pairs",{kind:"sequence",resolve:function(e){if(null===e)return!0;var t,n,i,r,o,a=e;for(o=new Array(a.length),t=0,n=a.length;t<n;t+=1){if(i=a[t],"[object Object]"!==Y.call(i))return!1;if(1!==(r=Object.keys(i)).length)return!1;o[t]=[r[0],i[r[0]]]}return!0},construct:function(e){if(null===e)return[];var t,n,i,r,o,a=e;for(o=new Array(a.length),t=0,n=a.length;t<n;t+=1)i=a[t],r=Object.keys(i),o[t]=[r[0],i[r[0]]];return o}}),B=Object.prototype.hasOwnProperty;var K=new p("tag:yaml.org,2002:set",{kind:"mapping",resolve:function(e){if(null===e)return!0;var t,n=e;for(t in n)if(B.call(n,t)&&null!==n[t])return!1;return!0},construct:function(e){return null!==e?e:{}}}),P=T.extend({implicit:[E,M],explicit:[_,q,R,K]}),W=Object.prototype.hasOwnProperty,H=/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/,$=/[\x85\u2028\u2029]/,G=/[,\[\]\{\}]/,V=/^(?:!|!!|![a-z\-]+!)$/i,Z=/^(?:!|[^,\[\]\{\}])(?:%[0-9a-f]{2}|[0-9a-z\-#;\/\?:@&=\+\$,_\.!~\*'\(\)\[\]])*$/i;function J(e){return Object.prototype.toString.call(e)}function Q(e){return 10===e||13===e}function z(e){return 9===e||32===e}function X(e){return 9===e||32===e||10===e||13===e}function ee(e){return 44===e||91===e||93===e||123===e||125===e}function te(e){var t;return 48<=e&&e<=57?e-48:97<=(t=32|e)&&t<=102?t-97+10:-1}function ne(e){return 120===e?2:117===e?4:85===e?8:0}function ie(e){return 48<=e&&e<=57?e-48:-1}function re(e){return 48===e?"\0":97===e?"":98===e?"\b":116===e||9===e?"\t":110===e?"\n":118===e?"\v":102===e?"\f":114===e?"\r":101===e?"":32===e?" ":34===e?'"':47===e?"/":92===e?"\\":78===e?"":95===e?" ":76===e?"\u2028":80===e?"\u2029":""}function oe(e){return e<=65535?String.fromCharCode(e):String.fromCharCode(55296+(e-65536>>10),56320+(e-65536&1023))}function ae(e,t,n){"__proto__"===t?Object.defineProperty(e,t,{configurable:!0,enumerable:!0,writable:!0,value:n}):e[t]=n}for(var le=new Array(256),ce=new Array(256),se=0;se<256;se++)le[se]=re(se)?1:0,ce[se]=re(se);function ue(e,t){this.input=e,this.filename=t.filename||null,this.schema=t.schema||P,this.onWarning=t.onWarning||null,this.legacy=t.legacy||!1,this.json=t.json||!1,this.listener=t.listener||null,this.implicitTypes=this.schema.compiledImplicit,this.typeMap=this.schema.compiledTypeMap,this.length=e.length,this.position=0,this.line=0,this.lineStart=0,this.lineIndent=0,this.firstTabInLine=-1,this.documents=[]}function pe(e,t){var n={name:e.filename,buffer:e.input.slice(0,-1),position:e.position,line:e.line,column:e.position-e.lineStart};return n.snippet=c(n),new o(t,n)}function fe(e,t){throw pe(e,t)}function de(e,t){e.onWarning&&e.onWarning.call(null,pe(e,t))}var he={YAML:function(e,t,n){var i,r,o;null!==e.version&&fe(e,"duplication of %YAML directive"),1!==n.length&&fe(e,"YAML directive accepts exactly one argument"),null===(i=/^([0-9]+)\.([0-9]+)$/.exec(n[0]))&&fe(e,"ill-formed argument of the YAML directive"),r=parseInt(i[1],10),o=parseInt(i[2],10),1!==r&&fe(e,"unacceptable YAML version of the document"),e.version=n[0],e.checkLineBreaks=o<2,1!==o&&2!==o&&de(e,"unsupported YAML version of the document")},TAG:function(e,t,n){var i,r;2!==n.length&&fe(e,"TAG directive accepts exactly two arguments"),i=n[0],r=n[1],V.test(i)||fe(e,"ill-formed tag handle (first argument) of the TAG directive"),W.call(e.tagMap,i)&&fe(e,'there is a previously declared suffix for "'+i+'" tag handle'),Z.test(r)||fe(e,"ill-formed tag prefix (second argument) of the TAG directive");try{r=decodeURIComponent(r)}catch(t){fe(e,"tag prefix is malformed: "+r)}e.tagMap[i]=r}};function ge(e,t,n,i){var r,o,a,l;if(t<n){if(l=e.input.slice(t,n),i)for(r=0,o=l.length;r<o;r+=1)9===(a=l.charCodeAt(r))||32<=a&&a<=1114111||fe(e,"expected valid JSON character");else H.test(l)&&fe(e,"the stream contains non-printable characters");e.result+=l}}function me(e,t,i,r){var o,a,l,c;for(n.isObject(i)||fe(e,"cannot merge mappings; the provided source object is unacceptable"),l=0,c=(o=Object.keys(i)).length;l<c;l+=1)a=o[l],W.call(t,a)||(ae(t,a,i[a]),r[a]=!0)}function ye(e,t,n,i,r,o,a,l,c){var s,u;if(Array.isArray(r))for(s=0,u=(r=Array.prototype.slice.call(r)).length;s<u;s+=1)Array.isArray(r[s])&&fe(e,"nested arrays are not supported inside keys"),"object"==typeof r&&"[object Object]"===J(r[s])&&(r[s]="[object Object]");if("object"==typeof r&&"[object Object]"===J(r)&&(r="[object Object]"),r=String(r),null===t&&(t={}),"tag:yaml.org,2002:merge"===i)if(Array.isArray(o))for(s=0,u=o.length;s<u;s+=1)me(e,t,o[s],n);else me(e,t,o,n);else e.json||W.call(n,r)||!W.call(t,r)||(e.line=a||e.line,e.lineStart=l||e.lineStart,e.position=c||e.position,fe(e,"duplicated mapping key")),ae(t,r,o),delete n[r];return t}function be(e){var t;10===(t=e.input.charCodeAt(e.position))?e.position++:13===t?(e.position++,10===e.input.charCodeAt(e.position)&&e.position++):fe(e,"a line break is expected"),e.line+=1,e.lineStart=e.position,e.firstTabInLine=-1}function Ae(e,t,n){for(var i=0,r=e.input.charCodeAt(e.position);0!==r;){for(;z(r);)9===r&&-1===e.firstTabInLine&&(e.firstTabInLine=e.position),r=e.input.charCodeAt(++e.position);if(t&&35===r)do{r=e.input.charCodeAt(++e.position)}while(10!==r&&13!==r&&0!==r);if(!Q(r))break;for(be(e),r=e.input.charCodeAt(e.position),i++,e.lineIndent=0;32===r;)e.lineIndent++,r=e.input.charCodeAt(++e.position)}return-1!==n&&0!==i&&e.lineIndent<n&&de(e,"deficient indentation"),i}function ve(e){var t,n=e.position;return!(45!==(t=e.input.charCodeAt(n))&&46!==t||t!==e.input.charCodeAt(n+1)||t!==e.input.charCodeAt(n+2)||(n+=3,0!==(t=e.input.charCodeAt(n))&&!X(t)))}function we(e,t){1===t?e.result+=" ":t>1&&(e.result+=n.repeat("\n",t-1))}function ke(e,t){var n,i,r=e.tag,o=e.anchor,a=[],l=!1;if(-1!==e.firstTabInLine)return!1;for(null!==e.anchor&&(e.anchorMap[e.anchor]=a),i=e.input.charCodeAt(e.position);0!==i&&(-1!==e.firstTabInLine&&(e.position=e.firstTabInLine,fe(e,"tab characters must not be used in indentation")),45===i)&&X(e.input.charCodeAt(e.position+1));)if(l=!0,e.position++,Ae(e,!0,-1)&&e.lineIndent<=t)a.push(null),i=e.input.charCodeAt(e.position);else if(n=e.line,Ie(e,t,3,!1,!0),a.push(e.result),Ae(e,!0,-1),i=e.input.charCodeAt(e.position),(e.line===n||e.lineIndent>t)&&0!==i)fe(e,"bad indentation of a sequence entry");else if(e.lineIndent<t)break;return!!l&&(e.tag=r,e.anchor=o,e.kind="sequence",e.result=a,!0)}function Ce(e){var t,n,i,r,o=!1,a=!1;if(33!==(r=e.input.charCodeAt(e.position)))return!1;if(null!==e.tag&&fe(e,"duplication of a tag property"),60===(r=e.input.charCodeAt(++e.position))?(o=!0,r=e.input.charCodeAt(++e.position)):33===r?(a=!0,n="!!",r=e.input.charCodeAt(++e.position)):n="!",t=e.position,o){do{r=e.input.charCodeAt(++e.position)}while(0!==r&&62!==r);e.position<e.length?(i=e.input.slice(t,e.position),r=e.input.charCodeAt(++e.position)):fe(e,"unexpected end of the stream within a verbatim tag")}else{for(;0!==r&&!X(r);)33===r&&(a?fe(e,"tag suffix cannot contain exclamation marks"):(n=e.input.slice(t-1,e.position+1),V.test(n)||fe(e,"named tag handle cannot contain such characters"),a=!0,t=e.position+1)),r=e.input.charCodeAt(++e.position);i=e.input.slice(t,e.position),G.test(i)&&fe(e,"tag suffix cannot contain flow indicator characters")}i&&!Z.test(i)&&fe(e,"tag name cannot contain such characters: "+i);try{i=decodeURIComponent(i)}catch(t){fe(e,"tag name is malformed: "+i)}return o?e.tag=i:W.call(e.tagMap,n)?e.tag=e.tagMap[n]+i:"!"===n?e.tag="!"+i:"!!"===n?e.tag="tag:yaml.org,2002:"+i:fe(e,'undeclared tag handle "'+n+'"'),!0}function xe(e){var t,n;if(38!==(n=e.input.charCodeAt(e.position)))return!1;for(null!==e.anchor&&fe(e,"duplication of an anchor property"),n=e.input.charCodeAt(++e.position),t=e.position;0!==n&&!X(n)&&!ee(n);)n=e.input.charCodeAt(++e.position);return e.position===t&&fe(e,"name of an anchor node must contain at least one character"),e.anchor=e.input.slice(t,e.position),!0}function Ie(e,t,i,r,o){var a,l,c,s,u,p,f,d,h,g=1,m=!1,y=!1;if(null!==e.listener&&e.listener("open",e),e.tag=null,e.anchor=null,e.kind=null,e.result=null,a=l=c=4===i||3===i,r&&Ae(e,!0,-1)&&(m=!0,e.lineIndent>t?g=1:e.lineIndent===t?g=0:e.lineIndent<t&&(g=-1)),1===g)for(;Ce(e)||xe(e);)Ae(e,!0,-1)?(m=!0,c=a,e.lineIndent>t?g=1:e.lineIndent===t?g=0:e.lineIndent<t&&(g=-1)):c=!1;if(c&&(c=m||o),1!==g&&4!==i||(d=1===i||2===i?t:t+1,h=e.position-e.lineStart,1===g?c&&(ke(e,h)||function(e,t,n){var i,r,o,a,l,c,s,u=e.tag,p=e.anchor,f={},d=Object.create(null),h=null,g=null,m=null,y=!1,b=!1;if(-1!==e.firstTabInLine)return!1;for(null!==e.anchor&&(e.anchorMap[e.anchor]=f),s=e.input.charCodeAt(e.position);0!==s;){if(y||-1===e.firstTabInLine||(e.position=e.firstTabInLine,fe(e,"tab characters must not be used in indentation")),i=e.input.charCodeAt(e.position+1),o=e.line,63!==s&&58!==s||!X(i)){if(a=e.line,l=e.lineStart,c=e.position,!Ie(e,n,2,!1,!0))break;if(e.line===o){for(s=e.input.charCodeAt(e.position);z(s);)s=e.input.charCodeAt(++e.position);if(58===s)X(s=e.input.charCodeAt(++e.position))||fe(e,"a whitespace character is expected after the key-value separator within a block mapping"),y&&(ye(e,f,d,h,g,null,a,l,c),h=g=m=null),b=!0,y=!1,r=!1,h=e.tag,g=e.result;else{if(!b)return e.tag=u,e.anchor=p,!0;fe(e,"can not read an implicit mapping pair; a colon is missed")}}else{if(!b)return e.tag=u,e.anchor=p,!0;fe(e,"can not read a block mapping entry; a multiline key may not be an implicit key")}}else 63===s?(y&&(ye(e,f,d,h,g,null,a,l,c),h=g=m=null),b=!0,y=!0,r=!0):y?(y=!1,r=!0):fe(e,"incomplete explicit mapping pair; a key node is missed; or followed by a non-tabulated empty line"),e.position+=1,s=i;if((e.line===o||e.lineIndent>t)&&(y&&(a=e.line,l=e.lineStart,c=e.position),Ie(e,t,4,!0,r)&&(y?g=e.result:m=e.result),y||(ye(e,f,d,h,g,m,a,l,c),h=g=m=null),Ae(e,!0,-1),s=e.input.charCodeAt(e.position)),(e.line===o||e.lineIndent>t)&&0!==s)fe(e,"bad indentation of a mapping entry");else if(e.lineIndent<t)break}return y&&ye(e,f,d,h,g,null,a,l,c),b&&(e.tag=u,e.anchor=p,e.kind="mapping",e.result=f),b}(e,h,d))||function(e,t){var n,i,r,o,a,l,c,s,u,p,f,d,h=!0,g=e.tag,m=e.anchor,y=Object.create(null);if(91===(d=e.input.charCodeAt(e.position)))a=93,s=!1,o=[];else{if(123!==d)return!1;a=125,s=!0,o={}}for(null!==e.anchor&&(e.anchorMap[e.anchor]=o),d=e.input.charCodeAt(++e.position);0!==d;){if(Ae(e,!0,t),(d=e.input.charCodeAt(e.position))===a)return e.position++,e.tag=g,e.anchor=m,e.kind=s?"mapping":"sequence",e.result=o,!0;h?44===d&&fe(e,"expected the node content, but found ','"):fe(e,"missed comma between flow collection entries"),f=null,l=c=!1,63===d&&X(e.input.charCodeAt(e.position+1))&&(l=c=!0,e.position++,Ae(e,!0,t)),n=e.line,i=e.lineStart,r=e.position,Ie(e,t,1,!1,!0),p=e.tag,u=e.result,Ae(e,!0,t),d=e.input.charCodeAt(e.position),!c&&e.line!==n||58!==d||(l=!0,d=e.input.charCodeAt(++e.position),Ae(e,!0,t),Ie(e,t,1,!1,!0),f=e.result),s?ye(e,o,y,p,u,f,n,i,r):l?o.push(ye(e,null,y,p,u,f,n,i,r)):o.push(u),Ae(e,!0,t),44===(d=e.input.charCodeAt(e.position))?(h=!0,d=e.input.charCodeAt(++e.position)):h=!1}fe(e,"unexpected end of the stream within a flow collection")}(e,d)?y=!0:(l&&function(e,t){var i,r,o,a,l=1,c=!1,s=!1,u=t,p=0,f=!1;if(124===(a=e.input.charCodeAt(e.position)))r=!1;else{if(62!==a)return!1;r=!0}for(e.kind="scalar",e.result="";0!==a;)if(43===(a=e.input.charCodeAt(++e.position))||45===a)1===l?l=43===a?3:2:fe(e,"repeat of a chomping mode identifier");else{if(!((o=ie(a))>=0))break;0===o?fe(e,"bad explicit indentation width of a block scalar; it cannot be less than one"):s?fe(e,"repeat of an indentation width identifier"):(u=t+o-1,s=!0)}if(z(a)){do{a=e.input.charCodeAt(++e.position)}while(z(a));if(35===a)do{a=e.input.charCodeAt(++e.position)}while(!Q(a)&&0!==a)}for(;0!==a;){for(be(e),e.lineIndent=0,a=e.input.charCodeAt(e.position);(!s||e.lineIndent<u)&&32===a;)e.lineIndent++,a=e.input.charCodeAt(++e.position);if(!s&&e.lineIndent>u&&(u=e.lineIndent),Q(a))p++;else{if(e.lineIndent<u){3===l?e.result+=n.repeat("\n",c?1+p:p):1===l&&c&&(e.result+="\n");break}for(r?z(a)?(f=!0,e.result+=n.repeat("\n",c?1+p:p)):f?(f=!1,e.result+=n.repeat("\n",p+1)):0===p?c&&(e.result+=" "):e.result+=n.repeat("\n",p):e.result+=n.repeat("\n",c?1+p:p),c=!0,s=!0,p=0,i=e.position;!Q(a)&&0!==a;)a=e.input.charCodeAt(++e.position);ge(e,i,e.position,!1)}}return!0}(e,d)||function(e,t){var n,i,r;if(39!==(n=e.input.charCodeAt(e.position)))return!1;for(e.kind="scalar",e.result="",e.position++,i=r=e.position;0!==(n=e.input.charCodeAt(e.position));)if(39===n){if(ge(e,i,e.position,!0),39!==(n=e.input.charCodeAt(++e.position)))return!0;i=e.position,e.position++,r=e.position}else Q(n)?(ge(e,i,r,!0),we(e,Ae(e,!1,t)),i=r=e.position):e.position===e.lineStart&&ve(e)?fe(e,"unexpected end of the document within a single quoted scalar"):(e.position++,r=e.position);fe(e,"unexpected end of the stream within a single quoted scalar")}(e,d)||function(e,t){var n,i,r,o,a,l;if(34!==(l=e.input.charCodeAt(e.position)))return!1;for(e.kind="scalar",e.result="",e.position++,n=i=e.position;0!==(l=e.input.charCodeAt(e.position));){if(34===l)return ge(e,n,e.position,!0),e.position++,!0;if(92===l){if(ge(e,n,e.position,!0),Q(l=e.input.charCodeAt(++e.position)))Ae(e,!1,t);else if(l<256&&le[l])e.result+=ce[l],e.position++;else if((a=ne(l))>0){for(r=a,o=0;r>0;r--)(a=te(l=e.input.charCodeAt(++e.position)))>=0?o=(o<<4)+a:fe(e,"expected hexadecimal character");e.result+=oe(o),e.position++}else fe(e,"unknown escape sequence");n=i=e.position}else Q(l)?(ge(e,n,i,!0),we(e,Ae(e,!1,t)),n=i=e.position):e.position===e.lineStart&&ve(e)?fe(e,"unexpected end of the document within a double quoted scalar"):(e.position++,i=e.position)}fe(e,"unexpected end of the stream within a double quoted scalar")}(e,d)?y=!0:!function(e){var t,n,i;if(42!==(i=e.input.charCodeAt(e.position)))return!1;for(i=e.input.charCodeAt(++e.position),t=e.position;0!==i&&!X(i)&&!ee(i);)i=e.input.charCodeAt(++e.position);return e.position===t&&fe(e,"name of an alias node must contain at least one character"),n=e.input.slice(t,e.position),W.call(e.anchorMap,n)||fe(e,'unidentified alias "'+n+'"'),e.result=e.anchorMap[n],Ae(e,!0,-1),!0}(e)?function(e,t,n){var i,r,o,a,l,c,s,u,p=e.kind,f=e.result;if(X(u=e.input.charCodeAt(e.position))||ee(u)||35===u||38===u||42===u||33===u||124===u||62===u||39===u||34===u||37===u||64===u||96===u)return!1;if((63===u||45===u)&&(X(i=e.input.charCodeAt(e.position+1))||n&&ee(i)))return!1;for(e.kind="scalar",e.result="",r=o=e.position,a=!1;0!==u;){if(58===u){if(X(i=e.input.charCodeAt(e.position+1))||n&&ee(i))break}else if(35===u){if(X(e.input.charCodeAt(e.position-1)))break}else{if(e.position===e.lineStart&&ve(e)||n&&ee(u))break;if(Q(u)){if(l=e.line,c=e.lineStart,s=e.lineIndent,Ae(e,!1,-1),e.lineIndent>=t){a=!0,u=e.input.charCodeAt(e.position);continue}e.position=o,e.line=l,e.lineStart=c,e.lineIndent=s;break}}a&&(ge(e,r,o,!1),we(e,e.line-l),r=o=e.position,a=!1),z(u)||(o=e.position+1),u=e.input.charCodeAt(++e.position)}return ge(e,r,o,!1),!!e.result||(e.kind=p,e.result=f,!1)}(e,d,1===i)&&(y=!0,null===e.tag&&(e.tag="?")):(y=!0,null===e.tag&&null===e.anchor||fe(e,"alias node should not have any properties")),null!==e.anchor&&(e.anchorMap[e.anchor]=e.result)):0===g&&(y=c&&ke(e,h))),null===e.tag)null!==e.anchor&&(e.anchorMap[e.anchor]=e.result);else if("?"===e.tag){for(null!==e.result&&"scalar"!==e.kind&&fe(e,'unacceptable node kind for !<?> tag; it should be "scalar", not "'+e.kind+'"'),s=0,u=e.implicitTypes.length;s<u;s+=1)if((f=e.implicitTypes[s]).resolve(e.result)){e.result=f.construct(e.result),e.tag=f.tag,null!==e.anchor&&(e.anchorMap[e.anchor]=e.result);break}}else if("!"!==e.tag){if(W.call(e.typeMap[e.kind||"fallback"],e.tag))f=e.typeMap[e.kind||"fallback"][e.tag];else for(f=null,s=0,u=(p=e.typeMap.multi[e.kind||"fallback"]).length;s<u;s+=1)if(e.tag.slice(0,p[s].tag.length)===p[s].tag){f=p[s];break}f||fe(e,"unknown tag !<"+e.tag+">"),null!==e.result&&f.kind!==e.kind&&fe(e,"unacceptable node kind for !<"+e.tag+'> tag; it should be "'+f.kind+'", not "'+e.kind+'"'),f.resolve(e.result,e.tag)?(e.result=f.construct(e.result,e.tag),null!==e.anchor&&(e.anchorMap[e.anchor]=e.result)):fe(e,"cannot resolve a node with !<"+e.tag+"> explicit tag")}return null!==e.listener&&e.listener("close",e),null!==e.tag||null!==e.anchor||y}function Se(e){var t,n,i,r,o=e.position,a=!1;for(e.version=null,e.checkLineBreaks=e.legacy,e.tagMap=Object.create(null),e.anchorMap=Object.create(null);0!==(r=e.input.charCodeAt(e.position))&&(Ae(e,!0,-1),r=e.input.charCodeAt(e.position),!(e.lineIndent>0||37!==r));){for(a=!0,r=e.input.charCodeAt(++e.position),t=e.position;0!==r&&!X(r);)r=e.input.charCodeAt(++e.position);for(i=[],(n=e.input.slice(t,e.position)).length<1&&fe(e,"directive name must not be less than one character in length");0!==r;){for(;z(r);)r=e.input.charCodeAt(++e.position);if(35===r){do{r=e.input.charCodeAt(++e.position)}while(0!==r&&!Q(r));break}if(Q(r))break;for(t=e.position;0!==r&&!X(r);)r=e.input.charCodeAt(++e.position);i.push(e.input.slice(t,e.position))}0!==r&&be(e),W.call(he,n)?he[n](e,n,i):de(e,'unknown document directive "'+n+'"')}Ae(e,!0,-1),0===e.lineIndent&&45===e.input.charCodeAt(e.position)&&45===e.input.charCodeAt(e.position+1)&&45===e.input.charCodeAt(e.position+2)?(e.position+=3,Ae(e,!0,-1)):a&&fe(e,"directives end mark is expected"),Ie(e,e.lineIndent-1,4,!1,!0),Ae(e,!0,-1),e.checkLineBreaks&&$.test(e.input.slice(o,e.position))&&de(e,"non-ASCII line breaks are interpreted as content"),e.documents.push(e.result),e.position===e.lineStart&&ve(e)?46===e.input.charCodeAt(e.position)&&(e.position+=3,Ae(e,!0,-1)):e.position<e.length-1&&fe(e,"end of the stream or a document separator is expected")}function Oe(e,t){t=t||{},0!==(e=String(e)).length&&(10!==e.charCodeAt(e.length-1)&&13!==e.charCodeAt(e.length-1)&&(e+="\n"),65279===e.charCodeAt(0)&&(e=e.slice(1)));var n=new ue(e,t),i=e.indexOf("\0");for(-1!==i&&(n.position=i,fe(n,"null byte is not allowed in input")),n.input+="\0";32===n.input.charCodeAt(n.position);)n.lineIndent+=1,n.position+=1;for(;n.position<n.length-1;)Se(n);return n.documents}var je={loadAll:function(e,t,n){null!==t&&"object"==typeof t&&void 0===n&&(n=t,t=null);var i=Oe(e,n);if("function"!=typeof t)return i;for(var r=0,o=i.length;r<o;r+=1)t(i[r])},load:function(e,t){var n=Oe(e,t);if(0!==n.length){if(1===n.length)return n[0];throw new o("expected a single document in the stream, but found more")}}},Te=Object.prototype.toString,Ne=Object.prototype.hasOwnProperty,Fe=65279,Ee={0:"\\0",7:"\\a",8:"\\b",9:"\\t",10:"\\n",11:"\\v",12:"\\f",13:"\\r",27:"\\e",34:'\\"',92:"\\\\",133:"\\N",160:"\\_",8232:"\\L",8233:"\\P"},Me=["y","Y","yes","Yes","YES","on","On","ON","n","N","no","No","NO","off","Off","OFF"],Le=/^[-+]?[0-9_]+(?::[0-9_]+)+(?:\.[0-9_]*)?$/;function _e(e){var t,i,r;if(t=e.toString(16).toUpperCase(),e<=255)i="x",r=2;else if(e<=65535)i="u",r=4;else{if(!(e<=4294967295))throw new o("code point within a string may not be greater than 0xFFFFFFFF");i="U",r=8}return"\\"+i+n.repeat("0",r-t.length)+t}function De(e){this.schema=e.schema||P,this.indent=Math.max(1,e.indent||2),this.noArrayIndent=e.noArrayIndent||!1,this.skipInvalid=e.skipInvalid||!1,this.flowLevel=n.isNothing(e.flowLevel)?-1:e.flowLevel,this.styleMap=function(e,t){var n,i,r,o,a,l,c;if(null===t)return{};for(n={},r=0,o=(i=Object.keys(t)).length;r<o;r+=1)a=i[r],l=String(t[a]),"!!"===a.slice(0,2)&&(a="tag:yaml.org,2002:"+a.slice(2)),(c=e.compiledTypeMap.fallback[a])&&Ne.call(c.styleAliases,l)&&(l=c.styleAliases[l]),n[a]=l;return n}(this.schema,e.styles||null),this.sortKeys=e.sortKeys||!1,this.lineWidth=e.lineWidth||80,this.noRefs=e.noRefs||!1,this.noCompatMode=e.noCompatMode||!1,this.condenseFlow=e.condenseFlow||!1,this.quotingType='"'===e.quotingType?2:1,this.forceQuotes=e.forceQuotes||!1,this.replacer="function"==typeof e.replacer?e.replacer:null,this.implicitTypes=this.schema.compiledImplicit,this.explicitTypes=this.schema.compiledExplicit,this.tag=null,this.result="",this.duplicates=[],this.usedDuplicates=null}function Ue(e,t){for(var i,r=n.repeat(" ",t),o=0,a=-1,l="",c=e.length;o<c;)-1===(a=e.indexOf("\n",o))?(i=e.slice(o),o=c):(i=e.slice(o,a+1),o=a+1),i.length&&"\n"!==i&&(l+=r),l+=i;return l}function qe(e,t){return"\n"+n.repeat(" ",e.indent*t)}function Ye(e){return 32===e||9===e}function Re(e){return 32<=e&&e<=126||161<=e&&e<=55295&&8232!==e&&8233!==e||57344<=e&&e<=65533&&e!==Fe||65536<=e&&e<=1114111}function Be(e){return Re(e)&&e!==Fe&&13!==e&&10!==e}function Ke(e,t,n){var i=Be(e),r=i&&!Ye(e);return(n?i:i&&44!==e&&91!==e&&93!==e&&123!==e&&125!==e)&&35!==e&&!(58===t&&!r)||Be(t)&&!Ye(t)&&35===e||58===t&&r}function Pe(e,t){var n,i=e.charCodeAt(t);return i>=55296&&i<=56319&&t+1<e.length&&(n=e.charCodeAt(t+1))>=56320&&n<=57343?1024*(i-55296)+n-56320+65536:i}function We(e){return/^\n* /.test(e)}function He(e,t,n,i,r,o,a,l){var c,s,u=0,p=null,f=!1,d=!1,h=-1!==i,g=-1,m=Re(s=Pe(e,0))&&s!==Fe&&!Ye(s)&&45!==s&&63!==s&&58!==s&&44!==s&&91!==s&&93!==s&&123!==s&&125!==s&&35!==s&&38!==s&&42!==s&&33!==s&&124!==s&&61!==s&&62!==s&&39!==s&&34!==s&&37!==s&&64!==s&&96!==s&&function(e){return!Ye(e)&&58!==e}(Pe(e,e.length-1));if(t||a)for(c=0;c<e.length;u>=65536?c+=2:c++){if(!Re(u=Pe(e,c)))return 5;m=m&&Ke(u,p,l),p=u}else{for(c=0;c<e.length;u>=65536?c+=2:c++){if(10===(u=Pe(e,c)))f=!0,h&&(d=d||c-g-1>i&&" "!==e[g+1],g=c);else if(!Re(u))return 5;m=m&&Ke(u,p,l),p=u}d=d||h&&c-g-1>i&&" "!==e[g+1]}return f||d?n>9&&We(e)?5:a?2===o?5:2:d?4:3:!m||a||r(e)?2===o?5:2:1}function $e(e,t,n,i,r){e.dump=function(){if(0===t.length)return 2===e.quotingType?'""':"''";if(!e.noCompatMode&&(-1!==Me.indexOf(t)||Le.test(t)))return 2===e.quotingType?'"'+t+'"':"'"+t+"'";var a=e.indent*Math.max(1,n),l=-1===e.lineWidth?-1:Math.max(Math.min(e.lineWidth,40),e.lineWidth-a),c=i||e.flowLevel>-1&&n>=e.flowLevel;switch(He(t,c,e.indent,l,function(t){return function(e,t){var n,i;for(n=0,i=e.implicitTypes.length;n<i;n+=1)if(e.implicitTypes[n].resolve(t))return!0;return!1}(e,t)},e.quotingType,e.forceQuotes&&!i,r)){case 1:return t;case 2:return"'"+t.replace(/'/g,"''")+"'";case 3:return"|"+Ge(t,e.indent)+Ve(Ue(t,a));case 4:return">"+Ge(t,e.indent)+Ve(Ue(function(e,t){var n,i,r=/(\n+)([^\n]*)/g,o=(l=e.indexOf("\n"),l=-1!==l?l:e.length,r.lastIndex=l,Ze(e.slice(0,l),t)),a="\n"===e[0]||" "===e[0];var l;for(;i=r.exec(e);){var c=i[1],s=i[2];n=" "===s[0],o+=c+(a||n||""===s?"":"\n")+Ze(s,t),a=n}return o}(t,l),a));case 5:return'"'+function(e){for(var t,n="",i=0,r=0;r<e.length;i>=65536?r+=2:r++)i=Pe(e,r),!(t=Ee[i])&&Re(i)?(n+=e[r],i>=65536&&(n+=e[r+1])):n+=t||_e(i);return n}(t)+'"';default:throw new o("impossible error: invalid scalar style")}}()}function Ge(e,t){var n=We(e)?String(t):"",i="\n"===e[e.length-1];return n+(i&&("\n"===e[e.length-2]||"\n"===e)?"+":i?"":"-")+"\n"}function Ve(e){return"\n"===e[e.length-1]?e.slice(0,-1):e}function Ze(e,t){if(""===e||" "===e[0])return e;for(var n,i,r=/ [^ ]/g,o=0,a=0,l=0,c="";n=r.exec(e);)(l=n.index)-o>t&&(i=a>o?a:l,c+="\n"+e.slice(o,i),o=i+1),a=l;return c+="\n",e.length-o>t&&a>o?c+=e.slice(o,a)+"\n"+e.slice(a+1):c+=e.slice(o),c.slice(1)}function Je(e,t,n,i){var r,o,a,l="",c=e.tag;for(r=0,o=n.length;r<o;r+=1)a=n[r],e.replacer&&(a=e.replacer.call(n,String(r),a)),(ze(e,t+1,a,!0,!0,!1,!0)||void 0===a&&ze(e,t+1,null,!0,!0,!1,!0))&&(i&&""===l||(l+=qe(e,t)),e.dump&&10===e.dump.charCodeAt(0)?l+="-":l+="- ",l+=e.dump);e.tag=c,e.dump=l||"[]"}function Qe(e,t,n){var i,r,a,l,c,s;for(a=0,l=(r=n?e.explicitTypes:e.implicitTypes).length;a<l;a+=1)if(((c=r[a]).instanceOf||c.predicate)&&(!c.instanceOf||"object"==typeof t&&t instanceof c.instanceOf)&&(!c.predicate||c.predicate(t))){if(n?c.multi&&c.representName?e.tag=c.representName(t):e.tag=c.tag:e.tag="?",c.represent){if(s=e.styleMap[c.tag]||c.defaultStyle,"[object Function]"===Te.call(c.represent))i=c.represent(t,s);else{if(!Ne.call(c.represent,s))throw new o("!<"+c.tag+'> tag resolver accepts not "'+s+'" style');i=c.represent[s](t,s)}e.dump=i}return!0}return!1}function ze(e,t,n,i,r,a,l){e.tag=null,e.dump=n,Qe(e,n,!1)||Qe(e,n,!0);var c,s=Te.call(e.dump),u=i;i&&(i=e.flowLevel<0||e.flowLevel>t);var p,f,d="[object Object]"===s||"[object Array]"===s;if(d&&(f=-1!==(p=e.duplicates.indexOf(n))),(null!==e.tag&&"?"!==e.tag||f||2!==e.indent&&t>0)&&(r=!1),f&&e.usedDuplicates[p])e.dump="*ref_"+p;else{if(d&&f&&!e.usedDuplicates[p]&&(e.usedDuplicates[p]=!0),"[object Object]"===s)i&&0!==Object.keys(e.dump).length?(!function(e,t,n,i){var r,a,l,c,s,u,p="",f=e.tag,d=Object.keys(n);if(!0===e.sortKeys)d.sort();else if("function"==typeof e.sortKeys)d.sort(e.sortKeys);else if(e.sortKeys)throw new o("sortKeys must be a boolean or a function");for(r=0,a=d.length;r<a;r+=1)u="",i&&""===p||(u+=qe(e,t)),c=n[l=d[r]],e.replacer&&(c=e.replacer.call(n,l,c)),ze(e,t+1,l,!0,!0,!0)&&((s=null!==e.tag&&"?"!==e.tag||e.dump&&e.dump.length>1024)&&(e.dump&&10===e.dump.charCodeAt(0)?u+="?":u+="? "),u+=e.dump,s&&(u+=qe(e,t)),ze(e,t+1,c,!0,s)&&(e.dump&&10===e.dump.charCodeAt(0)?u+=":":u+=": ",p+=u+=e.dump));e.tag=f,e.dump=p||"{}"}(e,t,e.dump,r),f&&(e.dump="&ref_"+p+e.dump)):(!function(e,t,n){var i,r,o,a,l,c="",s=e.tag,u=Object.keys(n);for(i=0,r=u.length;i<r;i+=1)l="",""!==c&&(l+=", "),e.condenseFlow&&(l+='"'),a=n[o=u[i]],e.replacer&&(a=e.replacer.call(n,o,a)),ze(e,t,o,!1,!1)&&(e.dump.length>1024&&(l+="? "),l+=e.dump+(e.condenseFlow?'"':"")+":"+(e.condenseFlow?"":" "),ze(e,t,a,!1,!1)&&(c+=l+=e.dump));e.tag=s,e.dump="{"+c+"}"}(e,t,e.dump),f&&(e.dump="&ref_"+p+" "+e.dump));else if("[object Array]"===s)i&&0!==e.dump.length?(e.noArrayIndent&&!l&&t>0?Je(e,t-1,e.dump,r):Je(e,t,e.dump,r),f&&(e.dump="&ref_"+p+e.dump)):(!function(e,t,n){var i,r,o,a="",l=e.tag;for(i=0,r=n.length;i<r;i+=1)o=n[i],e.replacer&&(o=e.replacer.call(n,String(i),o)),(ze(e,t,o,!1,!1)||void 0===o&&ze(e,t,null,!1,!1))&&(""!==a&&(a+=","+(e.condenseFlow?"":" ")),a+=e.dump);e.tag=l,e.dump="["+a+"]"}(e,t,e.dump),f&&(e.dump="&ref_"+p+" "+e.dump));else{if("[object String]"!==s){if("[object Undefined]"===s)return!1;if(e.skipInvalid)return!1;throw new o("unacceptable kind of an object to dump "+s)}"?"!==e.tag&&$e(e,e.dump,t,a,u)}null!==e.tag&&"?"!==e.tag&&(c=encodeURI("!"===e.tag[0]?e.tag.slice(1):e.tag).replace(/!/g,"%21"),c="!"===e.tag[0]?"!"+c:"tag:yaml.org,2002:"===c.slice(0,18)?"!!"+c.slice(18):"!<"+c+">",e.dump=c+" "+e.dump)}return!0}function Xe(e,t){var n,i,r=[],o=[];for(et(e,r,o),n=0,i=o.length;n<i;n+=1)t.duplicates.push(r[o[n]]);t.usedDuplicates=new Array(i)}function et(e,t,n){var i,r,o;if(null!==e&&"object"==typeof e)if(-1!==(r=t.indexOf(e)))-1===n.indexOf(r)&&n.push(r);else if(t.push(e),Array.isArray(e))for(r=0,o=e.length;r<o;r+=1)et(e[r],t,n);else for(r=0,o=(i=Object.keys(e)).length;r<o;r+=1)et(e[i[r]],t,n)}function tt(e,t){return function(){throw new Error("Function yaml."+e+" is removed in js-yaml 4. Use yaml."+t+" instead, which is now safe by default.")}}var nt=p,it=h,rt=b,ot=j,at=T,lt=P,ct=je.load,st=je.loadAll,ut={dump:function(e,t){var n=new De(t=t||{});n.noRefs||Xe(e,n);var i=e;return n.replacer&&(i=n.replacer.call({"":i},"",i)),ze(n,0,i,!0,!0)?n.dump+"\n":""}}.dump,pt=o,ft={binary:_,float:O,map:y,null:A,pairs:R,set:K,timestamp:E,bool:v,int:x,merge:M,omap:q,seq:m,str:g},dt=tt("safeLoad","load"),ht=tt("safeLoadAll","loadAll"),gt=tt("safeDump","dump"),mt={Type:nt,Schema:it,FAILSAFE_SCHEMA:rt,JSON_SCHEMA:ot,CORE_SCHEMA:at,DEFAULT_SCHEMA:lt,load:ct,loadAll:st,dump:ut,YAMLException:pt,types:ft,safeLoad:dt,safeLoadAll:ht,safeDump:gt};e.CORE_SCHEMA=at,e.DEFAULT_SCHEMA=lt,e.FAILSAFE_SCHEMA=rt,e.JSON_SCHEMA=ot,e.Schema=it,e.Type=nt,e.YAMLException=pt,e.default=mt,e.dump=ut,e.load=ct,e.loadAll=st,e.safeDump=gt,e.safeLoad=dt,e.safeLoadAll=ht,e.types=ft,Object.defineProperty(e,"__esModule",{value:!0})});
+</script>
 <style>
 :root{
   box-sizing:border-box;
@@ -273,6 +276,8 @@ time.ago{white-space:nowrap}
 .prose li{margin:2px 0}
 .prose code{font-size:.86em;background:var(--surface);border:1px solid var(--rule);padding:1px 5px;border-radius:6px}
 .prose pre{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;overflow-x:auto;font-size:15px;line-height:1.5}
+.structured-view{display:flow-root;min-width:0}
+.structured-view pre{white-space:pre;max-width:100%}
 .prose pre code{background:none;border:0;padding:0}
 .prose table{border-collapse:collapse;margin:0 0 16px;font-size:16px;display:block;overflow-x:auto}
 .prose th,.prose td{border:1px solid var(--rule-2);padding:6px 10px;text-align:left;vertical-align:top}
@@ -920,6 +925,20 @@ function splitChunks(s){
 const PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const MAX_TREE_DEPTH = 8;
 const MAX_INTRO = 50000;
+/* Project hierarchy is metadata; folders and canonical URLs stay stable. */
+function assertProjectParent(projects, id, parent){
+  if(parent == null || parent === "") return;
+  if(typeof parent !== "string" || !PROJECT_ID_RE.test(parent)) throw new Error("Invalid parent project");
+  const byId = new Map(projects.map(p => [p.id, p])), seen = new Set([id]);
+  let next = parent;
+  while(next){
+    if(seen.has(next)) throw new Error("A project cannot be its own ancestor");
+    seen.add(next);
+    const p = byId.get(next); if(!p) throw new Error("The parent project no longer exists");
+    next = p.parentProject;
+  }
+}
+function setProjectParent(pj, parent){ if(parent) pj.parentProject = parent; else delete pj.parentProject; }
 function treeFind(items, type, id, parent){
   for(let i = 0; i < items.length; i++){
     const it = items[i];
@@ -986,7 +1005,10 @@ const projectText = pj => JSON.stringify(pj, null, 2) + "\n";
 /* ---------------------------------------------------------------- stores */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SHA_RE = /^[0-9a-f]{7,40}$/;
-const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
+const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.(?:pdf|json|yaml|yml)$/;
+const fileFormat = name => String(name).split(".").at(-1).toLowerCase();
+const fileIcon = name => fileFormat(name) === "pdf" ? "picture_as_pdf" : "code";
+const fileMime = name => ({pdf:"application/pdf", json:"application/json", yaml:"application/yaml", yml:"application/yaml"})[fileFormat(name)];
 const cleanText = (s, max) => String(s == null ? "" : s).replace(/[\r\n\0<>]/g, " ").trim().slice(0, max);
 const hex = buf => Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
 function b64(str){
@@ -1167,7 +1189,7 @@ class GitHubStore{
     const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
     if(hit !== undefined){ this._content.delete(key); this._content.set(key, hit); return hit; }
     const gen = this._readGen;
-    const path = `/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${oid}`;
+    const path = `/repos/${this.full}/contents/${this.pageDir(slug)}/content.${contentFormat(format)}?ref=${oid}`;
     let text;
     try{ text = await this._rawText(path, false); }
     catch(e){ if(e.status === 404) return null; throw e; }
@@ -1178,7 +1200,7 @@ class GitHubStore{
     return text;
   }
   async getLatestContent(slug, format){    // for the search index: no commit id needed
-    return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, true);
+    return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${contentFormat(format)}?ref=${this.branch}`, true);
   }
   /* Mutable REST content: a short memory cache, then conditional revalidation.
      In-flight reads share the same text promise; cached bodies are bounded and session-only. */
@@ -1248,7 +1270,7 @@ class GitHubStore{
     this.slug(slug);
     const title = cleanText(d.title, 200), abstract = cleanText(d.abstract, 240), summary = cleanText(d.summary, 300) || "Edit";
     const status = ["draft","reviewed","validated","deprecated"].includes(d.status) ? d.status : "draft";
-    const format = d.format === "html" ? "html" : "md";
+    const format = contentFormat(d.format);
     const content = typeof d.content === "string" ? d.content : "";
     const tags = Array.isArray(d.tags) ? [...new Set(d.tags.map(t => cleanText(t, 40)).filter(Boolean))] : [];
     if(!title || !content.trim()) throw new Error("A title and some content are required");
@@ -1436,6 +1458,17 @@ class GitHubStore{
     pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
     return {path, contents:b64(projectText(pj)), text:projectText(pj)};
   }
+  async projectsAtHead(head){
+    const result = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:`${head.oid}:projects`});
+    const ids = ((result.repository?.object?.entries) || []).filter(e => e.type === "tree" && PROJECT_ID_RE.test(e.name)).map(e => e.name);
+    const projects = [];
+    for(let i = 0; i < ids.length; i += 60){
+      const batch = ids.slice(i, i + 60), paths = batch.map(id => this.projectPath(id)), texts = await head.read(paths);
+      batch.forEach((id, k) => { const p = metaOf(texts[paths[k]]); if(p) projects.push({...p, id}); });
+    }
+    return projects;
+  }
   async createProject(id, d){
     const path = this.projectPath(id);
     const now = new Date().toISOString(), title = cleanText(d.title, 200);
@@ -1443,7 +1476,8 @@ class GitHubStore{
     const tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
       if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
-      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
+      assertProjectParent(await this.projectsAtHead(head), id, d.parentProject);
+      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), ...(d.parentProject ? {parentProject:d.parentProject} : {}), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
     });
   }
   /* Read-modify-write of one project file inside the commit loop, so a concurrent change is never overwritten. mutate returns false for "nothing to do". */
@@ -1453,22 +1487,28 @@ class GitHubStore{
       const pj = metaOf((await head.read([path]))[path]);
       if(!pj) throw new Error("That project no longer exists");
       pj.items = Array.isArray(pj.items) ? pj.items : [];
-      if(mutate(pj) === false) return null;
+      if(await mutate(pj, head) === false) return null;
       pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
       return {additions:[{path, contents:b64(projectText(pj))}], deletions:[]};
     });
   }
-  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
+  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, async (pj, head) => {
+    if(d.parentProject !== undefined){ assertProjectParent(await this.projectsAtHead(head), id, d.parentProject); setProjectParent(pj, d.parentProject); }
+    pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     if(typeof d.intro === "string"){ const intro = d.intro.replace(/\r\n/g, "\n").slice(0, MAX_INTRO); if(intro.trim()) pj.intro = intro; else delete pj.intro; } }); }
   updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
   /* A project can only be deleted when it is empty: its pages, links and files would go with it. */
   async deleteProject(id, title){
     const path = this.projectPath(id);
-    const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:`${this.branch}:projects/${id}`});
-    const names = ((d.repository && d.repository.object && d.repository.object.entries) || []).map(e => e.name).filter(n => n !== "project.json");
-    if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
-    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, [], [{path}]);
+    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, async head => {
+      const projects = await this.projectsAtHead(head);
+      if(projects.some(p => p.parentProject === id)) throw new Error("The project still has subprojects: move them to another parent first.");
+      const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+        {owner:this.owner, name:this.repo, expr:`${head.oid}:projects/${id}`});
+      const names = (d.repository?.object?.entries || []).map(e => e.name).filter(n => n !== "project.json");
+      if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
+      return {additions:[], deletions:[{path}]};
+    });
   }
   /* Moves an item (a page with its sub-pages, a link or a file) to another project in one commit. The blobs are reused by id, so nothing is downloaded or uploaded.
      root is the item as the reader sees it in the source structure ({type, id, children?}); it lands under parentId (or at the top level) of the target. */
@@ -1536,11 +1576,14 @@ class MemoryStore{
       links:Object.entries(this.links).map(([id, m]) => Object.assign({id}, m))};
   }
   needProject(place){ if(!place || !this.projects[place.project]) throw new Error("Choose a project first"); return place.project; }
-  async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
-  async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
+  async createProject(id, d){ assertProjectParent(Object.entries(this.projects).map(([id, p]) => ({...p, id})), id, d.parentProject); const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", ...(d.parentProject ? {parentProject:d.parentProject} : {}), tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
+  async editProject(id, d){
+    if(d.parentProject !== undefined) assertProjectParent(Object.entries(this.projects).map(([id, p]) => ({...p, id})), id, d.parentProject);
+    const p = this.projects[id]; if(d.parentProject !== undefined) setProjectParent(p, d.parentProject); p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
     if(typeof d.intro === "string"){ if(d.intro.trim()) p.intro = d.intro.slice(0, MAX_INTRO); else delete p.intro; } p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async updateProjectItems(id, summary, mutate){ const p = this.projects[id]; if(!p) throw new Error("That project no longer exists"); mutate(p.items); p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async deleteProject(id){
+    if(Object.values(this.projects).some(p => p.parentProject === id)) throw new Error("The project still has subprojects: move them to another parent first.");
     if(Object.values(this.pages).some(p => p.project === id) || Object.values(this.links).some(l => l.project === id) || Object.values(this.files).some(f => f.project === id))
       throw new Error("The project still has pages, links or files: move them to another project first.");
     delete this.projects[id]; return {rev:id};
@@ -1818,12 +1861,12 @@ function localArticleHref(href, projectId){
   let parts;
   try{ parts = path.split("/").filter(Boolean).map(decodeURIComponent); }catch{ return null; }
   let leaf = parts.at(-1) || "";
-  const source = /\.(?:md|markdown|html?)$/i.test(leaf);
+  const source = /\.(?:md|markdown|html?|json|ya?ml)$/i.test(leaf);
   if(!source && !href.startsWith("#/wiki/")){
     if(!S.loc.has(leaf) && !projectOf(leaf)) return null;
   }
-  if(/^content\.(?:md|markdown|html?)$/i.test(leaf) && parts.length > 1) leaf = parts.at(-2);
-  const slug = leaf.replace(/\.(?:md|markdown|html?)$/i, "");
+  if(/^content\.(?:md|markdown|html?|json|ya?ml)$/i.test(leaf) && parts.length > 1) leaf = parts.at(-2);
+  const slug = leaf.replace(/\.(?:md|markdown|html?|json|ya?ml)$/i, "");
   if(!slug || [".",".."].includes(slug)) return null;
   const explicitProject = parts.find(p => projectOf(p));
   const owner = explicitProject || projectId;
@@ -1833,6 +1876,38 @@ function localArticleHref(href, projectId){
   const params = new URLSearchParams(url.search);
   if(url.hash){ try{ params.set("section", decodeURIComponent(url.hash.slice(1))); }catch{ return null; } }
   return target + (params.size ? "?" + params.toString() : "");
+}
+const CONTENT_FORMATS = ["md", "html", "json", "yaml", "yml"];
+const contentFormat = format => CONTENT_FORMATS.includes(format) ? format : "md";
+const isStructured = format => ["json", "yaml", "yml"].includes(format);
+/* Keep source verbatim; the parsed view normalizes data to indented JSON.
+   Ancestor tracking handles recursive YAML aliases without losing shared values. */
+function mountStructured(host, source, format){
+  host.classList.add("prose", "structured-view");
+  host.innerHTML = `<div class="seg" role="group" aria-label="Data view"><button type="button" data-view="parsed" class="on" aria-pressed="true">Parsed</button><button type="button" data-view="raw" aria-pressed="false">Raw</button></div><p class="hint data-note"></p><pre tabindex="0"><code></code></pre>`;
+  let parsed, error;
+  try{
+    const data = format === "json" ? JSON.parse(source) : jsyaml.loadAll(source, undefined, {schema:jsyaml.JSON_SCHEMA});
+    const value = format === "json" ? data : data.length === 1 ? data[0] : data;
+    const ancestors = [];
+    parsed = JSON.stringify(value, function(key, value){
+      if(value && typeof value === "object"){
+        while(ancestors.length && ancestors.at(-1) !== this) ancestors.pop();
+        if(ancestors.includes(value)) return "[Circular reference]";
+        ancestors.push(value);
+      }
+      return value;
+    }, 2) ?? "null";
+  }catch(e){ error = `Could not parse ${format.toUpperCase()}: ${e.message}`; }
+  const show = view => {
+    host.querySelectorAll("[data-view]").forEach(b => { const on = b.dataset.view === view; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    const note = host.querySelector(".data-note");
+    note.textContent = view === "raw" ? "Original source" : error || "Parsed data as JSON";
+    note.setAttribute("role", view === "parsed" && error ? "alert" : "note");
+    host.querySelector("code").textContent = view === "raw" ? source : error ? "" : parsed;
+  };
+  host.querySelectorAll("[data-view]").forEach(b => b.onclick = () => show(b.dataset.view));
+  show("parsed");
 }
 function renderMarkdown(src, projectId=projectContext()?.pr?.id){
   let html;
@@ -1846,7 +1921,7 @@ function renderMarkdown(src, projectId=projectContext()?.pr?.id){
     el.innerHTML = el.innerHTML.replace(/(!?)\[\[File:\s*([^\]|#]+?)\s*(?:#page=(\d+))?(?:\|([^\]]+))?\]\]/gi, (m, bang, target, page, label) => {
       const name = fileNameFrom(target), f = S.files.find(x => x.name === name);
       if(bang) return `<span class="pdf-embed" data-file="${esc(name)}"${page ? ` data-page="${+page}"` : ""}></span>`;
-      return `<a href="#/file/${enc(name)}${page ? "?page=" + (+page) : ""}" class="file-link ${f ? "" : "new"}" title="${esc(name)}${f ? "" : " (file does not exist)"}"><span class="ms" aria-hidden="true">picture_as_pdf</span>${esc(label || (target + (page ? ", page " + page : "")))}</a>`;
+      return `<a href="#/file/${enc(name)}${page ? "?page=" + (+page) : ""}" class="file-link ${f ? "" : "new"}" title="${esc(name)}${f ? "" : " (file does not exist)"}"><span class="ms" aria-hidden="true">${fileIcon(name)}</span>${esc(label || (target + (page ? ", page " + page : "")))}</a>`;
     }).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, target, label) => {
       const slug = slugify(target); const exists = S.pages.some(p => p.slug === slug);
       return `<a href="${wikiHref(slug)}" class="${exists?"":"new"}" title="${exists?esc(target):esc(target)+" (page does not exist)"}">${esc(label||target)}</a>`;
@@ -2088,8 +2163,8 @@ function bindTools(ctx){
       try{ await navigator.clipboard.writeText(cite); toast("Citation copied to the clipboard."); }catch{ toast(cite, 10000); }
     } else if(act === "source"){
       const fmt = rev.format || ctx.page.format;
-      const blob = new Blob([rev.content], {type: fmt==="html" ? "text/html" : "text/markdown"});
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${ctx.slug}.r${rev.n}.${fmt==="html"?"html":"md"}`;
+      const blob = new Blob([rev.content], {type: ({html:"text/html", md:"text/markdown", json:"application/json", yaml:"application/yaml", yml:"application/yaml"})[contentFormat(fmt)]});
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${ctx.slug}.r${rev.n}.${contentFormat(fmt)}`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
     } else if(act === "print"){ print(); }
   });
@@ -2131,7 +2206,7 @@ async function viewHome(){
     </section>
     <section class="home-projects"><h2 class="pr-h" style="margin-top:22px">Projects</h2>
       ${S.projects.length ? `<ul class="linklist">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(projectCard).join("")}</ul>`
-        : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and PDFs.</p></div>`}
+        : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and files.</p></div>`}
       ${S.me.canWrite ? `<p style="margin:8px 0 0"><a class="btn small" href="#/projects"><span class="ms" aria-hidden="true">create_new_folder</span>New project</a></p>` : ""}</section>
     ${pages.length || !S.projects.length ? "" : `<div class="empty" style="margin-top:18px"><p><b>No articles yet.</b></p><p>Open a project and add the first page: a PKI design decision, notes on an RFC, or a post-quantum migration plan.</p></div>`}
     ${pages.length ? `<div class="mp-grid">
@@ -2472,6 +2547,10 @@ async function viewArticle(slug, revId){
     const f = $("#rf"); activeFrame = f; f.srcdoc = frameDoc(rev.content);
     $("#widen").onclick = e => { const on = document.body.classList.toggle("wide"); e.currentTarget.setAttribute("aria-pressed", on); };
     setSideToc(reportToc(rev.content), id => f.contentWindow && f.contentWindow.postMessage({kbGo:id}, "*"));
+  } else if(isStructured(rev.format||page.format)){
+    setMainFor(nav, `${head}${info}<div id="data-view"></div>${subs}${cats}${foot}`);
+    mountStructured($("#data-view"), rev.content, rev.format||page.format);
+    setSideToc([]);
   } else {
     const body = renderMarkdown(rev.content);
     const items = tocItems(body);
@@ -2598,7 +2677,7 @@ async function viewInfo(slug){
     <table class="data"><tbody>
       ${row("Display title", esc(page.title))}
       ${row("Address", `<span class="mono">${esc(wikiHref(slug))}</span>`)}
-      ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : "Markdown")}
+      ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : isStructured(page.format) ? page.format.toUpperCase() : "Markdown")}
       ${row("Maturity", pill(page.status, true))}
       ${row("Tags", (page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—")}
       ${row("Abstract", esc(page.abstract||"—"))}
@@ -2645,7 +2724,7 @@ async function loadTexts(pages, onProgress){
       let r = null;
       if(S.store.getLatestContent){ const c = await S.store.getLatestContent(p.slug, p.format); r = {content:c, format:p.format}; }
       else { const rid = p.rev || (await S.store.getPage(p.slug))?.rev; r = rid ? await S.store.getRev(p.slug, rid) : null; }
-      if(r) S.texts[p.slug] = {revN:p.revN, text:(r.format||p.format)==="html" ? htmlText(r.content) : mdText(r.content)};
+      if(r) S.texts[p.slug] = {revN:p.revN, text:(r.format||p.format)==="html" ? htmlText(r.content) : isStructured(r.format||p.format) ? r.content : mdText(r.content)};
     }catch(e){ console.warn(e); }
     onProgress && onProgress(++done, todo.length);
   };
@@ -2731,13 +2810,15 @@ Always fill in the **edit summary**: it is the commit message other engineers wi
 Drag the edge of the sidebar to make it wider or narrower: the content takes the rest. Double-click the edge (or press Home on it) to reset it, and use the arrow keys for fine adjustments. The main menu and the project layout each remember their own width in this browser.
 
 ## Projects
-A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
+A project can have a **parent project**. Use *Create subproject* on its parent or choose *Parent project* when creating or editing it. Subprojects keep their own introduction, tags and contents. Moving a project between parents changes navigation while its folders and addresses stay the same. A project with subprojects cannot be deleted until they have been moved elsewhere.
+
+A **project** is a container: it groups pages (with sub-pages), external links and files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload files* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
 
 ## External links
 The **External links** page keeps news, blogs, papers and videos worth remembering, each with a title, a short note and tags. Links open in a new tab and also appear on the page of each of their tags. Anyone who can edit can add, change or remove links (the repository history keeps every change). To link from inside an article, just use normal Markdown: \`[text](https://…)\`.
 
-## PDF files
-Manuals, specifications and papers live on the **Files** page (PDF only, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; uploading a file with the same name adds a new version and keeps the old ones.
+## Files
+Manuals, specifications and papers live on the **Files** page (PDF, JSON and YAML, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; JSON and YAML offer Raw and Parsed views; uploading a file with the same name adds a new version and keeps the old ones.
 
 ## HTML reports
 An article can also be a complete, self-contained **HTML report** (charts, scripts, styles), such as a state-of-the-art benchmark. It is shown in a sandboxed frame: its scripts cannot reach the wiki or your session. Give its headings an \`id\` and they appear in the *Contents* sidebar.
@@ -2814,7 +2895,7 @@ async function viewEdit(slug, params){
         <div class="row">
           <div style="grid-column:span 3"><label for="f-abs">One-line abstract</label><input type="text" id="f-abs" value="${esc(d.abstract)}" maxlength="240" placeholder="What will a colleague learn from this article?"></div>
         </div>
-        ${isNew ? (S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select><div class="hint">Every article lives inside a project.</div></div>
+        ${isNew ? (S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(projectLabel(pr))}</option>`).join("")}</select><div class="hint">Every article lives inside a project.</div></div>
           <div><label for="f-par">Parent page</label><select id="f-par"></select><div class="hint">The article gets the address Project/Parent/Article.</div></div></div>`
           : `<p class="hint err" style="margin-top:12px">There are no projects yet: <a href="#/projects">create a project</a> first, because every article lives inside one.</p>`) : ""}
       </fieldset>
@@ -2823,11 +2904,13 @@ async function viewEdit(slug, params){
           <div class="seg" role="group" aria-label="Content format">
             <button type="button" data-f="md" class="${d.format==="md"?"on":""}">Markdown</button>
             <button type="button" data-f="html" class="${d.format==="html"?"on":""}">HTML report</button>
+            <button type="button" data-f="json" class="${d.format==="json"?"on":""}">JSON</button>
+            <button type="button" data-f="yaml" class="${["yaml","yml"].includes(d.format)?"on":""}">YAML</button>
           </div>
           <div class="tb" id="tb" role="toolbar" aria-label="Formatting">${TB.map(([k,ic,txt,lab])=>`<button type="button" data-tb="${k}" title="${lab}" aria-label="${lab}"><span class="ms" aria-hidden="true">${ic}</span><span class="noicon">${esc(txt)}</span></button>`).join("")}</div>
           <div class="sp">
             <label class="btn small" for="f-file" style="margin:0"><span class="ms" aria-hidden="true">upload_file</span>Load from file</label>
-            <input type="file" id="f-file" accept=".md,.markdown,.txt,.html,.htm" class="visually-hidden">
+            <input type="file" id="f-file" accept=".md,.markdown,.txt,.html,.htm,.json,.yaml,.yml" class="visually-hidden">
           </div>
         </div>
         <label for="f-body" class="visually-hidden">Content</label><textarea id="f-body" spellcheck="${d.format==="md"}"></textarea>
@@ -2849,6 +2932,7 @@ async function viewEdit(slug, params){
   const syncFmt = () => {
     $("#tb").style.display = fmt==="md" ? "" : "none";
     $("#fmt-help").innerHTML = fmt==="md" ? "Markdown with tables and code blocks. Link articles with <span class='mono'>[[Article title]]</span>." :
+      isStructured(fmt) ? "JSON or YAML data with switchable parsed and raw views. The original source is preserved." :
       "A complete, self-contained HTML document (charts and scripts allowed). It is rendered in a sandboxed frame.";
     body.spellcheck = fmt==="md";
   };
@@ -2875,7 +2959,7 @@ async function viewEdit(slug, params){
     if(f.size > 15*1024*1024){ toast("That file is over 15 MB. Split it or link to it instead."); return; }
     const txt = await f.text(); body.value = txt;
     const isHtml = /\.html?$/i.test(f.name) || /^\s*<!doctype html|^\s*<html/i.test(txt);
-    fmt = isHtml ? "html" : "md"; $$(".ed-bar .seg button").forEach(x=>x.classList.toggle("on", x.dataset.f===fmt));
+    fmt = /\.json$/i.test(f.name) ? "json" : /\.ya?ml$/i.test(f.name) ? f.name.split(".").at(-1).toLowerCase() : isHtml ? "html" : "md"; $$(".ed-bar .seg button").forEach(x=>x.classList.toggle("on", (x.dataset.f===fmt || x.dataset.f==="yaml" && fmt==="yml")));
     if(isNew && !$("#f-title").value){ const m = txt.match(/<title>([^<]+)<\/title>/i) || txt.match(/^#\s+(.+)$/m); $("#f-title").value = (m?m[1]:f.name.replace(/\.[^.]+$/,"")).trim(); $("#f-title").dispatchEvent(new Event("input")); }
     if(!isNew) $("#f-sum").value = $("#f-sum").value || `Replaced content from ${f.name}`;
     syncFmt(); toast(`Loaded ${f.name} (${fmtBytes(f.size)}).`);
@@ -2888,6 +2972,9 @@ async function viewEdit(slug, params){
     if(fmt === "md"){
       const w = renderMarkdown(body.value, $("#f-proj")?.value || projectContext()?.pr?.id);
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<div class="prose">${w.innerHTML}</div>`;
+    } else if(isStructured(fmt)){
+      pv.innerHTML = `<h2 class="rev-h">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<div id="pv-data"></div>`;
+      mountStructured($("#pv-data"), body.value, fmt);
     } else {
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<iframe class="report-frame" id="pvf" title="Preview" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
       activeFrame = $("#pvf"); activeFrame.srcdoc = frameDoc(body.value);
@@ -2942,8 +3029,15 @@ async function viewEdit(slug, params){
 
 /* ---------------------------------------------------------------- PDF files and in-app viewer (pdf.js, vendored in vendor/pdfjs/) */
 const MAX_FILE = 50 * 1024 * 1024;
-const fileNameFrom = n => String(n || "").toLowerCase().replace(/\.pdf$/i, "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
-  .replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+/g, "-").slice(0, 96).replace(/[-.]+$/, "") + ".pdf";
+const fileNameFrom = n => {
+  const ext = String(n || "").match(/\.(pdf|json|yaml|yml)$/i)?.[1].toLowerCase() || "pdf";
+  return String(n || "").toLowerCase().replace(/\.(pdf|json|yaml|yml)$/i, "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+/g, "-").slice(0, 96).replace(/[-.]+$/, "") + "." + ext;
+};
+async function mountFile(host, name, data, options){
+  if(fileFormat(name) === "pdf") await mountPdf(host, data, options);
+  else mountStructured(host, new TextDecoder().decode(data), fileFormat(name));
+}
 let PDFJS = null;
 async function pdfLib(){
   if(!PDFJS){
@@ -3021,7 +3115,7 @@ async function mountPdf(box, data, opts){
   return {doc, view};
 }
 function downloadBytes(name, data){
-  const url = URL.createObjectURL(new Blob([data], {type:"application/pdf"}));
+  const url = URL.createObjectURL(new Blob([data], {type:fileMime(name)}));
   const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
@@ -3032,7 +3126,7 @@ async function refreshFiles(){ invalidatePages(); await refreshPages(); return S
 function uploadForm(fixedName){
   return `<form class="form upload" id="upf" novalidate>
     <div class="row">
-      <div><label for="up-file">PDF file${fixedName ? "" : "s"} <small class="muted">(up to ${fmtBytes(MAX_FILE)} each)</small></label><input type="file" id="up-file" accept="application/pdf,.pdf" required${fixedName ? "" : " multiple"}></div>
+      <div><label for="up-file">PDF, JSON or YAML file${fixedName ? "" : "s"} <small class="muted">(up to ${fmtBytes(MAX_FILE)} each)</small></label><input type="file" id="up-file" accept="${fixedName ? "." + fileFormat(fixedName) : ".pdf,.json,.yaml,.yml"}" required${fixedName ? "" : " multiple"}></div>
       ${fixedName ? `<input type="hidden" id="up-name" value="${esc(fixedName)}">` : `<div><label for="up-name">Name in the wiki</label><input type="text" id="up-name" placeholder="vendor-manual.pdf" spellcheck="false"><div class="hint" id="up-multi" hidden></div><div class="hint">Link it from an article with <span class="mono" id="up-syntax">[[File:…]]</span></div></div>`}
     </div>
     <div class="row"><div style="grid-column:1/-1"><label for="up-sum">Summary</label><input type="text" id="up-sum" maxlength="300" placeholder="${fixedName ? "What changed in this version?" : "What is this document?"}"></div></div>
@@ -3058,20 +3152,22 @@ function bindUploadForm(fixedName, done, place){
   main.ondrop = e => {
     if(!hasFiles(e)) return;
     e.preventDefault(); main.classList.remove("dropping");
-    const pdfs = Array.from(e.dataTransfer.files).filter(x => x.type === "application/pdf" || /\.pdf$/i.test(x.name));
-    if(!pdfs.length){ toast("Drop a PDF file."); return; }
+    const pdfs = Array.from(e.dataTransfer.files).filter(x => /\.(pdf|json|yaml|yml)$/i.test(x.name));
+    if(!pdfs.length){ toast("Drop a PDF, JSON or YAML file."); return; }
     const dt = new DataTransfer(); (fixedName ? pdfs.slice(0, 1) : pdfs).forEach(x => dt.items.add(x)); fileEl.files = dt.files; fileEl.onchange();
     f.scrollIntoView({block:"center"}); $("#up-sum").focus({preventScroll:true});
   };
   f.onsubmit = async e => {
     e.preventDefault();
     const list = Array.from(fileEl.files);
-    if(!list.length){ toast("Choose a PDF file."); return; }
+    if(!list.length){ toast("Choose a PDF, JSON or YAML file."); return; }
     const jobs = [], seen = new Set();
     for(const file of list){
+      if(!/\.(pdf|json|yaml|yml)$/i.test(file.name)){ toast("Choose a PDF, JSON or YAML file."); return; }
       const name = fixedName || fileNameFrom((list.length === 1 && nameEl.value) || file.name);
+      if(fileFormat(name) !== fileFormat(file.name)){ toast("The uploaded file must have the same extension as its wiki name."); return; }
       if(file.size > MAX_FILE){ toast(`${file.name} is ${fmtBytes(file.size)}; the limit is ${fmtBytes(MAX_FILE)}.`, 6000); return; }
-      if(!FILE_RE.test(name)){ toast(`${name}: use a name with letters, digits, dots and hyphens, ending in .pdf.`, 6000); return; }
+      if(!FILE_RE.test(name)){ toast(`${name}: use a name with letters, digits, dots and hyphens, ending in .pdf, .json, .yaml or .yml.`, 6000); return; }
       if(seen.has(name)){ toast(`Two of the files are called ${name}.`, 6000); return; }
       seen.add(name); jobs.push({file, name});
     }
@@ -3083,7 +3179,7 @@ function bindUploadForm(fixedName, done, place){
       for(const [i, {file, name}] of jobs.entries()){
         st.textContent = `Uploading ${i + 1}/${jobs.length}: ${name}…`;
         const data = await file.arrayBuffer();
-        if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
+        if(fileFormat(name) === "pdf" && new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
         const sha = hex(await crypto.subtle.digest("SHA-256", data));
         await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || ($("#up-proj") ? {project:$("#up-proj").value, parent:null} : null));
         invalidatePages();
@@ -3106,10 +3202,10 @@ async function viewFiles(params){
   const files = S.files.slice().sort((a,b) => a.name.localeCompare(b.name));
   const place = params && params.get("project") && projectOf(params.get("project")) ? {project:params.get("project"), parent:params.get("parent") || null} : null;
   setMainFor(nav, `<h1 class="title">Files</h1><div class="tabs"><nav><a class="on">Files</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">PDF manuals, specifications and papers kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
-    ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">picture_as_pdf</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
+    <p class="muted" style="margin:0 0 12px;font-size:16px">PDF documents and JSON or YAML data kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
+    ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">${fileIcon(x.name)}</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="empty">No files yet.</div>`}
-    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>
+    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload files</h2>
       ${place ? `<p class="muted" style="margin:0 0 8px">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}${!place ? (S.projects.length ? `<div class="row" style="margin:0 0 8px;max-width:360px"><div>${projectSelectHtml("up-proj", defaultProject())}<div class="hint">Every file lives inside a project.</div></div></div>` : `<p class="hint err">There are no projects yet: <a href="#/projects">create a project</a> first.</p>`) : ""}${uploadForm(null)}` : ""}
     ${footer()}`);
   const back = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : null;
@@ -3129,10 +3225,10 @@ async function viewFile(name, params){
   await resolveNames(revs.map(r => r.by));
   const cur = revs[0], shown = rev ? revs.find(r => r.id === rev || String(r.id).startsWith(rev)) : cur;
   const isOld = rev && cur && shown && shown.id !== cur.id;
-  setMainFor(nav, `<div class="title-row"><h1 class="title"><span class="ns">File:</span>${esc(name)}</h1></div>
+  setMainFor(nav, `${S.itemProject.has("file:" + name) ? `<nav class="crumbs" aria-label="Breadcrumb">${projectCrumbs(S.itemProject.get("file:" + name)).join('<span class="sep" aria-hidden="true">›</span>')}</nav>` : ""}<div class="title-row"><h1 class="title"><span class="ns">File:</span>${esc(name)}</h1></div>
     <div class="tabs"><nav><a class="on">File</a></nav><nav></nav></div><div class="maturity"></div>
     ${isOld ? ambox("warn","history",`<p>This is an old version of this file, uploaded by ${personSpan(shown.by)} at ${fmtMW(shown.at)}. <a href="#/file/${enc(name)}">See the current version</a>.</p>`) : ""}
-    <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · PDF${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
+    <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · ${esc(fileFormat(name).toUpperCase())}${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
       <span class="sp"></span>
       <button class="btn small" type="button" id="f-copy"><span class="ms" aria-hidden="true">link</span>Copy link syntax</button>
       <button class="btn small" type="button" id="f-dl"><span class="ms" aria-hidden="true">download</span>Download</button>
@@ -3150,7 +3246,7 @@ async function viewFile(name, params){
     try{ await S.store.deleteFile(name); invalidatePages(); toast("File deleted."); location.hash = "#/projects"; }catch(err){ fd.disabled = false; toast(err.message || String(err), 7000); }
   };
   bindUploadForm(name, () => { S.nav++; route(); });
-  await mountPdf($("#pdfbox"), data, {page});
+  await mountFile($("#pdfbox"), name, data, {page});
 }
 
 /* ![[File:x.pdf]] placeholders in an article: a card that opens an inline preview on demand. */
@@ -3159,13 +3255,13 @@ function hydrateEmbeds(root){
     const name = el.dataset.file, page = parseInt(el.dataset.page || "", 10) || null, f = S.files.find(x => x.name === name);
     el.innerHTML = `<span class="ucard pdf-card" style="--h:4"><span class="uc-body">
         <a class="uc-t ${f ? "" : "new"}" href="#/file/${enc(name)}${page ? "?page=" + page : ""}">${esc(name)}</a>
-        <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span>${f ? `<span>PDF · ${fmtBytes(f.size)}${page ? " · page " + page : ""}</span>` : '<span>(file does not exist)</span>'}
+        <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">${fileIcon(name)}</span></span>${f ? `<span>${esc(fileFormat(name).toUpperCase())} · ${fmtBytes(f.size)}${page ? " · page " + page : ""}</span>` : '<span>(file does not exist)</span>'}
           ${f ? `<button class="btn small" type="button" data-preview>Preview here</button>` : ""}</span></span>
-        <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></span><span class="pdf-inline" hidden></span>`;
+        <span class="uc-media" aria-hidden="true"><span class="ms uc-big">${fileIcon(name)}</span></span></span><span class="pdf-inline" hidden></span>`;
     const b = el.querySelector("[data-preview]");
     if(b) b.onclick = async () => {
-      b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading PDF…</span>';
-      try{ const data = await S.store.getFile(name); if(!data) throw new Error("not found"); await mountPdf(box, data, {page}); b.remove(); }
+      b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading file…</span>';
+      try{ const data = await S.store.getFile(name); if(!data) throw new Error("not found"); await mountFile(box, name, data, {page}); b.remove(); }
       catch(e){ box.innerHTML = ambox("err","error",`<p>Could not load ${esc(name)}: ${esc(e.message || e)}</p>`); b.disabled = false; }
     };
   });
@@ -3373,16 +3469,36 @@ function tagCounts(){
 }
 const tagChipsHtml = (name, selected) => [...S.tags, ...selected.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="${name}" value="${esc(t)}" ${selected.includes(t) ? "checked" : ""}><span>${esc(t)}</span></label>`).join("");
 const projectOf = id => S.projects.find(p => p.id === id);
+function projectChain(id){
+  const chain = [], seen = new Set();
+  let pr = projectOf(id);
+  while(pr && !seen.has(pr.id)){ seen.add(pr.id); chain.unshift(pr); pr = projectOf(pr.parentProject); }
+  return chain;
+}
+const projectLabel = pr => projectChain(pr.id).map(p => p.title).join(" / ");
+const childProjects = id => S.projects.filter(p => p.parentProject === id).sort((a,b) => a.title.localeCompare(b.title));
+function parentProjectSelect(id, selected, editingId){
+  const allowed = S.projects.filter(p => { try{ assertProjectParent(S.projects, editingId, p.id); return true; }catch{ return false; } });
+  return `<label for="${id}">Parent project</label><select id="${id}"><option value="">(top level)</option>${allowed.sort((a,b) => projectLabel(a).localeCompare(projectLabel(b))).map(p => `<option value="${esc(p.id)}" ${p.id === selected ? "selected" : ""}>${esc(projectLabel(p))}</option>`).join("")}</select>`;
+}
+function projectCrumbs(id){
+  return [`<a href="#/projects">Projects</a>`, ...projectChain(id).map(p => `<a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a>`)];
+}
+function subprojectTree(id, seen=new Set()){
+  if(seen.has(id)) return "";
+  const next = new Set(seen).add(id);
+  return childProjects(id).map(p => `<li class="pt-project"><span class="pt-row"><span class="ms" aria-hidden="true">folder_open</span><a class="pt-l" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></span>${childProjects(p.id).length ? `<ul class="ptree compact">${subprojectTree(p.id, next)}</ul>` : ""}</li>`).join("");
+}
 const defaultProject = () => projectOf("general") ? "general" : (S.projects[0] || {}).id || "";
 /* every new page, link or file must be placed in a project: when the address does not say which, the form asks */
-const projectSelectHtml = (id, selected) => `<label for="${id}">Project</label><select id="${id}">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === selected ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select>`;
+const projectSelectHtml = (id, selected) => `<label for="${id}">Project</label><select id="${id}">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === selected ? "selected" : ""}>${esc(projectLabel(pr))}</option>`).join("")}</select>`;
 const pagePath = slug => { const l = S.loc.get(slug); return l ? [l.project].concat(l.chain) : [slug]; };
 const wikiHref = slug => "#/wiki/" + pagePath(slug).map(enc).join("/");
 const countItems = pr => { const c = {page:0, link:0, file:0}; treeWalk(pr.items || [], it => { c[it.type]++; }); return c; };
 function itemInfo(it){
   if(it.type === "page"){ const p = S.pages.find(x => x.slug === it.id); return p && {label:p.title, href:wikiHref(p.slug), icon:"description", sub:statusLabel(p.status)}; }
   if(it.type === "link"){ const l = S.links.find(x => x.id === it.id); return l && {label:l.title, href:l.url, external:true, icon:"link", sub:hostOf(l.url)}; }
-  const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:"picture_as_pdf", sub:fmtBytes(f.size)};
+  const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:fileIcon(f.name), sub:fmtBytes(f.size)};
 }
 const CTL = [["up","arrow_upward","↑","Move up"], ["down","arrow_downward","↓","Move down"], ["out","format_indent_decrease","←","Move out of its parent"], ["in","format_indent_increase","→","Make a sub-page of the item above"]];
 function treeList(items, o){
@@ -3425,13 +3541,13 @@ function renderSideTree(){
   const {pr, cur} = ctx;
   head.hidden = box.hidden = false;
   const t = $("#sideProjectT"); t.textContent = pr.title; t.href = "#/wiki/" + enc(pr.id); t.classList.toggle("cur", cur === "project");
-  $("#sideTree").innerHTML = treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
+  $("#sideTree").innerHTML = (pr.parentProject && projectOf(pr.parentProject) ? `<li><a class="pt-l" href="#/wiki/${enc(pr.parentProject)}">↑ ${esc(projectOf(pr.parentProject).title)}</a></li>` : "") + subprojectTree(pr.id) + treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
   syncSide();
 }
 function crumbsHtml(slug){
   const l = S.loc.get(slug); if(!l) return "";
   const pr = projectOf(l.project); if(!pr) return "";
-  const parts = [`<a href="#/projects">Projects</a>`, `<a href="#/wiki/${enc(pr.id)}">${esc(pr.title)}</a>`];
+  const parts = projectCrumbs(pr.id);
   const chain = l.chain.slice(0, -1);
   chain.forEach((s, i) => { const p = S.pages.find(x => x.slug === s); if(p) parts.push(`<a href="#/wiki/${[pr.id, ...chain.slice(0, i + 1)].map(enc).join("/")}">${esc(p.title)}</a>`); });
   return `<nav class="crumbs" aria-label="Breadcrumb">${parts.join('<span class="sep" aria-hidden="true">›</span>')}</nav>`;
@@ -3444,7 +3560,7 @@ async function subpagesHtml(slug){
   const list = treeList(r.item.children || [], {});
   const add = S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">note_add</span>Add sub-page</a>
       <a class="btn small" href="#/links?new=1&project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
-      <a class="btn small" href="#/files?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : "";
+      <a class="btn small" href="#/files?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">upload_file</span>Upload files</a></div>` : "";
   if(!list && !add) return "";
   return `<section class="subpages"><h2>In this page</h2>${list || '<p class="muted" style="margin:0 0 8px">No sub-pages yet.</p>'}${add}</section>`;
 }
@@ -3462,20 +3578,21 @@ function quickCard(it){
   }
   const f = S.files.find(x => x.name === it.id);
   return `<a class="ucard qa-card" href="#/file/${enc(f.name)}" style="--h:4">
-    <span class="uc-body"><span class="uc-t qa-t">${esc(f.name)}</span><span class="uc-d">PDF document. Opens in the built-in viewer.</span>
-      <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span><span class="qa-s">PDF · ${fmtBytes(f.size)}</span><span class="badge secondary">Preview</span></span></span>
-    <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></a>`;
+    <span class="uc-body"><span class="uc-t qa-t">${esc(f.name)}</span><span class="uc-d">${esc(fileFormat(f.name).toUpperCase())} file. Opens in the built-in viewer.</span>
+      <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">${fileIcon(f.name)}</span></span><span class="qa-s">${esc(fileFormat(f.name).toUpperCase())} · ${fmtBytes(f.size)}</span><span class="badge secondary">Preview</span></span></span>
+    <span class="uc-media" aria-hidden="true"><span class="ms uc-big">${fileIcon(f.name)}</span></span></a>`;
 }
 function quickAccessHtml(pr){
   const cards = []; treeWalk(pr.items || [], it => { if(it.type !== "page"){ const h = quickCard(it); if(h) cards.push(h); } });
   return cards.length ? `<section class="qa"><h2 class="pr-h">Quick access</h2><div class="qa-grid">${cards.join("")}</div></section>` : "";
 }
 function projectCard(p){
-  const c = countItems(p), h = hostHue(p.id);
+  const c = countItems(p), h = hostHue(p.id), children = childProjects(p.id).length;
   return `<li class="ucard linkcard" style="--h:${h}"><div class="uc-body">
       <a class="uc-main lc-title" href="#/wiki/${enc(p.id)}"><span class="uc-t">${esc(p.title)}</span></a>
+      ${p.parentProject && projectOf(p.parentProject) ? `<p class="uc-d">${esc(projectLabel(p))}</p>` : ""}
       ${p.description ? `<p class="uc-d">${esc(p.description)}</p>` : ""}
-      <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></div>
+      <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${children ? ` · ${children} subproject${children === 1 ? "" : "s"}` : ""}</span>${projectBadges(p)}</div></div>
     <div class="uc-media" aria-hidden="true"><span class="ms uc-big">folder_open</span></div></li>`;
 }
 
@@ -3485,11 +3602,12 @@ async function viewProjects(params){
   await refreshPages();
   const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
   setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">Everything lives inside a project: its pages (with sub-pages), external links and PDF files are stored in the project's own folder, and its structure file only decides their order and nesting.</p>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">Everything lives inside a project: its pages (with sub-pages), external links and files are stored in the project's own folder, and its structure file only decides their order and nesting.</p>
     ${list.length ? `<ul class="linklist">${list.map(projectCard).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">New project</h2><form class="form" id="npf" novalidate>
       <div class="row"><div style="grid-column:span 3"><label for="np-title">Title</label><input type="text" id="np-title" maxlength="200" required><div class="hint">Address: <span class="mono" id="np-slug"></span></div></div></div>
       <div class="row"><div style="grid-column:span 3"><label for="np-desc">Description <small class="muted">(optional)</small></label><input type="text" id="np-desc" maxlength="300"></div></div>
+      <div class="row"><div>${parentProjectSelect("np-parent", params?.get("parentProject"), null)}</div></div>
       <fieldset class="tagpick"><legend>Tags <small class="muted">(optional: a tagged project is listed under its tags instead of its pages)</small></legend><div class="tagchips">${tagChipsHtml("ptag", [])}</div></fieldset>
       <div class="actions"><button class="btn primary" id="np-btn" type="submit"><span class="ms" aria-hidden="true">create_new_folder</span><span>Create project</span></button></div></form>` : ""}
     ${footer()}`);
@@ -3502,7 +3620,7 @@ async function viewProjects(params){
     const id = slugify(title);
     if(S.projects.some(p => p.id === id) || S.pages.some(p => p.slug === id)){ toast("That address is already used by a project or an article. Pick another title.", 6000); return; }
     const btn = $("#np-btn"); btn.disabled = true;
-    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), tags:$$("input[name=ptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project created."); location.hash = "#/wiki/" + enc(id); }
+    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), parentProject:$("#np-parent").value, tags:$$("input[name=ptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project created."); location.hash = "#/wiki/" + enc(id); }
     catch(err){ btn.disabled = false; toast(err.message || String(err), 7000); }
   };
 }
@@ -3521,14 +3639,15 @@ async function viewProject(id, params){
   }).filter(g => g.opts.length);
   const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
   const tree = treeList(pr.items, {organize});
-  setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
+  setMainFor(nav, `<nav class="crumbs" aria-label="Breadcrumb">${projectCrumbs(id).join('<span class="sep" aria-hidden="true">›</span>')}</nav><h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
     <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?manage=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">${organize ? "check" : "edit"}</span>${organize ? "Done" : "Edit project"}</a>` : ""}</nav></div><div class="maturity"></div>
     ${pr.description ? `<p style="margin:0 0 12px">${esc(pr.description)}</p>` : ""}
     ${(pr.tags || []).length ? `<p class="pr-tags">${projectBadges(pr)} <span class="muted" style="font-size:13.5px">Listed under these tags; its pages are not listed separately.</span></p>` : ""}
     <p class="muted" style="margin:0 0 10px;font-size:15px">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${pr.updatedAt ? ` · updated ${timeAgo(pr.updatedAt)}` : ""}</p>
-    ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
+    ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/projects?new=1&parentProject=${q}"><span class="ms" aria-hidden="true">create_new_folder</span>Create subproject</a><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
       <a class="btn small" href="#/links?new=1&project=${q}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
-      <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : ""}
+      <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload files</a></div>` : ""}
+    ${childProjects(id).length ? `<section class="subprojects"><h2 class="pr-h">Subprojects</h2><ul class="linklist">${childProjects(id).map(projectCard).join("")}</ul></section>` : ""}
     ${organize ? "" : quickAccessHtml(pr)}
     ${organize ? "" : pr.intro ? `<section class="proj-intro"><div class="prose" id="proj-intro">${renderMarkdown(pr.intro).innerHTML}</div></section>`
       : S.me.canWrite ? `<p class="muted" style="margin:0 0 14px;font-size:15px">No introduction yet: add one (Markdown) with <i>Edit project</i> (top right).</p>` : ""}
@@ -3569,8 +3688,9 @@ async function viewProject(id, params){
     catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
   };
   const ep = $("#epf"); if(ep){
-    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); const h = "#/wiki/" + enc(id); if(location.hash === h) route(); else location.hash = h; }catch(err){ toast(err.message || String(err), 7000); } };
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, parentProject:$("#ep-parent").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); const h = "#/wiki/" + enc(id); if(location.hash === h) route(); else location.hash = h; }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
+      if(childProjects(id).length){ toast("Move this project's subprojects to another parent first.", 8000); return; }
       if(c.page + c.link + c.file){ toast("Move this project's pages, links and files to another project first: a project can only be deleted when it is empty.", 8000); return; }
       if(!confirm(`Delete the empty project “${pr.title}”?`)) return;
       try{ await S.store.deleteProject(id, pr.title); invalidatePages(); toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
@@ -3582,6 +3702,7 @@ function editProjectForm(pr){
       <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
       <div class="row"><div style="grid-column:span 3"><label for="ep-intro">Introduction <small class="muted">(Markdown, shown on the project's home below the quick access cards; up to ${fmtNum(MAX_INTRO)} characters)</small></label>
         <textarea id="ep-intro" rows="9" maxlength="${MAX_INTRO}" spellcheck="true" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14.5px">${esc(pr.intro || "")}</textarea></div></div>
+      <div class="row"><div>${parentProjectSelect("ep-parent", pr.parentProject, pr.id)}</div></div>
       <fieldset class="tagpick"><legend>Tags <small class="muted">(optional; when set, the pages inside are not listed under tags)</small></legend><div class="tagchips">${tagChipsHtml("eptag", pr.tags || [])}</div></fieldset>
       <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
         <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form>`;
@@ -3630,9 +3751,9 @@ async function viewAutomation(){
 tags.json                                       {"tags": ["Lamassu", "PKI", ...]}
 projects/<id>/project.json                      title, description, tags, intro, items (order and nesting)
 projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, ...
-projects/<id>/pages/<slug>/content.md           (or content.html, as meta.format says)
+projects/<id>/pages/<slug>/content.md           (or content.html/json/yaml/yml, as meta.format says)
 projects/<id>/links/<id>.json                   an external link
-projects/<id>/files/<name>.pdf                  a PDF
+projects/<id>/files/<name>.pdf/json/yaml/yml    an uploaded file
 \`\`\`
 - Everything lives inside a project. Slugs, link ids and file names are unique across all projects.
 - \`slug\`: lowercase letters, digits and hyphens, up to 80 characters.

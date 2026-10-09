@@ -18,6 +18,7 @@ __PRECONNECT_WORKER__
 <script>/*VENDOR_MARKED*/</script>
 <script>/*VENDOR_PURIFY*/</script>
 <script>/*VENDOR_DIFF*/</script>
+<script>/*VENDOR_YAML*/</script>
 <style>
 :root{
   box-sizing:border-box;
@@ -264,6 +265,8 @@ time.ago{white-space:nowrap}
 .prose li{margin:2px 0}
 .prose code{font-size:.86em;background:var(--surface);border:1px solid var(--rule);padding:1px 5px;border-radius:6px}
 .prose pre{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;overflow-x:auto;font-size:15px;line-height:1.5}
+.structured-view{display:flow-root;min-width:0}
+.structured-view pre{white-space:pre;max-width:100%}
 .prose pre code{background:none;border:0;padding:0}
 .prose table{border-collapse:collapse;margin:0 0 16px;font-size:16px;display:block;overflow-x:auto}
 .prose th,.prose td{border:1px solid var(--rule-2);padding:6px 10px;text-align:left;vertical-align:top}
@@ -911,6 +914,20 @@ function splitChunks(s){
 const PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const MAX_TREE_DEPTH = 8;
 const MAX_INTRO = 50000;
+/* Project hierarchy is metadata; folders and canonical URLs stay stable. */
+function assertProjectParent(projects, id, parent){
+  if(parent == null || parent === "") return;
+  if(typeof parent !== "string" || !PROJECT_ID_RE.test(parent)) throw new Error("Invalid parent project");
+  const byId = new Map(projects.map(p => [p.id, p])), seen = new Set([id]);
+  let next = parent;
+  while(next){
+    if(seen.has(next)) throw new Error("A project cannot be its own ancestor");
+    seen.add(next);
+    const p = byId.get(next); if(!p) throw new Error("The parent project no longer exists");
+    next = p.parentProject;
+  }
+}
+function setProjectParent(pj, parent){ if(parent) pj.parentProject = parent; else delete pj.parentProject; }
 function treeFind(items, type, id, parent){
   for(let i = 0; i < items.length; i++){
     const it = items[i];
@@ -977,7 +994,10 @@ const projectText = pj => JSON.stringify(pj, null, 2) + "\n";
 /* ---------------------------------------------------------------- stores */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const SHA_RE = /^[0-9a-f]{7,40}$/;
-const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.pdf$/;
+const FILE_RE = /^[a-z0-9][a-z0-9._-]{0,95}\.(?:pdf|json|yaml|yml)$/;
+const fileFormat = name => String(name).split(".").at(-1).toLowerCase();
+const fileIcon = name => fileFormat(name) === "pdf" ? "picture_as_pdf" : "code";
+const fileMime = name => ({pdf:"application/pdf", json:"application/json", yaml:"application/yaml", yml:"application/yaml"})[fileFormat(name)];
 const cleanText = (s, max) => String(s == null ? "" : s).replace(/[\r\n\0<>]/g, " ").trim().slice(0, max);
 const hex = buf => Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, "0")).join("");
 function b64(str){
@@ -1158,7 +1178,7 @@ class GitHubStore{
     const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
     if(hit !== undefined){ this._content.delete(key); this._content.set(key, hit); return hit; }
     const gen = this._readGen;
-    const path = `/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${oid}`;
+    const path = `/repos/${this.full}/contents/${this.pageDir(slug)}/content.${contentFormat(format)}?ref=${oid}`;
     let text;
     try{ text = await this._rawText(path, false); }
     catch(e){ if(e.status === 404) return null; throw e; }
@@ -1169,7 +1189,7 @@ class GitHubStore{
     return text;
   }
   async getLatestContent(slug, format){    // for the search index: no commit id needed
-    return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${format === "html" ? "html" : "md"}?ref=${this.branch}`, true);
+    return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${contentFormat(format)}?ref=${this.branch}`, true);
   }
   /* Mutable REST content: a short memory cache, then conditional revalidation.
      In-flight reads share the same text promise; cached bodies are bounded and session-only. */
@@ -1239,7 +1259,7 @@ class GitHubStore{
     this.slug(slug);
     const title = cleanText(d.title, 200), abstract = cleanText(d.abstract, 240), summary = cleanText(d.summary, 300) || "Edit";
     const status = ["draft","reviewed","validated","deprecated"].includes(d.status) ? d.status : "draft";
-    const format = d.format === "html" ? "html" : "md";
+    const format = contentFormat(d.format);
     const content = typeof d.content === "string" ? d.content : "";
     const tags = Array.isArray(d.tags) ? [...new Set(d.tags.map(t => cleanText(t, 40)).filter(Boolean))] : [];
     if(!title || !content.trim()) throw new Error("A title and some content are required");
@@ -1427,6 +1447,17 @@ class GitHubStore{
     pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
     return {path, contents:b64(projectText(pj)), text:projectText(pj)};
   }
+  async projectsAtHead(head){
+    const result = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+      {owner:this.owner, name:this.repo, expr:`${head.oid}:projects`});
+    const ids = ((result.repository?.object?.entries) || []).filter(e => e.type === "tree" && PROJECT_ID_RE.test(e.name)).map(e => e.name);
+    const projects = [];
+    for(let i = 0; i < ids.length; i += 60){
+      const batch = ids.slice(i, i + 60), paths = batch.map(id => this.projectPath(id)), texts = await head.read(paths);
+      batch.forEach((id, k) => { const p = metaOf(texts[paths[k]]); if(p) projects.push({...p, id}); });
+    }
+    return projects;
+  }
   async createProject(id, d){
     const path = this.projectPath(id);
     const now = new Date().toISOString(), title = cleanText(d.title, 200);
@@ -1434,7 +1465,8 @@ class GitHubStore{
     const tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
       if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
-      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
+      assertProjectParent(await this.projectsAtHead(head), id, d.parentProject);
+      return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), ...(d.parentProject ? {parentProject:d.parentProject} : {}), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
     });
   }
   /* Read-modify-write of one project file inside the commit loop, so a concurrent change is never overwritten. mutate returns false for "nothing to do". */
@@ -1444,22 +1476,28 @@ class GitHubStore{
       const pj = metaOf((await head.read([path]))[path]);
       if(!pj) throw new Error("That project no longer exists");
       pj.items = Array.isArray(pj.items) ? pj.items : [];
-      if(mutate(pj) === false) return null;
+      if(await mutate(pj, head) === false) return null;
       pj.updatedAt = new Date().toISOString(); pj.updatedBy = S.me.id;
       return {additions:[{path, contents:b64(projectText(pj))}], deletions:[]};
     });
   }
-  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, pj => { pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
+  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, async (pj, head) => {
+    if(d.parentProject !== undefined){ assertProjectParent(await this.projectsAtHead(head), id, d.parentProject); setProjectParent(pj, d.parentProject); }
+    pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     if(typeof d.intro === "string"){ const intro = d.intro.replace(/\r\n/g, "\n").slice(0, MAX_INTRO); if(intro.trim()) pj.intro = intro; else delete pj.intro; } }); }
   updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
   /* A project can only be deleted when it is empty: its pages, links and files would go with it. */
   async deleteProject(id, title){
     const path = this.projectPath(id);
-    const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:`${this.branch}:projects/${id}`});
-    const names = ((d.repository && d.repository.object && d.repository.object.entries) || []).map(e => e.name).filter(n => n !== "project.json");
-    if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
-    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, [], [{path}]);
+    return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, async head => {
+      const projects = await this.projectsAtHead(head);
+      if(projects.some(p => p.parentProject === id)) throw new Error("The project still has subprojects: move them to another parent first.");
+      const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
+        {owner:this.owner, name:this.repo, expr:`${head.oid}:projects/${id}`});
+      const names = (d.repository?.object?.entries || []).map(e => e.name).filter(n => n !== "project.json");
+      if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
+      return {additions:[], deletions:[{path}]};
+    });
   }
   /* Moves an item (a page with its sub-pages, a link or a file) to another project in one commit. The blobs are reused by id, so nothing is downloaded or uploaded.
      root is the item as the reader sees it in the source structure ({type, id, children?}); it lands under parentId (or at the top level) of the target. */
@@ -1527,11 +1565,14 @@ class MemoryStore{
       links:Object.entries(this.links).map(([id, m]) => Object.assign({id}, m))};
   }
   needProject(place){ if(!place || !this.projects[place.project]) throw new Error("Choose a project first"); return place.project; }
-  async createProject(id, d){ const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
-  async editProject(id, d){ const p = this.projects[id]; p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
+  async createProject(id, d){ assertProjectParent(Object.entries(this.projects).map(([id, p]) => ({...p, id})), id, d.parentProject); const now = new Date().toISOString(); if(this.projects[id]) throw new Error("A project with this address already exists"); this.projects[id] = {title:d.title, description:d.description || "", ...(d.parentProject ? {parentProject:d.parentProject} : {}), tags:d.tags || [], items:[], createdAt:now, createdBy:"you", updatedAt:now, updatedBy:"you"}; return {rev:id}; }
+  async editProject(id, d){
+    if(d.parentProject !== undefined) assertProjectParent(Object.entries(this.projects).map(([id, p]) => ({...p, id})), id, d.parentProject);
+    const p = this.projects[id]; if(d.parentProject !== undefined) setProjectParent(p, d.parentProject); p.title = d.title || p.title; p.description = d.description || ""; p.tags = d.tags || [];
     if(typeof d.intro === "string"){ if(d.intro.trim()) p.intro = d.intro.slice(0, MAX_INTRO); else delete p.intro; } p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async updateProjectItems(id, summary, mutate){ const p = this.projects[id]; if(!p) throw new Error("That project no longer exists"); mutate(p.items); p.updatedAt = new Date().toISOString(); return {rev:id}; }
   async deleteProject(id){
+    if(Object.values(this.projects).some(p => p.parentProject === id)) throw new Error("The project still has subprojects: move them to another parent first.");
     if(Object.values(this.pages).some(p => p.project === id) || Object.values(this.links).some(l => l.project === id) || Object.values(this.files).some(f => f.project === id))
       throw new Error("The project still has pages, links or files: move them to another project first.");
     delete this.projects[id]; return {rev:id};
@@ -1809,12 +1850,12 @@ function localArticleHref(href, projectId){
   let parts;
   try{ parts = path.split("/").filter(Boolean).map(decodeURIComponent); }catch{ return null; }
   let leaf = parts.at(-1) || "";
-  const source = /\.(?:md|markdown|html?)$/i.test(leaf);
+  const source = /\.(?:md|markdown|html?|json|ya?ml)$/i.test(leaf);
   if(!source && !href.startsWith("#/wiki/")){
     if(!S.loc.has(leaf) && !projectOf(leaf)) return null;
   }
-  if(/^content\.(?:md|markdown|html?)$/i.test(leaf) && parts.length > 1) leaf = parts.at(-2);
-  const slug = leaf.replace(/\.(?:md|markdown|html?)$/i, "");
+  if(/^content\.(?:md|markdown|html?|json|ya?ml)$/i.test(leaf) && parts.length > 1) leaf = parts.at(-2);
+  const slug = leaf.replace(/\.(?:md|markdown|html?|json|ya?ml)$/i, "");
   if(!slug || [".",".."].includes(slug)) return null;
   const explicitProject = parts.find(p => projectOf(p));
   const owner = explicitProject || projectId;
@@ -1824,6 +1865,38 @@ function localArticleHref(href, projectId){
   const params = new URLSearchParams(url.search);
   if(url.hash){ try{ params.set("section", decodeURIComponent(url.hash.slice(1))); }catch{ return null; } }
   return target + (params.size ? "?" + params.toString() : "");
+}
+const CONTENT_FORMATS = ["md", "html", "json", "yaml", "yml"];
+const contentFormat = format => CONTENT_FORMATS.includes(format) ? format : "md";
+const isStructured = format => ["json", "yaml", "yml"].includes(format);
+/* Keep source verbatim; the parsed view normalizes data to indented JSON.
+   Ancestor tracking handles recursive YAML aliases without losing shared values. */
+function mountStructured(host, source, format){
+  host.classList.add("prose", "structured-view");
+  host.innerHTML = `<div class="seg" role="group" aria-label="Data view"><button type="button" data-view="parsed" class="on" aria-pressed="true">Parsed</button><button type="button" data-view="raw" aria-pressed="false">Raw</button></div><p class="hint data-note"></p><pre tabindex="0"><code></code></pre>`;
+  let parsed, error;
+  try{
+    const data = format === "json" ? JSON.parse(source) : jsyaml.loadAll(source, undefined, {schema:jsyaml.JSON_SCHEMA});
+    const value = format === "json" ? data : data.length === 1 ? data[0] : data;
+    const ancestors = [];
+    parsed = JSON.stringify(value, function(key, value){
+      if(value && typeof value === "object"){
+        while(ancestors.length && ancestors.at(-1) !== this) ancestors.pop();
+        if(ancestors.includes(value)) return "[Circular reference]";
+        ancestors.push(value);
+      }
+      return value;
+    }, 2) ?? "null";
+  }catch(e){ error = `Could not parse ${format.toUpperCase()}: ${e.message}`; }
+  const show = view => {
+    host.querySelectorAll("[data-view]").forEach(b => { const on = b.dataset.view === view; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    const note = host.querySelector(".data-note");
+    note.textContent = view === "raw" ? "Original source" : error || "Parsed data as JSON";
+    note.setAttribute("role", view === "parsed" && error ? "alert" : "note");
+    host.querySelector("code").textContent = view === "raw" ? source : error ? "" : parsed;
+  };
+  host.querySelectorAll("[data-view]").forEach(b => b.onclick = () => show(b.dataset.view));
+  show("parsed");
 }
 function renderMarkdown(src, projectId=projectContext()?.pr?.id){
   let html;
@@ -1837,7 +1910,7 @@ function renderMarkdown(src, projectId=projectContext()?.pr?.id){
     el.innerHTML = el.innerHTML.replace(/(!?)\[\[File:\s*([^\]|#]+?)\s*(?:#page=(\d+))?(?:\|([^\]]+))?\]\]/gi, (m, bang, target, page, label) => {
       const name = fileNameFrom(target), f = S.files.find(x => x.name === name);
       if(bang) return `<span class="pdf-embed" data-file="${esc(name)}"${page ? ` data-page="${+page}"` : ""}></span>`;
-      return `<a href="#/file/${enc(name)}${page ? "?page=" + (+page) : ""}" class="file-link ${f ? "" : "new"}" title="${esc(name)}${f ? "" : " (file does not exist)"}"><span class="ms" aria-hidden="true">picture_as_pdf</span>${esc(label || (target + (page ? ", page " + page : "")))}</a>`;
+      return `<a href="#/file/${enc(name)}${page ? "?page=" + (+page) : ""}" class="file-link ${f ? "" : "new"}" title="${esc(name)}${f ? "" : " (file does not exist)"}"><span class="ms" aria-hidden="true">${fileIcon(name)}</span>${esc(label || (target + (page ? ", page " + page : "")))}</a>`;
     }).replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (m, target, label) => {
       const slug = slugify(target); const exists = S.pages.some(p => p.slug === slug);
       return `<a href="${wikiHref(slug)}" class="${exists?"":"new"}" title="${exists?esc(target):esc(target)+" (page does not exist)"}">${esc(label||target)}</a>`;
@@ -2079,8 +2152,8 @@ function bindTools(ctx){
       try{ await navigator.clipboard.writeText(cite); toast("Citation copied to the clipboard."); }catch{ toast(cite, 10000); }
     } else if(act === "source"){
       const fmt = rev.format || ctx.page.format;
-      const blob = new Blob([rev.content], {type: fmt==="html" ? "text/html" : "text/markdown"});
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${ctx.slug}.r${rev.n}.${fmt==="html"?"html":"md"}`;
+      const blob = new Blob([rev.content], {type: ({html:"text/html", md:"text/markdown", json:"application/json", yaml:"application/yaml", yml:"application/yaml"})[contentFormat(fmt)]});
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${ctx.slug}.r${rev.n}.${contentFormat(fmt)}`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
     } else if(act === "print"){ print(); }
   });
@@ -2122,7 +2195,7 @@ async function viewHome(){
     </section>
     <section class="home-projects"><h2 class="pr-h" style="margin-top:22px">Projects</h2>
       ${S.projects.length ? `<ul class="linklist">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(projectCard).join("")}</ul>`
-        : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and PDFs.</p></div>`}
+        : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and files.</p></div>`}
       ${S.me.canWrite ? `<p style="margin:8px 0 0"><a class="btn small" href="#/projects"><span class="ms" aria-hidden="true">create_new_folder</span>New project</a></p>` : ""}</section>
     ${pages.length || !S.projects.length ? "" : `<div class="empty" style="margin-top:18px"><p><b>No articles yet.</b></p><p>Open a project and add the first page: a PKI design decision, notes on an RFC, or a post-quantum migration plan.</p></div>`}
     ${pages.length ? `<div class="mp-grid">
@@ -2463,6 +2536,10 @@ async function viewArticle(slug, revId){
     const f = $("#rf"); activeFrame = f; f.srcdoc = frameDoc(rev.content);
     $("#widen").onclick = e => { const on = document.body.classList.toggle("wide"); e.currentTarget.setAttribute("aria-pressed", on); };
     setSideToc(reportToc(rev.content), id => f.contentWindow && f.contentWindow.postMessage({kbGo:id}, "*"));
+  } else if(isStructured(rev.format||page.format)){
+    setMainFor(nav, `${head}${info}<div id="data-view"></div>${subs}${cats}${foot}`);
+    mountStructured($("#data-view"), rev.content, rev.format||page.format);
+    setSideToc([]);
   } else {
     const body = renderMarkdown(rev.content);
     const items = tocItems(body);
@@ -2589,7 +2666,7 @@ async function viewInfo(slug){
     <table class="data"><tbody>
       ${row("Display title", esc(page.title))}
       ${row("Address", `<span class="mono">${esc(wikiHref(slug))}</span>`)}
-      ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : "Markdown")}
+      ${row("Content format", page.format==="html" ? "HTML report (sandboxed)" : isStructured(page.format) ? page.format.toUpperCase() : "Markdown")}
       ${row("Maturity", pill(page.status, true))}
       ${row("Tags", (page.tags||[]).map(t=>`<a class="tag" href="#/tag/${enc(t)}">${esc(t)}</a>`).join("") || "—")}
       ${row("Abstract", esc(page.abstract||"—"))}
@@ -2636,7 +2713,7 @@ async function loadTexts(pages, onProgress){
       let r = null;
       if(S.store.getLatestContent){ const c = await S.store.getLatestContent(p.slug, p.format); r = {content:c, format:p.format}; }
       else { const rid = p.rev || (await S.store.getPage(p.slug))?.rev; r = rid ? await S.store.getRev(p.slug, rid) : null; }
-      if(r) S.texts[p.slug] = {revN:p.revN, text:(r.format||p.format)==="html" ? htmlText(r.content) : mdText(r.content)};
+      if(r) S.texts[p.slug] = {revN:p.revN, text:(r.format||p.format)==="html" ? htmlText(r.content) : isStructured(r.format||p.format) ? r.content : mdText(r.content)};
     }catch(e){ console.warn(e); }
     onProgress && onProgress(++done, todo.length);
   };
@@ -2722,13 +2799,15 @@ Always fill in the **edit summary**: it is the commit message other engineers wi
 Drag the edge of the sidebar to make it wider or narrower: the content takes the rest. Double-click the edge (or press Home on it) to reset it, and use the arrow keys for fine adjustments. The main menu and the project layout each remember their own width in this browser.
 
 ## Projects
-A **project** is a container: it groups pages (with sub-pages), external links and PDF files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload PDF* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
+A project can have a **parent project**. Use *Create subproject* on its parent or choose *Parent project* when creating or editing it. Subprojects keep their own introduction, tags and contents. Moving a project between parents changes navigation while its folders and addresses stay the same. A project with subprojects cannot be deleted until they have been moved elsewhere.
+
+A **project** is a container: it groups pages (with sub-pages), external links and files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload files* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
 
 ## External links
 The **External links** page keeps news, blogs, papers and videos worth remembering, each with a title, a short note and tags. Links open in a new tab and also appear on the page of each of their tags. Anyone who can edit can add, change or remove links (the repository history keeps every change). To link from inside an article, just use normal Markdown: \`[text](https://…)\`.
 
-## PDF files
-Manuals, specifications and papers live on the **Files** page (PDF only, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; uploading a file with the same name adds a new version and keeps the old ones.
+## Files
+Manuals, specifications and papers live on the **Files** page (PDF, JSON and YAML, up to 50 MB). Link one from an article with \`[[File:name.pdf]]\`, point to a page with \`[[File:name.pdf#page=12|label]]\`, or show it inside the article with \`![[File:name.pdf]]\`. PDFs open in the wiki's own viewer; JSON and YAML offer Raw and Parsed views; uploading a file with the same name adds a new version and keeps the old ones.
 
 ## HTML reports
 An article can also be a complete, self-contained **HTML report** (charts, scripts, styles), such as a state-of-the-art benchmark. It is shown in a sandboxed frame: its scripts cannot reach the wiki or your session. Give its headings an \`id\` and they appear in the *Contents* sidebar.
@@ -2805,7 +2884,7 @@ async function viewEdit(slug, params){
         <div class="row">
           <div style="grid-column:span 3"><label for="f-abs">One-line abstract</label><input type="text" id="f-abs" value="${esc(d.abstract)}" maxlength="240" placeholder="What will a colleague learn from this article?"></div>
         </div>
-        ${isNew ? (S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select><div class="hint">Every article lives inside a project.</div></div>
+        ${isNew ? (S.projects.length ? `<div class="row" style="margin-top:12px"><div><label for="f-proj">Project</label><select id="f-proj">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === wantProj ? "selected" : ""}>${esc(projectLabel(pr))}</option>`).join("")}</select><div class="hint">Every article lives inside a project.</div></div>
           <div><label for="f-par">Parent page</label><select id="f-par"></select><div class="hint">The article gets the address Project/Parent/Article.</div></div></div>`
           : `<p class="hint err" style="margin-top:12px">There are no projects yet: <a href="#/projects">create a project</a> first, because every article lives inside one.</p>`) : ""}
       </fieldset>
@@ -2814,11 +2893,13 @@ async function viewEdit(slug, params){
           <div class="seg" role="group" aria-label="Content format">
             <button type="button" data-f="md" class="${d.format==="md"?"on":""}">Markdown</button>
             <button type="button" data-f="html" class="${d.format==="html"?"on":""}">HTML report</button>
+            <button type="button" data-f="json" class="${d.format==="json"?"on":""}">JSON</button>
+            <button type="button" data-f="yaml" class="${["yaml","yml"].includes(d.format)?"on":""}">YAML</button>
           </div>
           <div class="tb" id="tb" role="toolbar" aria-label="Formatting">${TB.map(([k,ic,txt,lab])=>`<button type="button" data-tb="${k}" title="${lab}" aria-label="${lab}"><span class="ms" aria-hidden="true">${ic}</span><span class="noicon">${esc(txt)}</span></button>`).join("")}</div>
           <div class="sp">
             <label class="btn small" for="f-file" style="margin:0"><span class="ms" aria-hidden="true">upload_file</span>Load from file</label>
-            <input type="file" id="f-file" accept=".md,.markdown,.txt,.html,.htm" class="visually-hidden">
+            <input type="file" id="f-file" accept=".md,.markdown,.txt,.html,.htm,.json,.yaml,.yml" class="visually-hidden">
           </div>
         </div>
         <label for="f-body" class="visually-hidden">Content</label><textarea id="f-body" spellcheck="${d.format==="md"}"></textarea>
@@ -2840,6 +2921,7 @@ async function viewEdit(slug, params){
   const syncFmt = () => {
     $("#tb").style.display = fmt==="md" ? "" : "none";
     $("#fmt-help").innerHTML = fmt==="md" ? "Markdown with tables and code blocks. Link articles with <span class='mono'>[[Article title]]</span>." :
+      isStructured(fmt) ? "JSON or YAML data with switchable parsed and raw views. The original source is preserved." :
       "A complete, self-contained HTML document (charts and scripts allowed). It is rendered in a sandboxed frame.";
     body.spellcheck = fmt==="md";
   };
@@ -2866,7 +2948,7 @@ async function viewEdit(slug, params){
     if(f.size > 15*1024*1024){ toast("That file is over 15 MB. Split it or link to it instead."); return; }
     const txt = await f.text(); body.value = txt;
     const isHtml = /\.html?$/i.test(f.name) || /^\s*<!doctype html|^\s*<html/i.test(txt);
-    fmt = isHtml ? "html" : "md"; $$(".ed-bar .seg button").forEach(x=>x.classList.toggle("on", x.dataset.f===fmt));
+    fmt = /\.json$/i.test(f.name) ? "json" : /\.ya?ml$/i.test(f.name) ? f.name.split(".").at(-1).toLowerCase() : isHtml ? "html" : "md"; $$(".ed-bar .seg button").forEach(x=>x.classList.toggle("on", (x.dataset.f===fmt || x.dataset.f==="yaml" && fmt==="yml")));
     if(isNew && !$("#f-title").value){ const m = txt.match(/<title>([^<]+)<\/title>/i) || txt.match(/^#\s+(.+)$/m); $("#f-title").value = (m?m[1]:f.name.replace(/\.[^.]+$/,"")).trim(); $("#f-title").dispatchEvent(new Event("input")); }
     if(!isNew) $("#f-sum").value = $("#f-sum").value || `Replaced content from ${f.name}`;
     syncFmt(); toast(`Loaded ${f.name} (${fmtBytes(f.size)}).`);
@@ -2879,6 +2961,9 @@ async function viewEdit(slug, params){
     if(fmt === "md"){
       const w = renderMarkdown(body.value, $("#f-proj")?.value || projectContext()?.pr?.id);
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<div class="prose">${w.innerHTML}</div>`;
+    } else if(isStructured(fmt)){
+      pv.innerHTML = `<h2 class="rev-h">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<div id="pv-data"></div>`;
+      mountStructured($("#pv-data"), body.value, fmt);
     } else {
       pv.innerHTML = `<h2 class="rev-h" style="border:0;margin-top:10px;padding:0">Preview</h2>${ambox("warn","visibility","<p>Remember that this is only a preview. Your changes have not yet been saved!</p>")}<iframe class="report-frame" id="pvf" title="Preview" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>`;
       activeFrame = $("#pvf"); activeFrame.srcdoc = frameDoc(body.value);
@@ -2933,8 +3018,15 @@ async function viewEdit(slug, params){
 
 /* ---------------------------------------------------------------- PDF files and in-app viewer (pdf.js, vendored in vendor/pdfjs/) */
 const MAX_FILE = 50 * 1024 * 1024;
-const fileNameFrom = n => String(n || "").toLowerCase().replace(/\.pdf$/i, "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
-  .replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+/g, "-").slice(0, 96).replace(/[-.]+$/, "") + ".pdf";
+const fileNameFrom = n => {
+  const ext = String(n || "").match(/\.(pdf|json|yaml|yml)$/i)?.[1].toLowerCase() || "pdf";
+  return String(n || "").toLowerCase().replace(/\.(pdf|json|yaml|yml)$/i, "").normalize("NFKD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9._-]+/g, "-").replace(/^[^a-z0-9]+/, "").replace(/-+/g, "-").slice(0, 96).replace(/[-.]+$/, "") + "." + ext;
+};
+async function mountFile(host, name, data, options){
+  if(fileFormat(name) === "pdf") await mountPdf(host, data, options);
+  else mountStructured(host, new TextDecoder().decode(data), fileFormat(name));
+}
 let PDFJS = null;
 async function pdfLib(){
   if(!PDFJS){
@@ -3012,7 +3104,7 @@ async function mountPdf(box, data, opts){
   return {doc, view};
 }
 function downloadBytes(name, data){
-  const url = URL.createObjectURL(new Blob([data], {type:"application/pdf"}));
+  const url = URL.createObjectURL(new Blob([data], {type:fileMime(name)}));
   const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
@@ -3023,7 +3115,7 @@ async function refreshFiles(){ invalidatePages(); await refreshPages(); return S
 function uploadForm(fixedName){
   return `<form class="form upload" id="upf" novalidate>
     <div class="row">
-      <div><label for="up-file">PDF file${fixedName ? "" : "s"} <small class="muted">(up to ${fmtBytes(MAX_FILE)} each)</small></label><input type="file" id="up-file" accept="application/pdf,.pdf" required${fixedName ? "" : " multiple"}></div>
+      <div><label for="up-file">PDF, JSON or YAML file${fixedName ? "" : "s"} <small class="muted">(up to ${fmtBytes(MAX_FILE)} each)</small></label><input type="file" id="up-file" accept="${fixedName ? "." + fileFormat(fixedName) : ".pdf,.json,.yaml,.yml"}" required${fixedName ? "" : " multiple"}></div>
       ${fixedName ? `<input type="hidden" id="up-name" value="${esc(fixedName)}">` : `<div><label for="up-name">Name in the wiki</label><input type="text" id="up-name" placeholder="vendor-manual.pdf" spellcheck="false"><div class="hint" id="up-multi" hidden></div><div class="hint">Link it from an article with <span class="mono" id="up-syntax">[[File:…]]</span></div></div>`}
     </div>
     <div class="row"><div style="grid-column:1/-1"><label for="up-sum">Summary</label><input type="text" id="up-sum" maxlength="300" placeholder="${fixedName ? "What changed in this version?" : "What is this document?"}"></div></div>
@@ -3049,20 +3141,22 @@ function bindUploadForm(fixedName, done, place){
   main.ondrop = e => {
     if(!hasFiles(e)) return;
     e.preventDefault(); main.classList.remove("dropping");
-    const pdfs = Array.from(e.dataTransfer.files).filter(x => x.type === "application/pdf" || /\.pdf$/i.test(x.name));
-    if(!pdfs.length){ toast("Drop a PDF file."); return; }
+    const pdfs = Array.from(e.dataTransfer.files).filter(x => /\.(pdf|json|yaml|yml)$/i.test(x.name));
+    if(!pdfs.length){ toast("Drop a PDF, JSON or YAML file."); return; }
     const dt = new DataTransfer(); (fixedName ? pdfs.slice(0, 1) : pdfs).forEach(x => dt.items.add(x)); fileEl.files = dt.files; fileEl.onchange();
     f.scrollIntoView({block:"center"}); $("#up-sum").focus({preventScroll:true});
   };
   f.onsubmit = async e => {
     e.preventDefault();
     const list = Array.from(fileEl.files);
-    if(!list.length){ toast("Choose a PDF file."); return; }
+    if(!list.length){ toast("Choose a PDF, JSON or YAML file."); return; }
     const jobs = [], seen = new Set();
     for(const file of list){
+      if(!/\.(pdf|json|yaml|yml)$/i.test(file.name)){ toast("Choose a PDF, JSON or YAML file."); return; }
       const name = fixedName || fileNameFrom((list.length === 1 && nameEl.value) || file.name);
+      if(fileFormat(name) !== fileFormat(file.name)){ toast("The uploaded file must have the same extension as its wiki name."); return; }
       if(file.size > MAX_FILE){ toast(`${file.name} is ${fmtBytes(file.size)}; the limit is ${fmtBytes(MAX_FILE)}.`, 6000); return; }
-      if(!FILE_RE.test(name)){ toast(`${name}: use a name with letters, digits, dots and hyphens, ending in .pdf.`, 6000); return; }
+      if(!FILE_RE.test(name)){ toast(`${name}: use a name with letters, digits, dots and hyphens, ending in .pdf, .json, .yaml or .yml.`, 6000); return; }
       if(seen.has(name)){ toast(`Two of the files are called ${name}.`, 6000); return; }
       seen.add(name); jobs.push({file, name});
     }
@@ -3074,7 +3168,7 @@ function bindUploadForm(fixedName, done, place){
       for(const [i, {file, name}] of jobs.entries()){
         st.textContent = `Uploading ${i + 1}/${jobs.length}: ${name}…`;
         const data = await file.arrayBuffer();
-        if(new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
+        if(fileFormat(name) === "pdf" && new TextDecoder().decode(new Uint8Array(data.slice(0, 5))) !== "%PDF-") throw new Error(`${file.name} is not a PDF.`);
         const sha = hex(await crypto.subtle.digest("SHA-256", data));
         await S.store.uploadFile(name, await readAsBase64(file), sha, $("#up-sum").value.trim(), place || ($("#up-proj") ? {project:$("#up-proj").value, parent:null} : null));
         invalidatePages();
@@ -3097,10 +3191,10 @@ async function viewFiles(params){
   const files = S.files.slice().sort((a,b) => a.name.localeCompare(b.name));
   const place = params && params.get("project") && projectOf(params.get("project")) ? {project:params.get("project"), parent:params.get("parent") || null} : null;
   setMainFor(nav, `<h1 class="title">Files</h1><div class="tabs"><nav><a class="on">Files</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">PDF manuals, specifications and papers kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
-    ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">picture_as_pdf</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
+    <p class="muted" style="margin:0 0 12px;font-size:16px">PDF documents and JSON or YAML data kept with the articles in the private content repository. Link one from an article with <span class="mono">[[File:name.pdf]]</span> (or <span class="mono">[[File:name.pdf#page=12|label]]</span>), or show it inside the article with <span class="mono">![[File:name.pdf]]</span>.</p>
+    ${files.length ? `<table class="data files"><thead><tr><th>Name</th><th>Size</th></tr></thead><tbody>${files.map(x => `<tr><td><span class="ms" aria-hidden="true">${fileIcon(x.name)}</span> <a href="#/file/${enc(x.name)}">${esc(x.name)}</a></td><td class="mono">${fmtBytes(x.size)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="empty">No files yet.</div>`}
-    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload a PDF</h2>
+    ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">Upload files</h2>
       ${place ? `<p class="muted" style="margin:0 0 8px">It will be added to the project <b>${esc(projectOf(place.project).title)}</b>${place.parent && S.pages.some(x => x.slug === place.parent) ? ` under <b>${esc(S.pages.find(x => x.slug === place.parent).title)}</b>` : ""}.</p>` : ""}${!place ? (S.projects.length ? `<div class="row" style="margin:0 0 8px;max-width:360px"><div>${projectSelectHtml("up-proj", defaultProject())}<div class="hint">Every file lives inside a project.</div></div></div>` : `<p class="hint err">There are no projects yet: <a href="#/projects">create a project</a> first.</p>`) : ""}${uploadForm(null)}` : ""}
     ${footer()}`);
   const back = place ? (place.parent && S.loc.has(place.parent) ? wikiHref(place.parent) : "#/wiki/" + enc(place.project)) : null;
@@ -3120,10 +3214,10 @@ async function viewFile(name, params){
   await resolveNames(revs.map(r => r.by));
   const cur = revs[0], shown = rev ? revs.find(r => r.id === rev || String(r.id).startsWith(rev)) : cur;
   const isOld = rev && cur && shown && shown.id !== cur.id;
-  setMainFor(nav, `<div class="title-row"><h1 class="title"><span class="ns">File:</span>${esc(name)}</h1></div>
+  setMainFor(nav, `${S.itemProject.has("file:" + name) ? `<nav class="crumbs" aria-label="Breadcrumb">${projectCrumbs(S.itemProject.get("file:" + name)).join('<span class="sep" aria-hidden="true">›</span>')}</nav>` : ""}<div class="title-row"><h1 class="title"><span class="ns">File:</span>${esc(name)}</h1></div>
     <div class="tabs"><nav><a class="on">File</a></nav><nav></nav></div><div class="maturity"></div>
     ${isOld ? ambox("warn","history",`<p>This is an old version of this file, uploaded by ${personSpan(shown.by)} at ${fmtMW(shown.at)}. <a href="#/file/${enc(name)}">See the current version</a>.</p>`) : ""}
-    <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · PDF${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
+    <div class="file-bar"><span class="muted">${fmtBytes(data.byteLength)} · ${esc(fileFormat(name).toUpperCase())}${cur ? ` · last uploaded by ${personSpan(cur.by)}, ${fmtMW(cur.at)}` : ""}</span>
       <span class="sp"></span>
       <button class="btn small" type="button" id="f-copy"><span class="ms" aria-hidden="true">link</span>Copy link syntax</button>
       <button class="btn small" type="button" id="f-dl"><span class="ms" aria-hidden="true">download</span>Download</button>
@@ -3141,7 +3235,7 @@ async function viewFile(name, params){
     try{ await S.store.deleteFile(name); invalidatePages(); toast("File deleted."); location.hash = "#/projects"; }catch(err){ fd.disabled = false; toast(err.message || String(err), 7000); }
   };
   bindUploadForm(name, () => { S.nav++; route(); });
-  await mountPdf($("#pdfbox"), data, {page});
+  await mountFile($("#pdfbox"), name, data, {page});
 }
 
 /* ![[File:x.pdf]] placeholders in an article: a card that opens an inline preview on demand. */
@@ -3150,13 +3244,13 @@ function hydrateEmbeds(root){
     const name = el.dataset.file, page = parseInt(el.dataset.page || "", 10) || null, f = S.files.find(x => x.name === name);
     el.innerHTML = `<span class="ucard pdf-card" style="--h:4"><span class="uc-body">
         <a class="uc-t ${f ? "" : "new"}" href="#/file/${enc(name)}${page ? "?page=" + page : ""}">${esc(name)}</a>
-        <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span>${f ? `<span>PDF · ${fmtBytes(f.size)}${page ? " · page " + page : ""}</span>` : '<span>(file does not exist)</span>'}
+        <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">${fileIcon(name)}</span></span>${f ? `<span>${esc(fileFormat(name).toUpperCase())} · ${fmtBytes(f.size)}${page ? " · page " + page : ""}</span>` : '<span>(file does not exist)</span>'}
           ${f ? `<button class="btn small" type="button" data-preview>Preview here</button>` : ""}</span></span>
-        <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></span><span class="pdf-inline" hidden></span>`;
+        <span class="uc-media" aria-hidden="true"><span class="ms uc-big">${fileIcon(name)}</span></span></span><span class="pdf-inline" hidden></span>`;
     const b = el.querySelector("[data-preview]");
     if(b) b.onclick = async () => {
-      b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading PDF…</span>';
-      try{ const data = await S.store.getFile(name); if(!data) throw new Error("not found"); await mountPdf(box, data, {page}); b.remove(); }
+      b.disabled = true; const box = el.querySelector(".pdf-inline"); box.hidden = false; box.innerHTML = '<span class="loading">Loading file…</span>';
+      try{ const data = await S.store.getFile(name); if(!data) throw new Error("not found"); await mountFile(box, name, data, {page}); b.remove(); }
       catch(e){ box.innerHTML = ambox("err","error",`<p>Could not load ${esc(name)}: ${esc(e.message || e)}</p>`); b.disabled = false; }
     };
   });
@@ -3364,16 +3458,36 @@ function tagCounts(){
 }
 const tagChipsHtml = (name, selected) => [...S.tags, ...selected.filter(t => !S.tags.includes(t))].map(t => `<label class="tagchip"><input type="checkbox" name="${name}" value="${esc(t)}" ${selected.includes(t) ? "checked" : ""}><span>${esc(t)}</span></label>`).join("");
 const projectOf = id => S.projects.find(p => p.id === id);
+function projectChain(id){
+  const chain = [], seen = new Set();
+  let pr = projectOf(id);
+  while(pr && !seen.has(pr.id)){ seen.add(pr.id); chain.unshift(pr); pr = projectOf(pr.parentProject); }
+  return chain;
+}
+const projectLabel = pr => projectChain(pr.id).map(p => p.title).join(" / ");
+const childProjects = id => S.projects.filter(p => p.parentProject === id).sort((a,b) => a.title.localeCompare(b.title));
+function parentProjectSelect(id, selected, editingId){
+  const allowed = S.projects.filter(p => { try{ assertProjectParent(S.projects, editingId, p.id); return true; }catch{ return false; } });
+  return `<label for="${id}">Parent project</label><select id="${id}"><option value="">(top level)</option>${allowed.sort((a,b) => projectLabel(a).localeCompare(projectLabel(b))).map(p => `<option value="${esc(p.id)}" ${p.id === selected ? "selected" : ""}>${esc(projectLabel(p))}</option>`).join("")}</select>`;
+}
+function projectCrumbs(id){
+  return [`<a href="#/projects">Projects</a>`, ...projectChain(id).map(p => `<a href="#/wiki/${enc(p.id)}">${esc(p.title)}</a>`)];
+}
+function subprojectTree(id, seen=new Set()){
+  if(seen.has(id)) return "";
+  const next = new Set(seen).add(id);
+  return childProjects(id).map(p => `<li class="pt-project"><span class="pt-row"><span class="ms" aria-hidden="true">folder_open</span><a class="pt-l" href="#/wiki/${enc(p.id)}">${esc(p.title)}</a></span>${childProjects(p.id).length ? `<ul class="ptree compact">${subprojectTree(p.id, next)}</ul>` : ""}</li>`).join("");
+}
 const defaultProject = () => projectOf("general") ? "general" : (S.projects[0] || {}).id || "";
 /* every new page, link or file must be placed in a project: when the address does not say which, the form asks */
-const projectSelectHtml = (id, selected) => `<label for="${id}">Project</label><select id="${id}">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === selected ? "selected" : ""}>${esc(pr.title)}</option>`).join("")}</select>`;
+const projectSelectHtml = (id, selected) => `<label for="${id}">Project</label><select id="${id}">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(pr => `<option value="${esc(pr.id)}" ${pr.id === selected ? "selected" : ""}>${esc(projectLabel(pr))}</option>`).join("")}</select>`;
 const pagePath = slug => { const l = S.loc.get(slug); return l ? [l.project].concat(l.chain) : [slug]; };
 const wikiHref = slug => "#/wiki/" + pagePath(slug).map(enc).join("/");
 const countItems = pr => { const c = {page:0, link:0, file:0}; treeWalk(pr.items || [], it => { c[it.type]++; }); return c; };
 function itemInfo(it){
   if(it.type === "page"){ const p = S.pages.find(x => x.slug === it.id); return p && {label:p.title, href:wikiHref(p.slug), icon:"description", sub:statusLabel(p.status)}; }
   if(it.type === "link"){ const l = S.links.find(x => x.id === it.id); return l && {label:l.title, href:l.url, external:true, icon:"link", sub:hostOf(l.url)}; }
-  const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:"picture_as_pdf", sub:fmtBytes(f.size)};
+  const f = S.files.find(x => x.name === it.id); return f && {label:f.name, href:"#/file/" + enc(f.name), icon:fileIcon(f.name), sub:fmtBytes(f.size)};
 }
 const CTL = [["up","arrow_upward","↑","Move up"], ["down","arrow_downward","↓","Move down"], ["out","format_indent_decrease","←","Move out of its parent"], ["in","format_indent_increase","→","Make a sub-page of the item above"]];
 function treeList(items, o){
@@ -3416,13 +3530,13 @@ function renderSideTree(){
   const {pr, cur} = ctx;
   head.hidden = box.hidden = false;
   const t = $("#sideProjectT"); t.textContent = pr.title; t.href = "#/wiki/" + enc(pr.id); t.classList.toggle("cur", cur === "project");
-  $("#sideTree").innerHTML = treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
+  $("#sideTree").innerHTML = (pr.parentProject && projectOf(pr.parentProject) ? `<li><a class="pt-l" href="#/wiki/${enc(pr.parentProject)}">↑ ${esc(projectOf(pr.parentProject).title)}</a></li>` : "") + subprojectTree(pr.id) + treeList(pr.items, {compact:true, cur}).replace(/^<ul class="ptree compact">|<\/ul>$/g, "") || '<li class="muted" style="padding:4px 10px;font-size:14px">Empty project</li>';
   syncSide();
 }
 function crumbsHtml(slug){
   const l = S.loc.get(slug); if(!l) return "";
   const pr = projectOf(l.project); if(!pr) return "";
-  const parts = [`<a href="#/projects">Projects</a>`, `<a href="#/wiki/${enc(pr.id)}">${esc(pr.title)}</a>`];
+  const parts = projectCrumbs(pr.id);
   const chain = l.chain.slice(0, -1);
   chain.forEach((s, i) => { const p = S.pages.find(x => x.slug === s); if(p) parts.push(`<a href="#/wiki/${[pr.id, ...chain.slice(0, i + 1)].map(enc).join("/")}">${esc(p.title)}</a>`); });
   return `<nav class="crumbs" aria-label="Breadcrumb">${parts.join('<span class="sep" aria-hidden="true">›</span>')}</nav>`;
@@ -3435,7 +3549,7 @@ async function subpagesHtml(slug){
   const list = treeList(r.item.children || [], {});
   const add = S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">note_add</span>Add sub-page</a>
       <a class="btn small" href="#/links?new=1&project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
-      <a class="btn small" href="#/files?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : "";
+      <a class="btn small" href="#/files?project=${enc(pr.id)}&parent=${enc(slug)}"><span class="ms" aria-hidden="true">upload_file</span>Upload files</a></div>` : "";
   if(!list && !add) return "";
   return `<section class="subpages"><h2>In this page</h2>${list || '<p class="muted" style="margin:0 0 8px">No sub-pages yet.</p>'}${add}</section>`;
 }
@@ -3453,20 +3567,21 @@ function quickCard(it){
   }
   const f = S.files.find(x => x.name === it.id);
   return `<a class="ucard qa-card" href="#/file/${enc(f.name)}" style="--h:4">
-    <span class="uc-body"><span class="uc-t qa-t">${esc(f.name)}</span><span class="uc-d">PDF document. Opens in the built-in viewer.</span>
-      <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">picture_as_pdf</span></span><span class="qa-s">PDF · ${fmtBytes(f.size)}</span><span class="badge secondary">Preview</span></span></span>
-    <span class="uc-media" aria-hidden="true"><span class="ms uc-big">picture_as_pdf</span></span></a>`;
+    <span class="uc-body"><span class="uc-t qa-t">${esc(f.name)}</span><span class="uc-d">${esc(fileFormat(f.name).toUpperCase())} file. Opens in the built-in viewer.</span>
+      <span class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">${fileIcon(f.name)}</span></span><span class="qa-s">${esc(fileFormat(f.name).toUpperCase())} · ${fmtBytes(f.size)}</span><span class="badge secondary">Preview</span></span></span>
+    <span class="uc-media" aria-hidden="true"><span class="ms uc-big">${fileIcon(f.name)}</span></span></a>`;
 }
 function quickAccessHtml(pr){
   const cards = []; treeWalk(pr.items || [], it => { if(it.type !== "page"){ const h = quickCard(it); if(h) cards.push(h); } });
   return cards.length ? `<section class="qa"><h2 class="pr-h">Quick access</h2><div class="qa-grid">${cards.join("")}</div></section>` : "";
 }
 function projectCard(p){
-  const c = countItems(p), h = hostHue(p.id);
+  const c = countItems(p), h = hostHue(p.id), children = childProjects(p.id).length;
   return `<li class="ucard linkcard" style="--h:${h}"><div class="uc-body">
       <a class="uc-main lc-title" href="#/wiki/${enc(p.id)}"><span class="uc-t">${esc(p.title)}</span></a>
+      ${p.parentProject && projectOf(p.parentProject) ? `<p class="uc-d">${esc(projectLabel(p))}</p>` : ""}
       ${p.description ? `<p class="uc-d">${esc(p.description)}</p>` : ""}
-      <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}</span>${projectBadges(p)}</div></div>
+      <div class="uc-src"><span class="uc-ico" aria-hidden="true"><span class="ms">folder_open</span></span><span class="muted">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${children ? ` · ${children} subproject${children === 1 ? "" : "s"}` : ""}</span>${projectBadges(p)}</div></div>
     <div class="uc-media" aria-hidden="true"><span class="ms uc-big">folder_open</span></div></li>`;
 }
 
@@ -3476,11 +3591,12 @@ async function viewProjects(params){
   await refreshPages();
   const list = S.projects.slice().sort((a, b) => a.title.localeCompare(b.title));
   setMainFor(nav, `<h1 class="title">Projects</h1><div class="tabs"><nav><a class="on">Projects</a></nav><nav></nav></div><div class="maturity"></div>
-    <p class="muted" style="margin:0 0 12px;font-size:16px">Everything lives inside a project: its pages (with sub-pages), external links and PDF files are stored in the project's own folder, and its structure file only decides their order and nesting.</p>
+    <p class="muted" style="margin:0 0 12px;font-size:16px">Everything lives inside a project: its pages (with sub-pages), external links and files are stored in the project's own folder, and its structure file only decides their order and nesting.</p>
     ${list.length ? `<ul class="linklist">${list.map(projectCard).join("")}</ul>` : '<div class="empty">No projects yet.</div>'}
     ${S.me.canWrite ? `<h2 style="font-size:20px;font-weight:700;margin:22px 0 8px">New project</h2><form class="form" id="npf" novalidate>
       <div class="row"><div style="grid-column:span 3"><label for="np-title">Title</label><input type="text" id="np-title" maxlength="200" required><div class="hint">Address: <span class="mono" id="np-slug"></span></div></div></div>
       <div class="row"><div style="grid-column:span 3"><label for="np-desc">Description <small class="muted">(optional)</small></label><input type="text" id="np-desc" maxlength="300"></div></div>
+      <div class="row"><div>${parentProjectSelect("np-parent", params?.get("parentProject"), null)}</div></div>
       <fieldset class="tagpick"><legend>Tags <small class="muted">(optional: a tagged project is listed under its tags instead of its pages)</small></legend><div class="tagchips">${tagChipsHtml("ptag", [])}</div></fieldset>
       <div class="actions"><button class="btn primary" id="np-btn" type="submit"><span class="ms" aria-hidden="true">create_new_folder</span><span>Create project</span></button></div></form>` : ""}
     ${footer()}`);
@@ -3493,7 +3609,7 @@ async function viewProjects(params){
     const id = slugify(title);
     if(S.projects.some(p => p.id === id) || S.pages.some(p => p.slug === id)){ toast("That address is already used by a project or an article. Pick another title.", 6000); return; }
     const btn = $("#np-btn"); btn.disabled = true;
-    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), tags:$$("input[name=ptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project created."); location.hash = "#/wiki/" + enc(id); }
+    try{ await S.store.createProject(id, {title, description:$("#np-desc").value.trim(), parentProject:$("#np-parent").value, tags:$$("input[name=ptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project created."); location.hash = "#/wiki/" + enc(id); }
     catch(err){ btn.disabled = false; toast(err.message || String(err), 7000); }
   };
 }
@@ -3512,14 +3628,15 @@ async function viewProject(id, params){
   }).filter(g => g.opts.length);
   const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
   const tree = treeList(pr.items, {organize});
-  setMainFor(nav, `<h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
+  setMainFor(nav, `<nav class="crumbs" aria-label="Breadcrumb">${projectCrumbs(id).join('<span class="sep" aria-hidden="true">›</span>')}</nav><h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
     <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?manage=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">${organize ? "check" : "edit"}</span>${organize ? "Done" : "Edit project"}</a>` : ""}</nav></div><div class="maturity"></div>
     ${pr.description ? `<p style="margin:0 0 12px">${esc(pr.description)}</p>` : ""}
     ${(pr.tags || []).length ? `<p class="pr-tags">${projectBadges(pr)} <span class="muted" style="font-size:13.5px">Listed under these tags; its pages are not listed separately.</span></p>` : ""}
     <p class="muted" style="margin:0 0 10px;font-size:15px">${c.page} page${c.page === 1 ? "" : "s"} · ${c.link} link${c.link === 1 ? "" : "s"} · ${c.file} file${c.file === 1 ? "" : "s"}${pr.updatedAt ? ` · updated ${timeAgo(pr.updatedAt)}` : ""}</p>
-    ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
+    ${S.me.canWrite ? `<div class="pt-add"><a class="btn small" href="#/projects?new=1&parentProject=${q}"><span class="ms" aria-hidden="true">create_new_folder</span>Create subproject</a><a class="btn small" href="#/new?project=${q}"><span class="ms" aria-hidden="true">note_add</span>Add page</a>
       <a class="btn small" href="#/links?new=1&project=${q}"><span class="ms" aria-hidden="true">add_link</span>Add link</a>
-      <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload PDF</a></div>` : ""}
+      <a class="btn small" href="#/files?project=${q}"><span class="ms" aria-hidden="true">upload_file</span>Upload files</a></div>` : ""}
+    ${childProjects(id).length ? `<section class="subprojects"><h2 class="pr-h">Subprojects</h2><ul class="linklist">${childProjects(id).map(projectCard).join("")}</ul></section>` : ""}
     ${organize ? "" : quickAccessHtml(pr)}
     ${organize ? "" : pr.intro ? `<section class="proj-intro"><div class="prose" id="proj-intro">${renderMarkdown(pr.intro).innerHTML}</div></section>`
       : S.me.canWrite ? `<p class="muted" style="margin:0 0 14px;font-size:15px">No introduction yet: add one (Markdown) with <i>Edit project</i> (top right).</p>` : ""}
@@ -3560,8 +3677,9 @@ async function viewProject(id, params){
     catch(err){ console.error(err); btn.disabled = false; toast(err.message || String(err), 7000); }
   };
   const ep = $("#epf"); if(ep){
-    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); const h = "#/wiki/" + enc(id); if(location.hash === h) route(); else location.hash = h; }catch(err){ toast(err.message || String(err), 7000); } };
+    ep.onsubmit = async e => { e.preventDefault(); try{ await S.store.editProject(id, {title:$("#ep-title").value.trim() || pr.title, description:$("#ep-desc").value.trim(), intro:$("#ep-intro").value, parentProject:$("#ep-parent").value, tags:$$("input[name=eptag]:checked").map(x => x.value)}); invalidatePages(); toast("Project saved."); const h = "#/wiki/" + enc(id); if(location.hash === h) route(); else location.hash = h; }catch(err){ toast(err.message || String(err), 7000); } };
     $("#ep-del").onclick = async () => {
+      if(childProjects(id).length){ toast("Move this project's subprojects to another parent first.", 8000); return; }
       if(c.page + c.link + c.file){ toast("Move this project's pages, links and files to another project first: a project can only be deleted when it is empty.", 8000); return; }
       if(!confirm(`Delete the empty project “${pr.title}”?`)) return;
       try{ await S.store.deleteProject(id, pr.title); invalidatePages(); toast("Project deleted."); location.hash = "#/projects"; }catch(err){ toast(err.message || String(err), 7000); }
@@ -3573,6 +3691,7 @@ function editProjectForm(pr){
       <div class="row"><div style="grid-column:span 3"><label for="ep-desc">Description</label><input type="text" id="ep-desc" maxlength="300" value="${esc(pr.description || "")}"></div></div>
       <div class="row"><div style="grid-column:span 3"><label for="ep-intro">Introduction <small class="muted">(Markdown, shown on the project's home below the quick access cards; up to ${fmtNum(MAX_INTRO)} characters)</small></label>
         <textarea id="ep-intro" rows="9" maxlength="${MAX_INTRO}" spellcheck="true" style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:14.5px">${esc(pr.intro || "")}</textarea></div></div>
+      <div class="row"><div>${parentProjectSelect("ep-parent", pr.parentProject, pr.id)}</div></div>
       <fieldset class="tagpick"><legend>Tags <small class="muted">(optional; when set, the pages inside are not listed under tags)</small></legend><div class="tagchips">${tagChipsHtml("eptag", pr.tags || [])}</div></fieldset>
       <div class="actions"><button class="btn primary" type="submit"><span class="ms" aria-hidden="true">save</span><span>Save</span></button>
         <button class="btn" type="button" id="ep-del"><span class="ms" aria-hidden="true">delete</span>Delete project</button></div></form>`;
@@ -3621,9 +3740,9 @@ async function viewAutomation(){
 tags.json                                       {"tags": ["Lamassu", "PKI", ...]}
 projects/<id>/project.json                      title, description, tags, intro, items (order and nesting)
 projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, ...
-projects/<id>/pages/<slug>/content.md           (or content.html, as meta.format says)
+projects/<id>/pages/<slug>/content.md           (or content.html/json/yaml/yml, as meta.format says)
 projects/<id>/links/<id>.json                   an external link
-projects/<id>/files/<name>.pdf                  a PDF
+projects/<id>/files/<name>.pdf/json/yaml/yml    an uploaded file
 \`\`\`
 - Everything lives inside a project. Slugs, link ids and file names are unique across all projects.
 - \`slug\`: lowercase letters, digits and hyphens, up to 80 characters.

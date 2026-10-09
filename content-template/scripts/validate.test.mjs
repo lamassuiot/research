@@ -30,6 +30,46 @@ const editMeta = (dir, fn, slug) => { const m = JSON.parse(fs.readFileSync(metaP
 test("the baseline passes", () => {
   assert.deepEqual(validate(fixture()), []);
 });
+function hierarchyFixture(parents) {
+  return fixture(d => {
+    for (const [id, parentProject] of Object.entries(parents)) {
+      const folder = path.join(d, 'projects', id);
+      fs.mkdirSync(folder, {recursive:true});
+      fs.writeFileSync(path.join(folder, 'project.json'), JSON.stringify({title:id, items:[], ...BY, ...(parentProject === undefined ? {} : {parentProject})}));
+    }
+  });
+}
+test('nested projects need no nested folders', () => {
+  assert.deepEqual(validate(hierarchyFixture({alpha:undefined, beta:'alpha', gamma:'beta'})), []);
+});
+test('missing and invalid parents fail', () => {
+  for (const parent of ['missing', '', null, 42]) {
+    assert.ok(validate(hierarchyFixture({alpha:parent})).some(e => /parent project|parentProject/.test(e)));
+  }
+});
+test('self-parenting and indirect cycles fail', () => {
+  for (const parents of [{alpha:'alpha'}, {alpha:'beta', beta:'gamma', gamma:'alpha'}]) {
+    assert.ok(validate(hierarchyFixture(parents)).some(e => e.includes('cycle')));
+  }
+});
+for (const format of ['json', 'yaml', 'yml']) {
+  test(`${format} attachments pass validation`, () => {
+    const dir = fixture(d => {
+      const files = path.join(d, G('files'));
+      fs.mkdirSync(files);
+      fs.writeFileSync(path.join(files, `config.${format}`), 'data');
+    });
+    assert.deepEqual(validate(dir), []);
+  });
+  test(`${format} content files pass validation`, () => {
+    const dir = fixture(d => {
+      editMeta(d, m => { m.format = format; });
+      const base = path.join(d, G('pages', 'welcome'));
+      fs.renameSync(path.join(base, 'content.md'), path.join(base, `content.${format}`));
+    });
+    assert.deepEqual(validate(dir), []);
+  });
+}
 test("an unknown tag fails", () => {
   const errs = validate(fixture((d) => editMeta(d, (m) => { m.tags = ["Nope"]; })));
   assert.ok(errs.some((e) => e.includes('tag "Nope" is not listed in tags.json')), errs.join("\n"));
@@ -86,7 +126,7 @@ test("a file that is not a PDF fails", () => {
 test("a bad file name or a folder in files/ fails", () => {
   const errs = validate(fixture((d) => { fs.mkdirSync(path.join(d, G("files", "sub")), { recursive: true }); fs.writeFileSync(path.join(d, G("files", "Bad Name.pdf")), "%PDF-1.4"); }));
   assert.ok(errs.some((e) => e.startsWith("projects/general/files/Bad Name.pdf: invalid file name")), errs.join("\n"));
-  assert.ok(errs.some((e) => e.startsWith("projects/general/files/sub: only PDF files")), errs.join("\n"));
+  assert.ok(errs.some((e) => e.startsWith("projects/general/files/sub:") && e.includes("no folders")), errs.join("\n"));
 });
 
 const goodLink = { url: "https://example.org/post", title: "A post", description: "", kind: "blog", tags: ["PQC"],
