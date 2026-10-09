@@ -33,13 +33,22 @@ test("the baseline passes", () => {
 function hierarchyFixture(parents) {
   return fixture(d => {
     for (const [id, parentProject] of Object.entries(parents)) {
-      const folder = path.join(d, 'projects', id);
+      const location = key => {
+        const chain=[key], seen=new Set(chain);
+        let parent=parents[key];
+        while(parent && typeof parent === 'string' && Object.hasOwn(parents,parent)){
+          if(seen.has(parent)) return 'projects/' + key;
+          seen.add(parent); chain.unshift(parent); parent=parents[parent];
+        }
+        return 'projects/' + chain.join('/projects/');
+      };
+      const folder = path.join(d, location(id));
       fs.mkdirSync(folder, {recursive:true});
       fs.writeFileSync(path.join(folder, 'project.json'), JSON.stringify({title:id, items:[], ...BY, ...(parentProject === undefined ? {} : {parentProject})}));
     }
   });
 }
-test('nested projects need no nested folders', () => {
+test('nested project folders pass validation', () => {
   assert.deepEqual(validate(hierarchyFixture({alpha:undefined, beta:'alpha', gamma:'beta'})), []);
 });
 test('missing and invalid parents fail', () => {
@@ -51,6 +60,21 @@ test('self-parenting and indirect cycles fail', () => {
   for (const parents of [{alpha:'alpha'}, {alpha:'beta', beta:'gamma', gamma:'alpha'}]) {
     assert.ok(validate(hierarchyFixture(parents)).some(e => e.includes('cycle')));
   }
+});
+test('project IDs remain globally unique across nested folders', () => {
+  const d=hierarchyFixture({alpha:undefined, beta:'alpha'});
+  const nested=path.join(d,'projects/alpha/projects/beta');
+  fs.cpSync(nested,path.join(d,'projects/beta'),{recursive:true});
+  assert.ok(validate(d).some(e => e.includes('duplicate project id')));
+});
+test('physical nesting is authoritative and parent metadata is optional', () => {
+  const d=hierarchyFixture({alpha:undefined, beta:'alpha'});
+  const meta=path.join(d,'projects/alpha/projects/beta/project.json');
+  const p=JSON.parse(fs.readFileSync(meta,'utf8'));
+  delete p.parentProject; fs.writeFileSync(meta,JSON.stringify(p));
+  assert.deepEqual(validate(d),[]);
+  p.parentProject='general'; fs.writeFileSync(meta,JSON.stringify(p));
+  assert.ok(validate(d).some(e => e.includes('containing project folder')));
 });
 for (const format of ['json', 'yaml', 'yml']) {
   test(`${format} attachments pass validation`, () => {

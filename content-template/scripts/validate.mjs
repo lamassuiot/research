@@ -51,19 +51,29 @@ export function validate(root) {
     else owner[type].set(id, project);
   };
 
-  const projectIds = listDir("projects").filter((n) => {
-    const rel = `projects/${n}`;
-    if (!isDir(rel)) { err(rel, "only project folders are allowed in projects/"); return false; }
-    if (!SLUG_RE.test(n)) { err(rel, "invalid project address (lowercase letters, digits and hyphens, up to 80 characters)"); return false; }
-    return true;
-  });
-
+  const projectDirs = new Map(), physicalParents = new Map();
+  function discover(container, parent, ancestors=new Set()) {
+    const full = path.join(root, container);
+    if (!fs.existsSync(full)) return;
+    const real = fs.realpathSync(full);
+    if (ancestors.has(real)) { err(container, 'project folders create a cycle'); return; }
+    const next = new Set(ancestors).add(real);
+    for (const id of listDir(container)) {
+      const base = `${container}/${id}`;
+      if (!isDir(base)) { err(base, 'only project folders are allowed in projects/'); continue; }
+      if (!SLUG_RE.test(id)) { err(base, 'invalid project address (lowercase letters, digits and hyphens, up to 80 characters)'); continue; }
+      if (projectDirs.has(id)) { err(base, `duplicate project id "${id}"`); continue; }
+      projectDirs.set(id, base); physicalParents.set(id, parent);
+      discover(`${base}/projects`, id, next);
+    }
+  }
+  discover('projects', null);
   const projects = new Map();
-  for (const id of projectIds) {
-    const base = `projects/${id}`, rel = `${base}/project.json`;
+  for (const [id, base] of projectDirs) {
+    const rel = `${base}/project.json`;
     const pj = readJson(rel);
     if (pj) projects.set(id, pj);
-    for (const n of listDir(base)) if (!["project.json", "pages", "links", "files"].includes(n)) err(`${base}/${n}`, "unexpected entry in a project folder");
+    for (const n of listDir(base)) if (!["project.json", "pages", "links", "files", "projects"].includes(n)) err(`${base}/${n}`, "unexpected entry in a project folder");
     if (pj) {
       if (typeof pj.title !== "string" || !pj.title.trim() || pj.title.length > 200) err(rel, "title must be 1-200 characters");
       if (pj.description !== undefined && (typeof pj.description !== "string" || pj.description.length > 300)) err(rel, "description must be at most 300 characters");
@@ -166,11 +176,12 @@ export function validate(root) {
 
   for (const [id, pj] of projects) {
     if (pj.parentProject === undefined) continue;
-    const rel = `projects/${id}/project.json`;
+    const rel = `${projectDirs.get(id)}/project.json`;
     if (typeof pj.parentProject !== 'string' || !SLUG_RE.test(pj.parentProject)) {
       err(rel, 'parentProject must be a valid project id');
       continue;
     }
+    if (pj.parentProject !== physicalParents.get(id)) err(rel, 'parentProject must match the containing project folder');
     const seen = new Set([id]);
     let parent = pj.parentProject;
     while (parent) {
@@ -184,7 +195,7 @@ export function validate(root) {
   }
 
   /* a project address and an article slug share the #/wiki/ namespace */
-  for (const id of projectIds) if (owner.page.has(id)) err(`projects/${id}`, `the address "${id}" is already used by an article`);
+  for (const [id, base] of projectDirs) if (owner.page.has(id)) err(base, `the address "${id}" is already used by an article`);
   return errors;
 }
 

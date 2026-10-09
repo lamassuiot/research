@@ -169,7 +169,21 @@ async function installFakeGitHub(page, opts = {}) {
   const metas = vars => Object.fromEntries(Object.keys(vars).filter(k => /^e\d+$/.test(k)).map(k => ["m" + k.slice(1), blob(repo.read(vars[k]))]));
 
   /* Git Data API: blobs, trees and commits are staged here until a ref update makes them a commit of the repo */
-  const staged = { blobs: new Map(), trees: new Map(), commits: new Map() };
+  const staged = { blobs: new Map(), trees: new Map(), snapshots: new Map(), commits: new Map() };
+  function treeFiles(sha){
+    if(staged.snapshots.has(sha)) return new Map(staged.snapshots.get(sha));
+    if(sha.startsWith("tree-of-")) return new Map(repo.find(sha.slice(8)).files);
+    const tree=staged.trees.get(sha); if(!tree) throw new Error("Unknown tree: " + sha);
+    const files=tree.base_tree ? treeFiles(tree.base_tree) : new Map();
+    for(const entry of tree.tree){
+      if(entry.type === "tree"){
+        for(const p of [...files.keys()]) if(p.startsWith(entry.path + "/")) files.delete(p);
+        if(entry.sha !== null) for(const [p,v] of treeFiles(entry.sha)) files.set(entry.path + "/" + p,v);
+      } else if(entry.sha === null) files.delete(entry.path);
+      else files.set(entry.path, entry.sha ? (staged.blobs.get(entry.sha) ?? findBlob(entry.sha)) : entry.content);
+    }
+    return files;
+  }
   async function gitData(route, method, rest, body) {
     let m;
     if (method === "GET" && (m = rest.match(/^ref\/heads\/(.+)$/))) return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: repo.head().oid, type: "commit" } });
@@ -195,7 +209,9 @@ async function installFakeGitHub(page, opts = {}) {
       const t = staged.trees.get(c.tree);
       if (t.base_tree !== "tree-of-" + c.parents[0]) return json(route, 422, { message: "tree does not belong to the parent" });
       const changes = {};
-      for (const e of t.tree) changes[e.path] = e.sha === null ? null : e.sha ? (staged.blobs.get(e.sha) ?? findBlob(e.sha)) : e.content;   // sha null deletes; a sha reuses a blob that is already in the repository
+      const nextFiles=treeFiles(c.tree);
+      for(const p of repo.head().files.keys()) if(!nextFiles.has(p)) changes[p]=null;
+      for(const [p,v] of nextFiles) if(!repo.head().files.has(p) || !Buffer.from(v).equals(Buffer.from(repo.head().files.get(p)))) changes[p]=v;   // sha null deletes; a sha reuses a blob that is already in the repository
       const nc = repo.add(c.message, changes, { name: user.name, login: user.login });
       return json(route, 200, { ref: "refs/heads/" + m[1], object: { sha: nc.oid } });
     }
@@ -211,25 +227,30 @@ async function installFakeGitHub(page, opts = {}) {
     let data;
     switch (op) {
       case "Index": {
-        const files = repo.head().files, byProject = {};
-        for (const p of files.keys()) { const m = p.match(/^projects\/([^/]+)\/(.+)$/); if (m) (byProject[m[1]] ||= []).push(m[2]); }
-        const entries = Object.entries(byProject).map(([pid, rest]) => {
-          const top = {};
-          for (const r of rest) {
-            const parts = r.split("/");
-            if (parts.length === 1) { top[parts[0]] = { name: parts[0], type: "blob", object: {} }; continue; }
-            const d = (top[parts[0]] ||= { name: parts[0], type: "tree", object: { entries: [] } }), second = parts[1];
-            if (!d.object.entries.find(e => e.name === second))
-              d.object.entries.push(parts.length === 2 ? { name: second, type: "blob", object: { byteSize: Buffer.byteLength(files.get(`projects/${pid}/${r}`)) } } : { name: second, type: "tree", object: {} });
+        const colon = v.expr.indexOf(":"), commit = repo.find(v.expr.slice(0,colon)), prefix = v.expr.slice(colon+1);
+        const files = commit?.files || new Map();
+        const entriesAt = (base, depth) => {
+          const names=new Map();
+          for(const [p, value] of files) if(p.startsWith(base + "/")){
+            const parts=p.slice(base.length+1).split("/");
+            names.set(parts[0], parts.length > 1 ? {name:parts[0],type:"tree"} : {name:parts[0],type:"blob",object:{byteSize:Buffer.byteLength(value)}});
           }
-          return { name: pid, type: "tree", object: { entries: Object.values(top) } };
-        });
-        const oid = sha1([...files].filter(([p]) => p.startsWith("projects/")).sort(([a],[b]) => a.localeCompare(b)).map(([p,v]) => p + ":" + sha1(v)).join("\n"));
-        data = { repository: { ref:{target:{oid:repo.head().oid}}, object: entries.length ? { entries, oid } : null } }; break;
+          return [...names.values()].map(e => e.type === "tree" ? {...e,object:depth > 1 ? {entries:entriesAt(base + "/" + e.name, depth-1)} : {}} : e);
+        };
+        const entries=entriesAt(prefix,3);
+        const oid=sha1([...files].filter(([p]) => p.startsWith(prefix + "/")).sort(([a],[b]) => a.localeCompare(b)).map(([p,v]) => p + ":" + sha1(v)).join("\n"));
+        data={repository:{ref:{target:{oid:commit?.oid}},object:entries.length ? {entries,oid} : null}}; break;
+      }
+      case "ProjectTree": {
+        const colon=v.expr.indexOf(":"), commit=repo.find(v.expr.slice(0,colon)), prefix=v.expr.slice(colon+1) + "/";
+        const files=new Map([...(commit?.files || [])].filter(([p]) => p.startsWith(prefix)).map(([p,v]) => [p.slice(prefix.length),v]));
+        const oid=sha1("snapshot:" + v.expr);
+        if(files.size) staged.snapshots.set(oid,files);
+        data={repository:{object:files.size ? {oid} : null}}; break;
       }
       case "ProjectEntries": case "PageEntries": {
-        const prefix = v.expr.split(":")[1] + "/", names = new Map();
-        for (const p of repo.head().files.keys()) if (p.startsWith(prefix)) { const r = p.slice(prefix.length).split("/"); names.set(r[0], r.length > 1 ? "tree" : "blob"); }
+        const prefix = v.expr.split(":")[1] + "/", names = new Map(), commit=repo.find(v.expr.split(":")[0]);
+        for (const p of (commit?.files || new Map()).keys()) if (p.startsWith(prefix)) { const r = p.slice(prefix.length).split("/"); names.set(r[0], r.length > 1 ? "tree" : "blob"); }
         data = { repository: { object: names.size ? { entries: [...names].map(([name, type]) => ({ name, type })) } : null } }; break;
       }
       case "MoveSources": {

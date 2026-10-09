@@ -9,6 +9,7 @@ La wiki lee y escribe aquí directamente desde el navegador, con el token de Git
 ```
 tags.json                                   {"tags": ["Lamassu", "PKI", ...]}   lista cerrada de etiquetas, en el orden en que se muestran
 projects/<id>/project.json                  el proyecto y su estructura (orden y anidación)
+projects/<padre>/projects/<hijo>/          un subproyecto con la misma estructura
 projects/<id>/pages/<slug>/meta.json        metadatos del artículo
 projects/<id>/pages/<slug>/content.md       el contenido (o content.html/json/yaml/yml, según meta.format; exactamente uno)
 projects/<id>/links/<id>.json               un enlace externo (noticia, blog, paper…)
@@ -48,4 +49,6 @@ La Action `validate` comprueba la estructura en cada push y abre un issue si fal
 
 ### Subproyectos
 
-Un `project.json` puede incluir `"parentProject": "id-del-padre"`. Si se omite, el proyecto está en el nivel superior. El padre debe existir y la relación no puede formar ciclos. Cada subproyecto mantiene su propia carpeta `projects/<id>/`, introducción, etiquetas y contenidos; no hay herencia de etiquetas. Cambiar de padre conserva las URLs y los archivos. La aplicación impide eliminar proyectos que aún tengan subproyectos.
+Los subproyectos se almacenan físicamente en `projects/<padre>/projects/<hijo>/`, con su propio `project.json`, `pages/`, `links/`, `files/` y, si procede, otro `projects/`. La carpeta determina el padre. El campo opcional `parentProject` debe coincidir con él cuando esté presente. Los IDs de proyecto son únicos en todo el repositorio.
+
+Cada subproyecto conserva su introducción, etiquetas y contenidos; no hay herencia de etiquetas. Cambiar de padre desde la aplicación mueve la carpeta completa, incluidos sus subproyectos y archivos, en un único commit. Las URLs siguen usando los IDs y se mantienen estables. La aplicación impide eliminar proyectos que aún tengan subproyectos. Git conserva el historial anterior al movimiento; el historial mostrado por la wiki comienza en la ubicación nueva.

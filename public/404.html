@@ -920,12 +920,12 @@ function splitChunks(s){
 }
 
 /* ---------------------------------------------------------------- projects: a project is a container whose structure is one JSON tree
-   projects/<id>.json = {title, description, items:[{type:"page"|"link"|"file", id, children?:[...]}], createdAt, createdBy, updatedAt, updatedBy}
+   projects/<id>/project.json = {title, description, items:[{type:"page"|"link"|"file", id, children?:[...]}], createdAt, createdBy, updatedAt, updatedBy}
    Only pages can have children (sub-pages). An item belongs to at most one project. Order = array order. */
 const PROJECT_ID_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 const MAX_TREE_DEPTH = 8;
 const MAX_INTRO = 50000;
-/* Project hierarchy is metadata; folders and canonical URLs stay stable. */
+/* Project folders encode ancestry; IDs keep canonical URLs stable across moves. */
 function assertProjectParent(projects, id, parent){
   if(parent == null || parent === "") return;
   if(typeof parent !== "string" || !PROJECT_ID_RE.test(parent)) throw new Error("Invalid parent project");
@@ -1028,12 +1028,13 @@ const AUTHOR = "author { name user { login avatarUrl(size: 64) } }";
      projects/<id>/pages/<slug>/meta.json + content.*  articles
      projects/<id>/links/<id>.json                     external links
      projects/<id>/files/<name>.pdf                    PDFs
-   Slugs, link ids and file names are unique across projects, so the app addresses an item by its id alone; `where` remembers the
+   Subprojects use projects/<parent>/projects/<child>/ with the same layout.
+   Project IDs, slugs, link ids and file names are unique across projects, so the app addresses an item by its id alone; `where` remembers the
    project each one is in (filled by loadIndex and by our own writes). */
 class GitHubStore{
   constructor(){ this.kind = "github"; this.owner = CONFIG.owner; this.repo = CONFIG.contentRepo; this.branch = CONFIG.branch; this._art = new Map(); this._content = new Map(); this._contentChars = 0;
     this._rawReads = new Map(); this._latest = new Map(); this._latestChars = 0; this._readGen = 0; this._sessionGen = 0; this._index = null;
-    this.where = {page:new Map(), link:new Map(), file:new Map()}; }
+    this.where = {page:new Map(), link:new Map(), file:new Map()}; this.projectDirs = new Map(); }
   invalidateReads(){ this._art.clear(); this._latest.clear(); this._latestChars = 0; this._readGen++; }
   clearCaches(){ this._sessionGen++; this.invalidateReads(); this._content.clear(); this._contentChars = 0; this._rawReads.clear(); this._index = null; }
   get full(){ return this.owner + "/" + this.repo; }
@@ -1071,10 +1072,11 @@ class GitHubStore{
     if(!pid || !PROJECT_ID_RE.test(pid)) throw Object.assign(new Error("Unknown " + type), {status:404});
     return pid;
   }
-  projectPath(id){ if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address"); return `projects/${id}/project.json`; }
-  pageDir(slug, project){ return `projects/${this.projectOfItem("page", this.slug(slug), project)}/pages/${slug}`; }
-  linkPath(id, project){ if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address"); return `projects/${this.projectOfItem("link", id, project)}/links/${id}.json`; }
-  filePath(name, project){ if(!FILE_RE.test(name)) throw new Error("Invalid file name"); return `projects/${this.projectOfItem("file", name, project)}/files/${name}`; }
+  projectDir(id){ if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address"); return this.projectDirs.get(id) || `projects/${id}`; }
+  projectPath(id){ if(!PROJECT_ID_RE.test(id)) throw new Error("Invalid project address"); return `${this.projectDir(id)}/project.json`; }
+  pageDir(slug, project){ return `${this.projectDir(this.projectOfItem("page", this.slug(slug), project))}/pages/${slug}`; }
+  linkPath(id, project){ if(!LINK_ID_RE.test(id)) throw new Error("Invalid link address"); return `${this.projectDir(this.projectOfItem("link", id, project))}/links/${id}.json`; }
+  filePath(name, project){ if(!FILE_RE.test(name)) throw new Error("Invalid file name"); return `${this.projectDir(this.projectOfItem("file", name, project))}/files/${name}`; }
   needProject(place){ if(!place || !place.project) throw new Error("Choose a project first"); return this.projectPath(place.project) && place.project; }
 
   async me(){
@@ -1095,36 +1097,57 @@ class GitHubStore{
   }
   async names(ids){ const o = {}; for(const id of ids) if(id) o[id] = id; return o; }
 
-  /* Everything the app lists, in two round trips: (1) the folder structure of projects/ (names and sizes, no contents);
-     (2) the small JSON files (project.json, each link, each page's meta.json), in parallel chunks. */
-  async loadIndex(){
-    const session = this._sessionGen, empty = () => ({pages:[], files:[], projects:[], links:[]});
-    const d = await this.gql("Index", `query Index($owner:String!,$name:String!,$expr:String!,$ref:String!){ repository(owner:$owner,name:$name){
+  async indexTree(ref, path="projects"){
+    return this.gql("Index", `query Index($owner:String!,$name:String!,$expr:String!,$ref:String!){ repository(owner:$owner,name:$name){
         ref(qualifiedName:$ref){ target { oid } }
         object(expression:$expr){ oid ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Tree { entries { name type object { ... on Blob { byteSize } } } } } } } } } } } } }`,
-      this.v({expr:this.branch + ":projects"}));
+      this.v({expr:ref + ":" + path}));
+  }
+  /* Fetch each projects/ container at the same commit. Root tree OIDs cover all descendants. */
+  async scanProjectTrees(rootTree, ref){
+    const found = [], seen = new Set(), kids = e => e?.object?.entries || [];
+    let level = [{tree:rootTree, path:"projects", parent:null}];
+    while(level.length){
+      const next = [];
+      for(const container of level){
+        for(const entry of container.tree?.entries || []){
+          if(entry.type !== "tree" || !PROJECT_ID_RE.test(entry.name)) continue;
+          const children = kids(entry);
+          if(!children.some(e => e.name === "project.json" && e.type === "blob")) continue;
+          if(seen.has(entry.name)) throw new Error("Duplicate project id: " + entry.name);
+          seen.add(entry.name);
+          const path = container.path + "/" + entry.name;
+          found.push({id:entry.name, path, parent:container.parent, entry});
+          if(children.some(e => e.name === "projects" && e.type === "tree")) next.push({path:path + "/projects", parent:entry.name});
+        }
+      }
+      level = await Promise.all(next.map(async c => ({...c, tree:(await this.indexTree(ref,c.path)).repository?.object})));
+    }
+    this.projectDirs = new Map(found.map(p => [p.id,p.path]));
+    return found;
+  }
+  async loadIndex(){
+    const session = this._sessionGen, empty = () => ({pages:[], files:[], projects:[], links:[]});
+    const d = await this.indexTree(this.branch);
     const treeOid = d.repository?.object?.oid;
     if(session !== this._sessionGen) return empty();
     if(treeOid && this._index?.oid === treeOid){
-      this.where = structuredClone(this._index.where);
+      this.where = structuredClone(this._index.where); this.projectDirs = structuredClone(this._index.projectDirs);
       return structuredClone(this._index.data);
     }
     if(this._index && this._index.oid !== treeOid) this.invalidateReads();
     const indexRef = d.repository?.ref?.target?.oid || this.branch;
     const kids = e => (e && e.object && e.object.entries) || [];
-    const projectIds = [], pageRefs = [], linkRefs = [], files = [];
-    for(const pe of kids({object:d.repository && d.repository.object})){
-      if(pe.type !== "tree" || !PROJECT_ID_RE.test(pe.name)) continue;
-      const sub = kids(pe), child = n => sub.find(x => x.name === n);
-      if(!child("project.json") || child("project.json").type !== "blob") continue;
-      projectIds.push(pe.name);
-      for(const s of kids(child("pages"))) if(s.type === "tree" && SLUG_RE.test(s.name)) pageRefs.push({project:pe.name, slug:s.name});
-      for(const s of kids(child("links"))) if(s.type === "blob" && LINK_FILE_RE.test(s.name)) linkRefs.push({project:pe.name, id:s.name.slice(0, -5)});
-      for(const s of kids(child("files"))) if(s.type === "blob" && FILE_RE.test(s.name)) files.push({name:s.name, size:(s.object && s.object.byteSize) || 0, project:pe.name});
+    const projectRefs = await this.scanProjectTrees(d.repository?.object, indexRef), pageRefs = [], linkRefs = [], files = [];
+    for(const {id, path, entry} of projectRefs){
+      const sub = kids(entry), child = n => sub.find(x => x.name === n);
+      for(const s of kids(child("pages"))) if(s.type === "tree" && SLUG_RE.test(s.name)) pageRefs.push({project:id, path, slug:s.name});
+      for(const s of kids(child("links"))) if(s.type === "blob" && LINK_FILE_RE.test(s.name)) linkRefs.push({project:id, path, id:s.name.slice(0, -5)});
+      for(const s of kids(child("files"))) if(s.type === "blob" && FILE_RE.test(s.name)) files.push({name:s.name, size:s.object?.byteSize || 0, project:id});
     }
-    const wanted = [...projectIds.map(id => ({k:"project", id, path:`projects/${id}/project.json`})),
-      ...linkRefs.map(r => ({k:"link", id:r.id, project:r.project, path:`projects/${r.project}/links/${r.id}.json`})),
-      ...pageRefs.map(r => ({k:"page", id:r.slug, project:r.project, path:`projects/${r.project}/pages/${r.slug}/meta.json`}))];
+    const wanted = [...projectRefs.map(p => ({k:"project", id:p.id, parent:p.parent, directory:p.path, path:p.path + "/project.json"})),
+      ...linkRefs.map(r => ({k:"link", id:r.id, project:r.project, path:`${r.path}/links/${r.id}.json`})),
+      ...pageRefs.map(r => ({k:"page", id:r.slug, project:r.project, path:`${r.path}/pages/${r.slug}/meta.json`}))];
     const chunks = []; for(let i = 0; i < wanted.length; i += 60) chunks.push(wanted.slice(i, i + 60));
     const got = (await Promise.all(chunks.map(async chunk => {
       const vars = {owner:this.owner, name:this.repo};
@@ -1136,7 +1159,7 @@ class GitHubStore{
     const projects = [], pages = [], links = [], where = {page:new Map(), link:new Map(), file:new Map()};
     for(const {w, m} of got){
       if(!m) continue;
-      if(w.k === "project"){ if(typeof m.title === "string") projects.push(Object.assign({items:[]}, m, {id:w.id})); }
+      if(w.k === "project"){ if(typeof m.title === "string") projects.push(Object.assign({items:[]}, m, {id:w.id, directory:w.directory, parentProject:w.parent || undefined})); }
       else if(w.k === "link"){ if(typeof m.url === "string" && !where.link.has(w.id)){ where.link.set(w.id, w.project); links.push(Object.assign({}, m, {id:w.id, project:w.project})); } }
       else if(!where.page.has(w.id)){ where.page.set(w.id, w.project); pages.push(publicMeta(w.id, m, w.project)); }
     }
@@ -1145,7 +1168,7 @@ class GitHubStore{
     if(session !== this._sessionGen) return empty();
     this.where = where;
     const data = {pages:pages.filter(p => known.has(p.project)), files:keep, projects, links:links.filter(l => known.has(l.project))};
-    if(treeOid) this._index = {oid:treeOid, data:structuredClone(data), where:structuredClone(where)};
+    if(treeOid) this._index = {oid:treeOid, data:structuredClone(data), where:structuredClone(where), projectDirs:structuredClone(this.projectDirs)};
     return data;
   }
   async getPageLight(slug){      // latest revision only (used by the search index)
@@ -1261,7 +1284,7 @@ class GitHubStore{
       by:(x.c.author && x.c.author.user && x.c.author.user.login) || (x.c.author && x.c.author.name) || null}));
     const withMeta = items.filter(x => x.project);
     const vars = {owner:this.owner, name:this.repo};
-    withMeta.forEach((x, k) => vars["e" + k] = `${x.c.oid}:projects/${x.project}/pages/${x.slug}/meta.json`);
+    withMeta.forEach((x, k) => vars["e" + k] = `${x.c.oid}:${this.projectDir(x.project)}/pages/${x.slug}/meta.json`);
     const q = `query RecentMetas($owner:String!,$name:String!${withMeta.map((_, k) => `,$e${k}:String!`).join("")}){ repository(owner:$owner,name:$name){ ${withMeta.map((_, k) => `m${k}: object(expression:$e${k}){ ${BLOB} }`).join(" ")} } }`;
     const r = withMeta.length ? (await this.gql("RecentMetas", q, vars)).repository || {} : {};
     return withMeta.map((x, k) => { const m = metaOf(r["m" + k] && r["m" + k].text) || {}; return Object.assign(this.revOf(x.c, m), {slug:x.slug, title:m.title || x.slug}); });
@@ -1283,6 +1306,7 @@ class GitHubStore{
       const headOid = h.ref && h.ref.target && h.ref.target.oid;
       if(!headOid) throw new Error("The content repository has no " + this.branch + " branch");
       const prev = metaOf(h.meta && h.meta.text);
+      if(!isNew && !prev) throw new Error("The article moved or was removed. Reload before saving.");
       if(isNew && prev) throw new Error("An article with this address already exists");
       if(tags.some(t => !S.tags.includes(t) && !(prev && (prev.tags||[]).includes(t)))) throw new Error("A selected tag is not listed in tags.json");
       const n = (prev ? prev.revN : 0) + 1, now = new Date().toISOString();
@@ -1342,6 +1366,8 @@ class GitHubStore{
     for(let attempt = 1; ; attempt++){
       const {head, base} = await this.gitHead();
       const entries = [{path, mode:"100644", type:"blob", sha:blob.sha}];
+      if(!isNew && !(await this.readAtHead(head, [this.projectPath(pid)]))[this.projectPath(pid)])
+        throw new Error("The project moved or was removed. Reload before uploading.");
       if(isNew){
         const pc = await this.placementChange({oid:head, read:paths => this.readAtHead(head, paths)}, place, {type:"file", id:name});
         entries.push({path:pc.path, mode:"100644", type:"blob", content:pc.text});
@@ -1398,6 +1424,8 @@ class GitHubStore{
     const host = new URL(meta.url).hostname;
     const r = await this.commitChanges(`${prev ? "Edit" : "Add"} link: ${meta.title}`.slice(0, 300), `Know-how-Link: ${id}\nKnow-how-Project: ${pid}\nLink-Host: ${host}`,
       async head => {
+        if(prev && !(await head.read([this.projectPath(pid)]))[this.projectPath(pid)])
+          throw new Error("The project moved or was removed. Reload before saving.");
         const additions = [{path, contents:b64(JSON.stringify(meta, null, 2) + "\n")}];
         if(!prev){ const pc = await this.placementChange(head, place, {type:"link", id}); additions.push({path:pc.path, contents:pc.contents}); }
         return {additions, deletions:[]};
@@ -1459,24 +1487,22 @@ class GitHubStore{
     return {path, contents:b64(projectText(pj)), text:projectText(pj)};
   }
   async projectsAtHead(head){
-    const result = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-      {owner:this.owner, name:this.repo, expr:`${head.oid}:projects`});
-    const ids = ((result.repository?.object?.entries) || []).filter(e => e.type === "tree" && PROJECT_ID_RE.test(e.name)).map(e => e.name);
-    const projects = [];
-    for(let i = 0; i < ids.length; i += 60){
-      const batch = ids.slice(i, i + 60), paths = batch.map(id => this.projectPath(id)), texts = await head.read(paths);
-      batch.forEach((id, k) => { const p = metaOf(texts[paths[k]]); if(p) projects.push({...p, id}); });
+    const root = await this.indexTree(head.oid), found = await this.scanProjectTrees(root.repository?.object, head.oid), projects = [];
+    for(let i = 0; i < found.length; i += 60){
+      const batch = found.slice(i, i + 60), paths = batch.map(p => p.path + "/project.json"), texts = await head.read(paths);
+      batch.forEach((p, k) => { const m = metaOf(texts[paths[k]]); if(m) projects.push({...m, id:p.id, directory:p.path, parentProject:p.parent || undefined}); });
     }
     return projects;
   }
   async createProject(id, d){
-    const path = this.projectPath(id);
     const now = new Date().toISOString(), title = cleanText(d.title, 200);
     if(!title) throw new Error("A project needs a title");
     const tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
     return this.commitChanges(`Add project: ${title}`.slice(0, 300), `Know-how-Project: ${id}`, async head => {
-      if((await head.read([path]))[path]) throw new Error("A project with this address already exists");
-      assertProjectParent(await this.projectsAtHead(head), id, d.parentProject);
+      const projects = await this.projectsAtHead(head);
+      if(projects.some(p => p.id === id)) throw new Error("A project with this address already exists");
+      assertProjectParent(projects, id, d.parentProject);
+      const path = (d.parentProject ? this.projectDir(d.parentProject) + "/projects/" + id : "projects/" + id) + "/project.json";
       return {additions:[{path, contents:b64(projectText({title, description:cleanText(d.description, 300), ...(d.parentProject ? {parentProject:d.parentProject} : {}), tags, items:[], createdAt:now, createdBy:S.me.id, updatedAt:now, updatedBy:S.me.id}))}], deletions:[]};
     });
   }
@@ -1492,19 +1518,47 @@ class GitHubStore{
       return {additions:[{path, contents:b64(projectText(pj))}], deletions:[]};
     });
   }
-  editProject(id, d){ return this.updateProject(id, `Edit project: ${cleanText(d.title, 200)}`, async (pj, head) => {
-    if(d.parentProject !== undefined){ assertProjectParent(await this.projectsAtHead(head), id, d.parentProject); setProjectParent(pj, d.parentProject); }
-    pj.title = cleanText(d.title, 200) || pj.title; pj.description = cleanText(d.description, 300); pj.tags = [...new Set((d.tags || []).map(t => cleanText(t, 40)).filter(Boolean))].slice(0, 20);
-    if(typeof d.intro === "string"){ const intro = d.intro.replace(/\r\n/g, "\n").slice(0, MAX_INTRO); if(intro.trim()) pj.intro = intro; else delete pj.intro; } }); }
+  async editProject(id, d){
+    for(let attempt = 1; ; attempt++){
+      const {head, base} = await this.gitHead();
+      const projects = await this.projectsAtHead({oid:head, read:paths => this.readAtHead(head,paths)}), current = projects.find(p => p.id === id);
+      if(!current) throw new Error("That project no longer exists");
+      const parent = d.parentProject === undefined ? current.parentProject : d.parentProject;
+      assertProjectParent(projects,id,parent);
+      const source = current.directory, dest = parent ? this.projectDir(parent) + "/projects/" + id : "projects/" + id;
+      const pj = metaOf((await this.readAtHead(head,[source + "/project.json"]))[source + "/project.json"]);
+      pj.title = cleanText(d.title,200) || pj.title; pj.description = cleanText(d.description,300);
+      pj.tags = [...new Set((d.tags || []).map(t => cleanText(t,40)).filter(Boolean))].slice(0,20);
+      setProjectParent(pj,parent);
+      if(typeof d.intro === "string"){ const intro = d.intro.replace(/\r\n/g,"\n").slice(0,MAX_INTRO); if(intro.trim()) pj.intro=intro; else delete pj.intro; }
+      pj.updatedAt=new Date().toISOString(); pj.updatedBy=S.me.id;
+      let tree;
+      if(source === dest){
+        tree = [{path:source + "/project.json", mode:"100644", type:"blob", content:projectText(pj)}];
+      } else {
+        const result = await this.gql("ProjectTree", `query ProjectTree($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ oid } } }`,
+          {owner:this.owner,name:this.repo,expr:head + ":" + source});
+        const oid=result.repository?.object?.oid; if(!oid) throw new Error("That project no longer exists");
+        const subtree=await this.gitPost("trees",{base_tree:oid,tree:[{path:"project.json",mode:"100644",type:"blob",content:projectText(pj)}]});
+        tree=[{path:source,mode:"040000",type:"tree",sha:null},{path:dest,mode:"040000",type:"tree",sha:subtree.sha}];
+      }
+      const next=await this.gitPost("trees",{base_tree:base,tree});
+      const commit=await this.gitPost("commits",{message:`Edit project: ${pj.title}\n\nKnow-how-Project: ${id}`,tree:next.sha,parents:[head]});
+      try{
+        await this.gitPost(`refs/heads/${this.branch}`,{sha:commit.sha,force:false},"PATCH");
+        this.invalidateReads(); this._index=null;
+        return {rev:commit.sha};
+      }catch(e){ if(e.status !== 409 && e.status !== 422) throw e; if(attempt >= 3) throw new Error("Someone else saved at the same time; please retry"); }
+    }
+  }
   updateProjectItems(id, summary, mutate){ return this.updateProject(id, summary, pj => mutate(pj.items)); }
   /* A project can only be deleted when it is empty: its pages, links and files would go with it. */
   async deleteProject(id, title){
-    const path = this.projectPath(id);
     return this.commitChanges(`Remove project: ${cleanText(title, 200) || id}`, `Know-how-Project: ${id}`, async head => {
-      const projects = await this.projectsAtHead(head);
+      const projects = await this.projectsAtHead(head), path = this.projectPath(id);
       if(projects.some(p => p.parentProject === id)) throw new Error("The project still has subprojects: move them to another parent first.");
       const d = await this.gql("ProjectEntries", `query ProjectEntries($owner:String!,$name:String!,$expr:String!){ repository(owner:$owner,name:$name){ object(expression:$expr){ ... on Tree { entries { name type } } } } }`,
-        {owner:this.owner, name:this.repo, expr:`${head.oid}:projects/${id}`});
+        {owner:this.owner, name:this.repo, expr:`${head.oid}:${this.projectDir(id)}`});
       const names = (d.repository?.object?.entries || []).map(e => e.name).filter(n => n !== "project.json");
       if(names.length) throw new Error("The project still has pages, links or files: move them to another project first.");
       return {additions:[], deletions:[{path}]};
@@ -1516,7 +1570,7 @@ class GitHubStore{
     if(fromId === toId) throw new Error("It is already in that project");
     const fp = this.projectPath(fromId), tp = this.projectPath(toId), moved = [];
     treeWalk([root], it => moved.push({type:it.type, id:it.id}));
-    const at = (it, pid) => it.type === "page" ? `projects/${pid}/pages/${it.id}` : it.type === "link" ? `projects/${pid}/links/${it.id}.json` : `projects/${pid}/files/${it.id}`;
+    const at = (it, pid) => it.type === "page" ? `${this.projectDir(pid)}/pages/${it.id}` : it.type === "link" ? `${this.projectDir(pid)}/links/${it.id}.json` : `${this.projectDir(pid)}/files/${it.id}`;
     for(let attempt = 1; ; attempt++){
       const {head, base} = await this.gitHead();
       const vars = {owner:this.owner, name:this.repo};
@@ -2810,7 +2864,7 @@ Always fill in the **edit summary**: it is the commit message other engineers wi
 Drag the edge of the sidebar to make it wider or narrower: the content takes the rest. Double-click the edge (or press Home on it) to reset it, and use the arrow keys for fine adjustments. The main menu and the project layout each remember their own width in this browser.
 
 ## Projects
-A project can have a **parent project**. Use *Create subproject* on its parent or choose *Parent project* when creating or editing it. Subprojects keep their own introduction, tags and contents. Moving a project between parents changes navigation while its folders and addresses stay the same. A project with subprojects cannot be deleted until they have been moved elsewhere.
+A project can have a **parent project**. Use *Create subproject* on its parent or choose *Parent project* when creating or editing it. Subprojects keep their own introduction, tags and contents. Moving a project between parents moves its folder and all its subprojects; its addresses stay the same. A project with subprojects cannot be deleted until they have been moved elsewhere.
 
 A **project** is a container: it groups pages (with sub-pages), external links and files, in the order you choose. Open **Projects** in the menu. Inside a project, *Add page*, *Add link* and *Upload files* put the new item in place, and *Organize* lets you reorder items (↑ ↓), nest them under the page above (→) or bring them back out (←). Pages in a project get an address like \`Project/Parent/Page\`; the old short address keeps working and redirects. The project's home shows its links and PDFs as quick-access cards and, below them, an introduction written in Markdown (*Edit project*). A project can have tags too: then the project is listed under them and the pages inside are not listed separately. While you read inside a project, the sidebar shows the project title, its whole structure and the page's contents instead of the main menu (use *Projects* above the title to go back). An item belongs to one project at most, and a project's structure lives in one file, so reorganising never touches the pages themselves.
 
@@ -3750,6 +3804,7 @@ async function viewAutomation(){
 \`\`\`
 tags.json                                       {"tags": ["Lamassu", "PKI", ...]}
 projects/<id>/project.json                      title, description, tags, intro, items (order and nesting)
+projects/<parent>/projects/<child>/             a subproject with the same layout
 projects/<id>/pages/<slug>/meta.json            title, tags, status, format, abstract, revN, ...
 projects/<id>/pages/<slug>/content.md           (or content.html/json/yaml/yml, as meta.format says)
 projects/<id>/links/<id>.json                   an external link
