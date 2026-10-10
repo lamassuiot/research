@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://api.github.com" crossorigin>
 
 <!-- Fonts load without blocking the first paint. The icon font holds only the icons this page uses (about 8 KB instead of 395 KB). -->
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,drive_file_move,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,travel_explore,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@48,400,0,0&icon_names=add,add_circle,add_link,archive,arrow_back,arrow_downward,arrow_upward,check,check_circle,chevron_left,chevron_right,close,code,content_copy,create_new_folder,dark_mode,delete,description,difference,download,drive_file_move,edit,edit_note,error,expand_more,folder_open,format_bold,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_quote,help,history,home,info,left_panel_close,light_mode,link,list,lock,logout,menu,note_add,open_in_new,picture_as_pdf,playlist_add,print,public,publish,refresh,save,search,sell,shield_lock,shield_person,shuffle,swap_vert,table,terminal,title,toc,travel_explore,tune,upload,upload_file,visibility,warning,width_full,zoom_in,zoom_out&display=block" rel="stylesheet" media="print" onload="this.media='all';window.checkIcons&&checkIcons()">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script>try{var t=localStorage.getItem("kb.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/**
@@ -331,6 +331,8 @@ h2.day{font-size:17px;font-weight:700;margin:20px 0 6px;letter-spacing:-.01em;bo
 .mp-hero p{margin:0;color:var(--ink-2);max-width:62ch}
 .mp-hero .stat{font-size:15px;color:var(--ink-3);text-align:right}
 .mp-hero .stat b{color:var(--ink);font-weight:700;font-size:17px}
+.mp-hero .refresh-btn{display:flex;margin:12px 0 0 auto}
+.title-row > .refresh-btn{flex-shrink:0;margin-top:6px}
 .mp-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;margin-top:20px}
 .mp-col{display:grid;gap:20px;align-content:start}
 .mp-box{border:1px solid var(--rule);border-radius:16px;overflow:hidden}
@@ -1187,18 +1189,24 @@ class GitHubStore{
     const dir = this.pageDir(slug);
     const hit = this._art.get(slug);
     if(hit && Date.now() - hit.at < 20000) return hit.p;
-    const p = this.gql("GetArticle", `query GetArticle($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!,$file:String!){ repository(owner:$owner,name:$name){
+    const gen = this._readGen, format = contentFormat(this._index?.data.pages.find(p => p.slug === slug)?.format);
+    const p = this.gql("GetArticle", `query GetArticle($owner:String!,$name:String!,$ref:String!,$metaExpr:String!,$path:String!,$file:String!,$contentFile:String!){ repository(owner:$owner,name:$name){
         meta: object(expression:$metaExpr){ ${BLOB} }
-        ref(qualifiedName:$ref){ target { ... on Commit { history(first:100, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
+        ref(qualifiedName:$ref){ target { ... on Commit {
+          latest: history(first:1, path:$path){ nodes { oid file(path:$contentFile){ object { ${BLOB} } } } }
+          history(first:100, path:$path){ nodes { oid authoredDate messageHeadline ${AUTHOR}
           file(path:$file){ object { ${BLOB} } } } } } } } } }`,
-      this.v({metaExpr:`${this.branch}:${dir}/meta.json`, path:dir, file:`${dir}/meta.json`})).then(d => {
+      this.v({metaExpr:`${this.branch}:${dir}/meta.json`, path:dir, file:`${dir}/meta.json`, contentFile:`${dir}/content.${format}`})).then(d => {
       const r = d.repository || {}, nodes = (r.ref && r.ref.target && r.ref.target.history && r.ref.target.history.nodes) || [];
       // TODO: paginate beyond 100 revisions
       const revs = nodes.map(c => { const m = metaOf(c.file && c.file.object && c.file.object.text); return m && m.revN != null ? Object.assign({slug}, this.revOf(c, m)) : null; }).filter(Boolean);
+      const latest = r.ref?.target?.latest?.nodes?.[0], text = latest?.file?.object?.text;
+      if(gen === this._readGen && typeof text === "string" && revs[0]?.id === latest.oid && contentFormat(revs[0].format) === format)
+        this._cacheContent(latest.oid + ":" + slug + ":" + revs[0].format, text);
       return {meta:metaOf(r.meta && r.meta.text), revs};
     });
     this._art.set(slug, {at:Date.now(), p});
-    p.catch(() => this._art.delete(slug));
+    p.catch(() => { if(this._art.get(slug)?.p === p) this._art.delete(slug); });
     return p;
   }
   async getPage(slug){
@@ -1207,6 +1215,12 @@ class GitHubStore{
     return a.meta ? Object.assign(publicMeta(slug, a.meta, this.where.page.get(slug)), {rev:a.revs[0] ? a.revs[0].id : null}) : null;
   }
   async listRevs(slug){ return this.where.page.has(slug) ? (await this._article(slug)).revs : []; }
+  _cacheContent(key, text){
+    if(this._content.has(key)) return this._content.get(key);
+    this._content.set(key, text); this._contentChars += text.length;
+    while(this._contentChars > 24e6 && this._content.size > 1){ const [k, v] = this._content.entries().next().value; this._content.delete(k); this._contentChars -= v.length; }
+    return text;
+  }
   /* Content of a revision is immutable (a commit id), so it is kept in memory for the session; at most ~24 MB. */
   async _readContent(slug, oid, format){
     const key = oid + ":" + slug + ":" + format, hit = this._content.get(key);
@@ -1217,10 +1231,7 @@ class GitHubStore{
     try{ text = await this._rawText(path, false); }
     catch(e){ if(e.status === 404) return null; throw e; }
     if(gen !== this._readGen) return text;
-    if(this._content.has(key)) return this._content.get(key);
-    this._content.set(key, text); this._contentChars += text.length;
-    while(this._contentChars > 24e6 && this._content.size > 1){ const [k, v] = this._content.entries().next().value; this._content.delete(k); this._contentChars -= v.length; }
-    return text;
+    return this._cacheContent(key, text);
   }
   async getLatestContent(slug, format){    // for the search index: no commit id needed
     return this._rawText(`/repos/${this.full}/contents/${this.pageDir(slug)}/content.${contentFormat(format)}?ref=${this.branch}`, true);
@@ -1793,7 +1804,7 @@ const allTags = () => [...S.tags, ...[...new Set([...S.pages.flatMap(p => p.tags
 const PAGES_TTL = 60000;
 let pagesLoading = null;
 function invalidatePages(){ S.pagesAt = 0; S.pagesGen++; pagesLoading = null; }
-function refreshPages(force){
+function refreshPages(force, strict=false){
   if(!force && S.pagesAt && Date.now() - S.pagesAt < PAGES_TTL) return Promise.resolve(S.pages);
   if(pagesLoading) return pagesLoading;
   const gen = S.pagesGen;
@@ -1801,7 +1812,7 @@ function refreshPages(force){
     try{
       const ix = await S.store.loadIndex();
       if(gen === S.pagesGen){ S.pages = ix.pages; S.files = ix.files; S.projects = ix.projects; S.links = ix.links; S.pagesAt = Date.now(); indexProjects(); }
-    }catch(e){ console.error(e); }
+    }catch(e){ console.error(e); if(strict) throw e; }
     finally{ if(pagesLoading === run) pagesLoading = null; }
     if(gen !== S.pagesGen) return S.me.id ? refreshPages(true) : S.pages;
     renderSide();
@@ -2145,7 +2156,8 @@ function route(){
   closeDrawer(); setSideToc(null); markNav();
   activeFrame = null; document.body.classList.remove("wide");
   const m = $("#main");
-  const go = (p) => p.catch(err => { if(err === STALE) return; console.error(err); m.innerHTML = `<div class="ambox err"><span class="ms" aria-hidden="true">error</span><p><b>Something went wrong.</b> ${esc(err.message||err)}</p></div>`; });
+  const nav = S.nav;
+  const go = (p) => p.catch(err => { if(err === STALE || nav !== S.nav) return; console.error(err); m.innerHTML = `<div class="ambox err"><span class="ms" aria-hidden="true">error</span><p><b>Something went wrong.</b> ${esc(err.message||err)}</p></div>`; });
   if(!seg.length) return go(viewHome());
   switch(seg[0]){
     case "wiki":       return go(seg.length > 1 ? openWiki(seg.slice(1), params) : (location.replace("#/"), Promise.resolve()));
@@ -2171,7 +2183,38 @@ function route(){
     default:           setMain(`<h1 class="title">Bad title</h1><div class="ambox warn"><span class="ms" aria-hidden="true">warning</span><p>There is no page or view called “${esc(seg[0])}”. <a href="#/">Return to the main page</a>.</p></div>`);
   }
 }
-function setMain(html){ const m=$("#main"); m.ondragover = m.ondragleave = m.ondrop = null; m.classList.remove("dropping"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); hydrateCardImages(m); }
+function setMain(html){ const m=$("#main"); m.ondragover = m.ondragleave = m.ondrop = null; m.classList.remove("dropping"); m.innerHTML = html; m.focus({preventScroll:true}); scrollTo(0,0); hydrateCardImages(m); bindRefresh(m); }
+/* Refresh the current reading view without restarting OAuth or losing an unfinished form. */
+function bindRefresh(main){
+  const raw = location.hash.slice(1), [path, query] = raw.split("?"), params = new URLSearchParams(query);
+  const kind = path.split("/").filter(Boolean)[0] || "home";
+  if(!["home","wiki","projects","links","files","file","recent","search","all","tags","tag","status","history","diff","info"].includes(kind)
+    || ["new","manage","organize"].some(k => params.get(k) === "1")) return;
+  const title = main.querySelector("h1"), hero = main.querySelector(".mp-hero .stat");
+  if(!title) return;
+  let host = hero || title.closest(".title-row");
+  if(!host){ host = document.createElement("div"); host.className = "title-row"; title.before(host); host.appendChild(title); }
+  const button = document.createElement("button"); button.type = "button"; button.className = "btn small refresh-btn";
+  button.innerHTML = '<span class="ms" aria-hidden="true">refresh</span><span>Refresh</span>';
+  host.appendChild(button);
+  let dirty = false;
+  const changed = e => { if(e.target.closest("form")) dirty = true; };
+  main.oninput = main.onchange = changed;
+  button.onclick = async () => {
+    if(dirty){ toast("Save your changes before refreshing.", 6000); return; }
+    const nav = S.nav, hash = location.hash;
+    button.disabled = true; button.setAttribute("aria-busy", "true"); button.lastChild.textContent = "Refreshing…";
+    try{
+      if(pagesLoading) await pagesLoading;
+      if(nav !== S.nav || !S.me.id) return;
+      S.store.invalidateReads?.(); S.texts = {}; invalidatePages();
+      const [, tags] = await Promise.all([refreshPages(true, true), S.store.tags()]);
+      if(dirty){ toast("Save your changes before refreshing.", 6000); return; }
+      if(nav === S.nav && hash === location.hash && S.me.id){ S.tags = tags; renderSide(); await route(); }
+    }catch(e){ if(nav === S.nav) toast("Could not refresh: " + (e.message || String(e)), 7000); }
+    finally{ if(button.isConnected){ button.disabled = false; button.removeAttribute("aria-busy"); button.lastChild.textContent = "Refresh"; } }
+  };
+}
 /* Views are async: if the reader navigated meanwhile, a late view must not paint over the new one.
    setMainFor throws STALE, which aborts the rest of that view; route() ignores it. */
 const STALE = Symbol("stale view");
@@ -2241,16 +2284,16 @@ const ambox = (kind, icon, html) => `<div class="ambox ${kind}"><span class="ms"
 async function viewHome(){
   const nav = S.nav;
   setMainFor(nav, '<div class="loading">Loading…</div>');
-  const [pages, recent] = await Promise.all([refreshPages(), S.store.recent(12, true).catch(e => { console.warn(e); return []; })]);
-  await resolveNames(recent.map(r=>r.by));
+  const recentP = S.store.recent(12, true).then(recent => ({recent})).catch(error => ({error}));
+  const pages = await refreshPages();
+  const roots = S.projects.filter(p => !p.parentProject).sort((a,b) => a.title.localeCompare(b.title));
   const byDate = (a,b) => (b.updatedAt||"").localeCompare(a.updatedAt||"");
   const featured = pages.filter(p=>p.status==="validated").sort(byDate)[0] || pages.slice().sort(byDate)[0];
   const byTag = {};
   for(const p of visiblePages()) for(const t of (p.tags||[])) (byTag[t] ||= []).push({title:p.title, href:wikiHref(p.slug)});
-  for(const pr of taggedProjects()) for(const t of pr.tags) (byTag[t] ||= []).push({title:pr.title, href:"#/wiki/" + enc(pr.id), project:true});
+  for(const pr of taggedProjects().filter(p => !p.parentProject)) for(const t of pr.tags) (byTag[t] ||= []).push({title:pr.title, href:"#/wiki/" + enc(pr.id), project:true});
   const totalRevs = pages.reduce((a,p)=>a+(p.revN||0),0);
   const validated = pages.filter(p=>p.status==="validated").length;
-  const seen = new Set(); const latest = recent.filter(r => !seen.has(r.slug) && seen.add(r.slug)).slice(0,8);
   setMainFor(nav, `
     <section class="mp-hero">
       <div><p class="eyebrow">Lamassu · Research</p>
@@ -2259,7 +2302,7 @@ async function viewHome(){
       <div class="stat"><b>${fmtNum(S.projects.length)}</b> projects · <b>${fmtNum(pages.length)}</b> articles · <b>${validated}</b> validated<br><b>${fmtNum(totalRevs)}</b> revisions in total</div>
     </section>
     <section class="home-projects"><h2 class="pr-h" style="margin-top:22px">Projects</h2>
-      ${S.projects.length ? `<ul class="linklist">${S.projects.slice().sort((a, b) => a.title.localeCompare(b.title)).map(projectCard).join("")}</ul>`
+      ${roots.length ? `<ul class="linklist">${roots.map(projectCard).join("")}</ul>`
         : `<div class="empty"><p><b>No projects yet.</b></p><p>Everything in ${SITE} lives inside a project: its articles, external links and files.</p></div>`}
       ${S.me.canWrite ? `<p style="margin:8px 0 0"><a class="btn small" href="#/projects"><span class="ms" aria-hidden="true">create_new_folder</span>New project</a></p>` : ""}</section>
     ${pages.length || !S.projects.length ? "" : `<div class="empty" style="margin-top:18px"><p><b>No articles yet.</b></p><p>Open a project and add the first page: a PKI design decision, notes on an RFC, or a post-quantum migration plan.</p></div>`}
@@ -2274,8 +2317,8 @@ async function viewHome(){
         </div></section>
       </div>
       <div class="mp-col">
-        <section class="mp-box t-info"><h2>Recently updated</h2><div class="in"><ul>
-          ${latest.map(r => `<li><a href="${wikiHref(r.slug)}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>'}
+        <section class="mp-box t-info"><h2>Recently updated</h2><div class="in"><ul id="home-recent" aria-live="polite" aria-busy="true">
+          <li class="muted">Loading recent changes…</li>
         </ul><p style="margin:10px 0 0;font-size:15px"><a href="#/recent">All recent changes →</a></p></div></section>
         <section class="mp-box t-warn"><h2>Maturity levels</h2><div class="in"><ul class="mat-list">
           ${STATUS_ORDER.map(s => `<li><a href="#/status/${s}" style="text-decoration:none">${pill(s)}</a><span>${esc(STATUS[s].help)}</span></li>`).join("")}
@@ -2283,6 +2326,16 @@ async function viewHome(){
       </div>
     </div>` : ""}
     ${footer()}`);
+  recentP.then(async ({recent, error}) => {
+    if(nav !== S.nav || !$("#home-recent")) return;
+    if(recent) await resolveNames(recent.map(r => r.by));
+    if(nav !== S.nav) return;
+    const box = $("#home-recent"); if(!box) return;
+    const seen = new Set(), latest = (recent || []).filter(r => !seen.has(r.slug) && seen.add(r.slug)).slice(0,8);
+    box.innerHTML = error ? '<li class="muted">Could not load recent changes. Try Refresh.</li>'
+      : latest.map(r => `<li><a href="${wikiHref(r.slug)}">${esc(r.title||r.slug)}</a> <span class="muted" style="font-size:14px">— ${personSpan(r.by)}, ${fmtMW(r.at)}</span></li>`).join("") || '<li class="muted">Nothing yet.</li>';
+    box.removeAttribute("aria-busy");
+  }).catch(e => console.warn(e));
 }
 
 function groupedList(pages){
@@ -3687,11 +3740,11 @@ async function viewProject(id, params){
   if(!pr){ setMainFor(nav, `<h1 class="title">${esc(id)}</h1>${ambox("slate","info","<p>This project does not exist.</p>")}${footer()}`); return; }
   const organize = (params.get("manage") === "1" || params.get("organize") === "1") && S.me.canWrite;
   const c = countItems(pr), q = enc(id);
-  const elsewhere = S.projects.filter(p => p.id !== id).sort((a, b) => a.title.localeCompare(b.title)).map(p => {
+  const elsewhere = organize ? S.projects.filter(p => p.id !== id).sort((a, b) => a.title.localeCompare(b.title)).map(p => {
     const opts = []; treeWalk(p.items || [], (it, chain) => { const info = itemInfo(it); if(info) opts.push({value:`${p.id}|${it.type}:${it.id}`, label:"— ".repeat(chain.length) + info.label, type:it.type}); });
     return {p, opts};
-  }).filter(g => g.opts.length);
-  const parents = []; treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
+  }).filter(g => g.opts.length) : [];
+  const parents = []; if(organize) treeWalk(pr.items || [], (it, chain) => { if(it.type === "page" && itemInfo(it)) parents.push({id:it.id, label:"— ".repeat(chain.length) + itemInfo(it).label}); });
   const tree = treeList(pr.items, {organize});
   setMainFor(nav, `<nav class="crumbs" aria-label="Breadcrumb">${projectCrumbs(id).join('<span class="sep" aria-hidden="true">›</span>')}</nav><h1 class="title"><span class="ns">Project:</span>${esc(pr.title)}</h1>
     <div class="tabs"><nav><a class="on" href="#/wiki/${q}">Project</a></nav><nav>${S.me.canWrite ? `<a href="#/wiki/${q}${organize ? "" : "?manage=1"}" class="${organize ? "on" : ""}"><span class="ms" aria-hidden="true">${organize ? "check" : "edit"}</span>${organize ? "Done" : "Edit project"}</a>` : ""}</nav></div><div class="maturity"></div>

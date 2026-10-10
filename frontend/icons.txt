@@ -48,6 +48,7 @@ playlist_add
 print
 public
 publish
+refresh
 save
 search
 sell

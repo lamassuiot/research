@@ -23,6 +23,19 @@ async function open(page, repo, hash, opts={}){
   await expect(page.locator('#gate')).toBeHidden();
 }
 
+test('home lists only root projects and subprojects remain reachable through their parents', async ({page}) => {
+  const repo = fixture();
+  repo.add('Tag a nested project', {'projects/crypto/projects/pqc/project.json':projectJson({title:'PQC', tags:['PQC']})});
+  await open(page, repo, '#/');
+  await expect(page.locator('.home-projects a.lc-title')).toHaveText(['Crypto', 'General', 'Signing']);
+  await expect(page.locator('#main a[href="#/wiki/pqc"]')).toHaveCount(0);
+  await expect(page.locator('#main a[href="#/wiki/inventory"]')).toHaveCount(0);
+  await page.locator('.home-projects a.lc-title', {hasText:'Crypto'}).click();
+  await expect(page.locator('.subprojects a.lc-title')).toHaveText(['PQC']);
+  await page.locator('.subprojects a.lc-title').click();
+  await expect(page.locator('.subprojects a.lc-title')).toHaveText(['Inventory']);
+});
+
 test('creates a subproject from its parent and keeps independent tags and contents', async ({page}) => {
   const repo = fixture();
   await open(page, repo, '#/wiki/crypto');

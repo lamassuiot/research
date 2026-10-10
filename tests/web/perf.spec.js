@@ -25,8 +25,8 @@ test("round trips per navigation stay within budget", async ({ page }) => {
   expect(boot.filter(o => o === "RecentMetas")).toEqual([]);                        // home does not need per-revision metas
   expect(boot.length).toBeLessThanOrEqual(7);                                       // /user, repo, Tags, Index, IndexBlobs, Recent, (+1 spare)
 
-  // an article: ONE GraphQL query (page + history) and the content
-  expect(await ops(() => go("#/wiki/mt/mt-page", "h1.title"))).toEqual(["/contents/projects/mt/pages/mt-page/content.md", "GetArticle"].sort());
+  // an article: ONE GraphQL query includes page, history and the latest immutable content
+  expect(await ops(() => go("#/wiki/mt/mt-page", "h1.title"))).toEqual(["GetArticle"]);
   // views that only need the listing cost nothing
   expect(await ops(() => go("#/wiki/mt", ".qa"))).toEqual([]);
   expect(await ops(() => go("#/tag/PQC", "h1.title"))).toEqual([]);
@@ -121,4 +121,74 @@ test("responses arriving after sign-out cannot refill session caches or sign in 
   await page.evaluate(() => signOut()); release(); await pending;
   expect(await page.evaluate(() => [S.pages.length, S.store._latest.size, S.store._index])).toEqual([0,0,null]);
   expect(gh.authorizes).toHaveLength(logins); await expect(page.locator("#gate")).toBeVisible(); w.check();
+});
+
+test('home renders projects while recent changes are still loading and late results respect navigation', async ({page}) => {
+  const w = watch(page); w.gh = await installFakeGitHub(page);
+  let release;
+  const barrier = new Promise(resolve => { release = resolve; });
+  await page.route('https://api.github.com/graphql', async route => {
+    if(route.request().postDataJSON().operationName === 'Recent') await barrier;
+    await route.fallback();
+  });
+  await page.goto('/research/#/');
+  await expect(page.locator('.home-projects')).toBeVisible();
+  await expect(page.locator('#home-recent')).toHaveAttribute('aria-busy', 'true');
+  await page.evaluate(() => { location.hash = '#/projects'; });
+  await expect(page.locator('h1.title')).toHaveText('Projects');
+  release();
+  await expect(page.locator('#home-recent')).toHaveCount(0);
+  await expect(page.locator('h1.title')).toHaveText('Projects');
+  w.check();
+});
+
+test('Refresh picks up external content changes immediately without signing in again', async ({page}) => {
+  const w = watch(page), repo = seedFromTemplate(createRepo());
+  const gh = w.gh = await installFakeGitHub(page, {repo, permission:'read'});
+  await page.goto('/research/#/wiki/general/welcome');
+  await expect(page.locator('#prose')).toContainText('Maturity');
+  const logins = gh.authorizes.length;
+  repo.add('External body change', {'projects/general/pages/welcome/content.md':'## Refreshed content\n\nFrom another author.\n'});
+  await page.getByRole('button', {name:'Refresh', exact:true}).click();
+  await expect(page.locator('#prose')).toContainText('Refreshed content');
+  expect(gh.authorizes).toHaveLength(logins);
+  await expect(page.getByRole('button', {name:'Refresh', exact:true})).toBeEnabled();
+  w.check();
+});
+
+test('Refresh reports index failures, keeps the current view and can be retried', async ({page}) => {
+  const w = watch(page), gh = w.gh = await installFakeGitHub(page);
+  await page.goto('/research/#/projects');
+  await expect(page.locator('.linklist')).toBeVisible();
+  let fail = true;
+  await page.route('https://api.github.com/graphql', route => {
+    if(fail && route.request().postDataJSON().operationName === 'Index')
+      return route.fulfill({status:500, contentType:'application/json', body:JSON.stringify({message:'Temporary failure'})});
+    return route.fallback();
+  });
+  await page.getByRole('button', {name:'Refresh', exact:true}).click();
+  await expect(page.locator('#toast')).toContainText('Could not refresh');
+  await expect(page.locator('.linklist')).toBeVisible();
+  await expect(page.getByRole('button', {name:'Refresh', exact:true})).toBeEnabled();
+  fail = false;
+  const start = gh.requests.length;
+  await page.getByRole('button', {name:'Refresh', exact:true}).click();
+  await expect.poll(() => gh.requests.slice(start).filter(r => r.op === 'Index').length).toBe(1);
+  await expect(page.getByRole('button', {name:'Refresh', exact:true})).toBeEnabled();
+  w.check();
+});
+
+test('Refresh preserves unfinished forms and is absent from the article editor', async ({page}) => {
+  const w = watch(page), gh = w.gh = await installFakeGitHub(page);
+  await page.goto('/research/#/projects');
+  await page.fill('#np-title', 'Unfinished project');
+  const start = gh.requests.length;
+  await page.getByRole('button', {name:'Refresh', exact:true}).click();
+  await expect(page.locator('#toast')).toContainText('Save your changes');
+  await expect(page.locator('#np-title')).toHaveValue('Unfinished project');
+  expect(gh.requests.length).toBe(start);
+  await page.evaluate(() => { location.hash = '#/edit/welcome'; });
+  await expect(page.locator('#f-body')).toBeVisible();
+  await expect(page.getByRole('button', {name:'Refresh', exact:true})).toHaveCount(0);
+  w.check();
 });

@@ -263,7 +263,13 @@ async function installFakeGitHub(page, opts = {}) {
         }
         data = { repository: out }; break;
       }
-      case "GetArticle": data = { repository: { meta: blob(repo.read(v.metaExpr)), ...ref(repo.history(v.path).map(c => ({ ...node(c), file: { object: blob(c.files.get(v.file) ?? null) } }))) } }; break;
+      case "GetArticle": {
+        const history = repo.history(v.path);
+        data = { repository: { meta: blob(repo.read(v.metaExpr)), ref: {target: {
+          history: {nodes: history.map(c => ({...node(c), file: {object: blob(c.files.get(v.file) ?? null)}}))},
+          latest: {nodes: history.slice(0,1).map(c => ({oid:c.oid, file: {object:blob(c.files.get(v.contentFile) ?? null)}}))}
+        }} } }; break;
+      }
       case "FileRevs": data = { repository: ref(repo.history(v.path, 50).map(c => ({ ...node(c), file: c.files.has(v.path) ? { object: { byteSize: Buffer.byteLength(c.files.get(v.path)) } } : null }))) }; break;
       case "Tags": data = { repository: { object: blob(repo.read(v.expr)) } }; break;
       case "IndexBlobs": case "RecentMetas": case "ReadFiles": data = { repository: metas(v) }; break;
